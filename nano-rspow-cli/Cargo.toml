@@ -2,7 +2,6 @@
 name = "nano-rspow-cli"
 version.workspace = true
 edition.workspace = true
-authors.workspace = true
 license.workspace = true
 description = "CLI for nano-rspow: generate/validate Nano PoW, benchmark backends"
 

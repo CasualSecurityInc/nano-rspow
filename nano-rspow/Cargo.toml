@@ -1,10 +1,9 @@
 [package]
 name = "nano-rspow"
-version.workspace = true
 edition.workspace = true
-authors.workspace = true
 license.workspace = true
 repository.workspace = true
+version.workspace = true
 description = "GPU-accelerated Nano (XNO) Proof of Work library — Rust core, cross-platform."
 keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
 categories = ["cryptography", "hardware-support"]
