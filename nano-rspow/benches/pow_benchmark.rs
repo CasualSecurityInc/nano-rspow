@@ -27,8 +27,8 @@ fn bench_cpu_generation(c: &mut Criterion) {
     group.throughput(Throughput::Elements(1));
     // Use dev threshold so bench completes quickly
     group.bench_function("cpu_dev_threshold", |b| {
-        let gen = nano_rspow::WorkGenerator::cpu();
-        b.iter(|| gen.generate(&BENCH_HASH, thresholds::DEV).unwrap());
+        let generator = nano_rspow::WorkGenerator::cpu();
+        b.iter(|| generator.generate(&BENCH_HASH, thresholds::DEV).unwrap());
     });
     group.finish();
 }
