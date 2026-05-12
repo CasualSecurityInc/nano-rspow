@@ -2,6 +2,7 @@
   "name": "nano-rspow-node",
   "version": "0.1.0",
   "description": "GPU-accelerated Nano Proof of Work for Node.js",
+  "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
