@@ -1,4 +1,23 @@
 /target
 **/*.rs.bk
-Cargo.lock
 .DS_Store
+
+# Node.js
+node_modules/
+*.node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# napi-rs artifacts
+artifacts/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
