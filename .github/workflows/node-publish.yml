@@ -43,6 +43,21 @@ jobs:
         with:
           workspaces: nano-rspow-node
 
+      - name: Install OpenCL (Linux)
+        if: matrix.settings.host == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev
+
+      - name: Install OpenCL (Windows)
+        if: matrix.settings.host == 'windows-latest'
+        shell: pwsh
+        run: |
+          $url = "https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/releases/download/1.0/OCL_SDK_Light_AMD.exe"
+          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\ocl_sdk.exe"
+          Start-Process -Wait -FilePath "$env:TEMP\ocl_sdk.exe" -ArgumentList "/S"
+          echo "C:\Program Files (x86)\OCL_SDK_Light\bin\x86_64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "LIB=C:\Program Files (x86)\OCL_SDK_Light\lib\x86_64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "INCLUDE=C:\Program Files (x86)\OCL_SDK_Light\include;$env:INCLUDE" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Install dependencies
         working-directory: nano-rspow-node
         run: npm install
