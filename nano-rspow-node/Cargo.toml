@@ -1,0 +1,19 @@
+[package]
+name = "nano-rspow-node"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", default-features = false, features = ["napi4", "async"] }
+napi-derive = "2"
+nano-rspow = { path = "../nano-rspow", features = ["opencl"] }
+hex = "0.4"
+tokio = { version = "1", features = ["sync", "rt"] }
+
+[build-dependencies]
+napi-build = "2"

@@ -310,7 +310,9 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
 
     let tiers: &[(&'static str, u64)] = &[
         ("dev",    thresholds::DEV),
+        ("ep2_recv", thresholds::EPOCH2_RECEIVE),
         ("epoch1", thresholds::EPOCH1),
+        ("ep2_send", thresholds::EPOCH2_SEND),
     ];
 
     let mut rows: Vec<BenchRow> = Vec::new();
