@@ -1,0 +1,16 @@
+[package]
+name = "nano-rspow-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GPU-accelerated Nano (XNO) Proof of Work library — Python bindings."
+
+[lib]
+name = "nano_rspow"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.24", features = ["extension-module"] }
+nano-rspow = { path = "../nano-rspow" }
+hex = "0.4"

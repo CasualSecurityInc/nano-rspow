@@ -8,8 +8,8 @@ async function run() {
     
     if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
         console.log(`
-🚀 nano-rspow-node
-GPU-accelerated Nano Proof-of-Work Generator
+🚀 nano-rspow
+Hybrid CPU/GPU Nano Proof-of-Work Generator
 
 Usage:
   npx nano-rspow <hash> [--type <send|receive|epoch1|dev>]

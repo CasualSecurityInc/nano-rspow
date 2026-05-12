@@ -1,4 +1,4 @@
-//! `nano-rspow` — GPU-accelerated Nano (XNO) Proof of Work library.
+//! `nano-rspow` — Hybrid CPU/GPU Nano (XNO) Proof of Work library.
 //!
 //! Provides `work_generate`, `work_validate`, and `work_cancel` with a
 //! multi-backend architecture: CPU (always on), wgpu/WGSL (default GPU,

@@ -4,7 +4,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 version.workspace = true
-description = "GPU-accelerated Nano (XNO) Proof of Work library — Rust core, cross-platform."
+description = "Hybrid CPU/GPU Nano (XNO) Proof of Work library — Rust core, cross-platform."
 keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
 categories = ["cryptography", "hardware-support"]
 

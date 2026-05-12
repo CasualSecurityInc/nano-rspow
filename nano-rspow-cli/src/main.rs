@@ -15,7 +15,7 @@ use nano_rspow::{WorkGenerator, difficulty, thresholds};
 #[command(
     name = "nano-rspow",
     version,
-    about = "GPU-accelerated Nano (XNO) Proof of Work — nano-rspow",
+    about = "Hybrid CPU/GPU Nano (XNO) Proof of Work — nano-rspow",
     long_about = None
 )]
 struct Cli {

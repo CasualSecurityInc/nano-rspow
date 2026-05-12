@@ -13,6 +13,14 @@ yarn-error.log*
 # napi-rs artifacts
 artifacts/
 
+# Python
+__pycache__/
+*.egg-info/
+dist/
+.venv/
+*.so
+*.pyd
+
 # OS generated files
 .DS_Store
 .DS_Store?
