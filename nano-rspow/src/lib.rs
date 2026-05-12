@@ -1,0 +1,143 @@
+//! `nano-rspow` — GPU-accelerated Nano (XNO) Proof of Work library.
+//!
+//! Provides `work_generate`, `work_validate`, and `work_cancel` with a
+//! multi-backend architecture: CPU (always on), wgpu/WGSL (default GPU,
+//! works on Metal/Vulkan/DX12), and optional OpenCL.
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use nano_rspow::{WorkGenerator, thresholds};
+//!
+//! let hash_bytes = hex::decode("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2")
+//!     .unwrap();
+//! let hash: [u8; 32] = hash_bytes.try_into().unwrap();
+//!
+//! // Validate a known-good work value
+//! let work = u64::from_str_radix("2bf29ef00786a6bc", 16).unwrap();
+//! let result = nano_rspow::work_validate(&hash, work, thresholds::EPOCH1);
+//! assert!(result.is_valid());
+//! ```
+
+pub mod difficulty;
+pub mod thresholds;
+pub mod types;
+
+mod cpu;
+
+#[cfg(feature = "wgpu-backend")]
+mod wgpu_backend;
+
+#[cfg(feature = "opencl")]
+mod opencl_backend;
+
+pub use types::{CancelToken, WorkError, WorkResult};
+
+use std::sync::Arc;
+
+/// The main entry point for work generation.
+///
+/// Selects the best available backend automatically, or use the explicit
+/// constructors (`cpu()`, `gpu()`) for manual control.
+pub struct WorkGenerator {
+    inner: Arc<dyn Backend + Send + Sync>,
+}
+
+/// Internal backend trait — all compute backends implement this.
+pub(crate) trait Backend {
+    fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64>;
+    fn name(&self) -> &'static str;
+}
+
+impl WorkGenerator {
+    /// Create a generator using the best available backend.
+    ///
+    /// Priority: GPU (wgpu) > CPU
+    pub fn auto() -> Self {
+        #[cfg(feature = "wgpu-backend")]
+        {
+            if let Ok(g) = wgpu_backend::WgpuBackend::new() {
+                return Self { inner: Arc::new(g) };
+            }
+        }
+
+        #[cfg(feature = "opencl")]
+        {
+            if let Ok(g) = opencl_backend::OpenClBackend::new(Default::default()) {
+                return Self { inner: Arc::new(g) };
+            }
+        }
+
+        Self::cpu()
+    }
+
+    /// Create a CPU-only generator.
+    pub fn cpu() -> Self {
+        Self {
+            inner: Arc::new(cpu::CpuBackend::new()),
+        }
+    }
+
+    /// Create a generator using the wgpu GPU backend (Vulkan/Metal/DX12).
+    #[cfg(feature = "wgpu-backend")]
+    pub fn gpu() -> Result<Self, WorkError> {
+        let b = wgpu_backend::WgpuBackend::new()?;
+        Ok(Self { inner: Arc::new(b) })
+    }
+
+    /// Create a generator using the OpenCL GPU backend.
+    #[cfg(feature = "opencl")]
+    pub fn opencl(config: opencl_backend::OpenClConfig) -> Result<Self, WorkError> {
+        let b = opencl_backend::OpenClBackend::new(config)?;
+        Ok(Self { inner: Arc::new(b) })
+    }
+
+    /// Returns the name of the active backend.
+    pub fn backend_name(&self) -> &'static str {
+        self.inner.name()
+    }
+
+    /// Generate work for a 32-byte block root hash.
+    ///
+    /// Returns `None` if cancelled before a valid nonce is found.
+    pub fn generate(&self, hash: &[u8; 32], threshold: u64) -> Option<WorkResult> {
+        let cancel = CancelToken::new();
+        self.generate_with_cancel(hash, threshold, &cancel)
+    }
+
+    /// Generate work with an external cancel token.
+    pub fn generate_with_cancel(
+        &self,
+        hash: &[u8; 32],
+        threshold: u64,
+        cancel: &CancelToken,
+    ) -> Option<WorkResult> {
+        let nonce = self.inner.generate(hash, threshold, cancel)?;
+        let diff = difficulty::compute(hash, nonce);
+        Some(WorkResult {
+            nonce,
+            difficulty: diff,
+            threshold,
+        })
+    }
+
+    /// Validate that a given nonce meets the threshold for a hash.
+    pub fn validate(&self, hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult {
+        let diff = difficulty::compute(hash, nonce);
+        WorkResult { nonce, difficulty: diff, threshold }
+    }
+}
+
+/// Convenience: generate work using the best available backend.
+pub fn work_generate(hash: &[u8; 32], threshold: u64) -> Option<WorkResult> {
+    WorkGenerator::auto().generate(hash, threshold)
+}
+
+/// Convenience: validate work.
+pub fn work_validate(hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult {
+    WorkResult {
+        nonce,
+        difficulty: difficulty::compute(hash, nonce),
+        threshold,
+    }
+}

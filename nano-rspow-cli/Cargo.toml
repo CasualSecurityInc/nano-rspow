@@ -1,0 +1,21 @@
+[package]
+name = "nano-rspow-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "CLI for nano-rspow: generate/validate Nano PoW, benchmark backends"
+
+[[bin]]
+name = "nano-rspow"
+path = "src/main.rs"
+
+[features]
+default = ["wgpu-backend"]
+wgpu-backend = ["nano-rspow/wgpu-backend"]
+opencl = ["nano-rspow/opencl"]
+
+[dependencies]
+nano-rspow = { path = "../nano-rspow", features = ["wgpu-backend"] }
+clap = { version = "4", features = ["derive"] }
+hex = "0.4"

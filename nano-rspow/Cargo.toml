@@ -1,0 +1,38 @@
+[package]
+name = "nano-rspow"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GPU-accelerated Nano (XNO) Proof of Work library — Rust core, cross-platform."
+keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
+categories = ["cryptography", "hardware-support"]
+
+[features]
+default = ["wgpu-backend"]
+wgpu-backend = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
+opencl = ["dep:ocl"]
+# cuda = ["dep:cudarc"]  # Future: NVIDIA only, see feat/cuda-oxide branch
+
+[dependencies]
+blake2b_simd = "1"
+rayon = "1"
+rand = "0.9"
+hex = "0.4"
+thiserror = "2"
+
+# wgpu backend (default — Vulkan/Metal/DX12)
+wgpu = { version = "24", optional = true, default-features = false, features = ["wgsl", "metal", "vulkan-portability", "dx12"] }
+pollster = { version = "0.4", optional = true }
+bytemuck = { version = "1", optional = true, features = ["derive"] }
+
+# OpenCL backend (optional)
+ocl = { version = "0.19", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "pow_benchmark"
+harness = false
