@@ -101,6 +101,4 @@ jobs:
 
       - name: Publish package
         working-directory: nano-rspow-node
-        run: |
-          npm version from-git --no-git-tag-version
-          npm publish --provenance --access public
+        run: npm publish --provenance --access public
