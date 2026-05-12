@@ -4,6 +4,9 @@
   "description": "GPU-accelerated Nano Proof of Work for Node.js",
   "main": "index.js",
   "types": "index.d.ts",
+  "bin": {
+    "nano-rspow": "bin/cli.js"
+  },
   "napi": {
     "name": "nano-rspow-node",
     "triples": {
