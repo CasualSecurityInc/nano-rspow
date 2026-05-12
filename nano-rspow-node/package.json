@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
   "main": "index.js",
