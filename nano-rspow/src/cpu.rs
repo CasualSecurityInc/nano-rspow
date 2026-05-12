@@ -153,6 +153,7 @@ mod tests {
     fn roundtrip_work_validate() {
         use crate::difficulty;
 
+        // Official known-good test vector hash from the nano-node core implementation
         let hash = hex::decode("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2")
             .unwrap();
         let hash: [u8; 32] = hash.try_into().unwrap();

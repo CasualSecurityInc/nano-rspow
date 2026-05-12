@@ -66,6 +66,7 @@ enum Commands {
         #[arg(
             short = 'H',
             long,
+            // Default to a known-good test vector hash from the official nano-node
             default_value = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2"
         )]
         hash: String,

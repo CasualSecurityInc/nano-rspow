@@ -8,6 +8,7 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use nano_rspow::{difficulty, thresholds};
 
+// Official known-good test vector hash from the nano-node core implementation.
 const BENCH_HASH: [u8; 32] = [
     0x71, 0x8C, 0xC2, 0x12, 0x1C, 0x3E, 0x64, 0x10,
     0x59, 0xBC, 0x1C, 0x2C, 0xFC, 0x45, 0x66, 0x6C,
@@ -17,6 +18,7 @@ const BENCH_HASH: [u8; 32] = [
 
 fn bench_difficulty(c: &mut Criterion) {
     c.bench_function("difficulty_compute", |b| {
+        // Official known-good work value (nonce) matching the BENCH_HASH test vector.
         let nonce = 0x2bf29ef00786a6bc_u64;
         b.iter(|| difficulty::compute(&BENCH_HASH, std::hint::black_box(nonce)));
     });

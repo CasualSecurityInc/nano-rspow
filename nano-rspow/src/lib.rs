@@ -9,11 +9,12 @@
 //! ```rust
 //! use nano_rspow::{WorkGenerator, thresholds};
 //!
+//! // Known-good test vector hash from the official nano-node implementation
 //! let hash_bytes = hex::decode("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2")
 //!     .unwrap();
 //! let hash: [u8; 32] = hash_bytes.try_into().unwrap();
 //!
-//! // Validate a known-good work value
+//! // Validate a known-good work value (nonce) matching the above test vector
 //! let work = u64::from_str_radix("2bf29ef00786a6bc", 16).unwrap();
 //! let result = nano_rspow::work_validate(&hash, work, thresholds::EPOCH1);
 //! assert!(result.is_valid());
