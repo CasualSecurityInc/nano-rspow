@@ -61,9 +61,11 @@ jobs:
     name: Publish to NPM
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      id-token: write  # required for OIDC Trusted Publishing
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -88,6 +90,4 @@ jobs:
         working-directory: nano-rspow-node
         run: |
           npm version from-git --no-git-tag-version
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --provenance --access public
