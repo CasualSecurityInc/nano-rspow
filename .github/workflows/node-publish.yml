@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build Node Bindings - ${{ matrix.settings.target }}
@@ -31,8 +34,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          
+          node-version: 22
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -82,8 +85,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org'
+          node-version: 22
 
       - name: Install dependencies
         working-directory: nano-rspow-node
