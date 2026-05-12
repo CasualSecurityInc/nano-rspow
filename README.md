@@ -1,26 +1,24 @@
 # nano-rspow
 
-A hyper-optimized, cross-platform Nano (XNO) Proof-of-Work engine.
+A cross-platform Nano (XNO) Proof-of-Work engine written in Rust.
 
 ## Why this exists
 
-Historically, generating Nano Proof-of-Work (PoW) in Node.js or web environments relied on sluggish JavaScript implementations or WebAssembly bindings that couldn't fully tap into modern hardware accelerators. They often blocked the main event loop and failed to utilize the full potential of multi-core CPUs (like Apple Silicon) or dedicated GPUs. 
+Generating Nano Proof-of-Work (PoW) in Node.js or web environments has traditionally relied on JavaScript implementations or WebAssembly bindings that don't have direct access to hardware accelerators, and can block the main event loop.
 
-The Nano ecosystem needed a drop-in, bare-metal replacement that seamlessly integrates into Node.js while squeezing every drop of performance out of the host machine.
+`nano-rspow` is a native Rust implementation that integrates into Node.js via NAPI-RS, giving it access to multi-core CPUs and dedicated GPUs without blocking the event loop.
 
 ## What it is
 
-`nano-rspow` is a modular Rust library that implements the Blake2b PoW algorithm using a novel **"Silicon Race" hybrid architecture**. 
+`nano-rspow` is a modular Rust library that implements the Blake2b PoW algorithm using a **"Silicon Race" hybrid architecture**.
 
-Instead of forcing you to choose between CPU and GPU compute, `nano-rspow` simultaneously dispatches the PoW search across your multi-core CPU (via `rayon`) AND your best available GPU (via native `OpenCL` or `wgpu`). Whichever processor finds the valid nonce first instantly aborts the other. 
-
-The result? The absolute fastest generation times mathematically possible on your machine, completely automatically.
+Rather than committing to a single backend, `nano-rspow` dispatches the PoW search concurrently across your multi-core CPU (via `rayon`) and your best available GPU (via native `OpenCL` or `wgpu`). Whichever finishes first cancels the other. On systems without a GPU, the multi-core CPU path alone is fast; on systems with a capable GPU, it will typically dominate. Running both simultaneously means rayon occupies all CPU cores, which can marginally reduce GPU driver throughput — so if you know your GPU is available and fast, using it exclusively may be slightly more efficient.
 
 ### Features
 - **Zero-Config Distribution**: The Node.js bindings (`nano-rspow-node`) are distributed with pre-compiled native binaries for macOS (Intel & ARM), Windows, and Linux. No Rust toolchains or C++ compilers required for downstream users.
-- **True Concurrency**: NAPI-RS executes the work generation on the asynchronous libuv thread pool, keeping your Node.js event loop completely unblocked.
+- **Non-blocking**: NAPI-RS executes work generation on the libuv thread pool, keeping your Node.js event loop free.
 - **Live Network Difficulties**: Includes semantic mappings for active network thresholds (`Send`, `Receive`, `Epoch1`).
-- **Best-in-Class CLI**: Includes a robust standalone terminal application for debugging, benchmarking, and quick work generation.
+- **CLI**: Includes a standalone terminal application for debugging, benchmarking, and quick work generation.
 
 ## Usage
 
@@ -47,7 +45,7 @@ const { generateWork, validateWork, WorkType } = require('nano-rspow-node');
 
 async function processBlock(hash) {
     console.log("Generating PoW...");
-    // Effortlessly utilizes all available CPU cores + GPU concurrently
+    // Dispatches across CPU and GPU; GPU wins on capable hardware
     const work = await generateWork(hash, WorkType.Send);
     
     console.log(`Generated: ${work}`);
