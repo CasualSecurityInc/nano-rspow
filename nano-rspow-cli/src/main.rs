@@ -34,7 +34,7 @@ enum Commands {
         #[arg(short, long, default_value = "fffffff800000000")]
         threshold: String,
 
-        /// Backend to use: cpu or gpu
+        /// Backend to use: cpu, gpu, opencl
         #[arg(short, long, default_value = "gpu")]
         backend: String,
     },
@@ -125,7 +125,12 @@ fn cmd_info() {
     println!("  [✗] wgpu    — not compiled (enable feature 'wgpu-backend')");
 
     #[cfg(feature = "opencl")]
-    println!("  [?] opencl  — compiled, runtime detection not yet implemented");
+    {
+        match WorkGenerator::opencl(Default::default()) {
+            Ok(g) => println!("  [✓] opencl  — {} (opencl)", g.backend_name()),
+            Err(e) => println!("  [✗] opencl  — opencl unavailable: {e}"),
+        }
+    }
     #[cfg(not(feature = "opencl"))]
     println!("  [✗] opencl  — not compiled (enable feature 'opencl')");
 
@@ -169,8 +174,25 @@ fn cmd_generate(hash_str: &str, threshold_str: &str, backend_str: &str) {
                 WorkGenerator::cpu()
             }
         }
+        "opencl" => {
+            #[cfg(feature = "opencl")]
+            {
+                match WorkGenerator::opencl(Default::default()) {
+                    Ok(g) => g,
+                    Err(e) => {
+                        eprintln!("OpenCL unavailable ({e}), falling back to CPU");
+                        WorkGenerator::cpu()
+                    }
+                }
+            }
+            #[cfg(not(feature = "opencl"))]
+            {
+                eprintln!("opencl not compiled; using CPU");
+                WorkGenerator::cpu()
+            }
+        }
         _ => {
-            eprintln!("Unknown backend '{}'. Use 'cpu' or 'gpu'.", backend_str);
+            eprintln!("Unknown backend '{}'. Use 'cpu', 'gpu', or 'opencl'.", backend_str);
             std::process::exit(1);
         }
     };
@@ -314,6 +336,22 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
             }
             Err(e) => {
                 eprintln!("wgpu GPU backend: unavailable — {e}");
+            }
+        }
+    }
+
+    // ── OpenCL GPU backend ──
+    #[cfg(feature = "opencl")]
+    {
+        match WorkGenerator::opencl(Default::default()) {
+            Ok(generator) => {
+                eprintln!("OpenCL GPU backend:");
+                for &(name, thresh) in tiers {
+                    rows.push(run_backend_bench(&generator, &hash, thresh, count, name));
+                }
+            }
+            Err(e) => {
+                eprintln!("OpenCL GPU backend: unavailable — {e}");
             }
         }
     }
