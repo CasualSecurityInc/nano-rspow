@@ -5,7 +5,7 @@
 //! Benchmarks Blake2b difficulty computation and full PoW generation
 //! (at dev threshold for speed) across all compiled backends.
 
-use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use nano_rspow::{difficulty, thresholds};
 
 const BENCH_HASH: [u8; 32] = [
