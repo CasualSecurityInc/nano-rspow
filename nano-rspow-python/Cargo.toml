@@ -10,7 +10,10 @@ description = "GPU-accelerated Nano (XNO) Proof of Work library — Python bindi
 name = "nano_rspow"
 crate-type = ["cdylib"]
 
+[features]
+opencl = ["nano-rspow/opencl"]
+
 [dependencies]
-pyo3 = { version = "0.24", features = ["extension-module"] }
-nano-rspow = { path = "../nano-rspow" }
+pyo3 = { version = "0.28", features = ["extension-module", "auto-initialize"] }
+nano-rspow = { path = "../nano-rspow", features = ["opencl"] }
 hex = "0.4"
