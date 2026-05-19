@@ -27,6 +27,16 @@ cargo build --release --features opencl
 ## CLI
 
 ```bash
+# Using npx (Zero-install)
+npx nano-rspow-node <hash> --type send
+
+# Using pnpm (Zero-install)
+pnpx nano-rspow-node <hash> --type send
+```
+
+If you have a fresh clone of the repository and the Rust toolchain installed, you can use the native Rust CLI for more granular control (like specifying the backend or running benchmarks):
+
+```bash
 cargo run -p nano-rspow-cli -- generate <hash> --backend gpu
 ```
 
