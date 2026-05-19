@@ -27,8 +27,12 @@ struct Cli {
 enum Commands {
     /// Generate work for a 32-byte block hash (hex encoded)
     Generate {
-        /// Block root hash (64 hex chars)
-        hash: String,
+        /// Block root hash (64 hex chars). Optional if --stream is used.
+        hash: Option<String>,
+
+        /// Run in stdio streaming mode (read lines from stdin)
+        #[arg(long)]
+        stream: bool,
 
         /// Difficulty threshold (hex, default: epoch2 send)
         #[arg(short, long, default_value = "fffffff800000000")]
@@ -98,8 +102,8 @@ fn main() {
 
     match cli.command {
         Commands::Info => cmd_info(),
-        Commands::Generate { hash, threshold, backend } => {
-            cmd_generate(&hash, &threshold, &backend)
+        Commands::Generate { hash, stream, threshold, backend } => {
+            cmd_generate(hash.as_deref(), stream, &threshold, &backend)
         }
         Commands::Validate { hash, work, threshold } => cmd_validate(&hash, &work, &threshold),
         Commands::Benchmark { count, format, hash } => cmd_benchmark(count, &format, &hash),
@@ -146,12 +150,13 @@ fn cmd_info() {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-fn cmd_generate(hash_str: &str, threshold_str: &str, backend_str: &str) {
-    let hash = match parse_hash(hash_str) {
-        Ok(h) => h,
-        Err(e) => { eprintln!("Error: {e}"); std::process::exit(1); }
-    };
-    let threshold = match parse_threshold(threshold_str) {
+fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backend_str: &str) {
+    if !stream && hash_opt.is_none() {
+        eprintln!("Error: must provide a hash unless using --stream");
+        std::process::exit(1);
+    }
+
+    let default_threshold = match parse_threshold(threshold_str) {
         Ok(t) => t,
         Err(e) => { eprintln!("Error: {e}"); std::process::exit(1); }
     };
@@ -198,24 +203,72 @@ fn cmd_generate(hash_str: &str, threshold_str: &str, backend_str: &str) {
         }
     };
 
-    println!("Backend  : {}", generator.backend_name());
-    println!("Hash     : {hash_str}");
-    println!("Threshold: {threshold:#018x}");
-    print!("Generating...");
+    if stream {
+        use std::io::BufRead;
+        let stdin = std::io::stdin();
+        for line in stdin.lock().lines() {
+            let line = line.unwrap_or_default();
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
 
-    let t0 = Instant::now();
-    match generator.generate(&hash, threshold) {
-        Some(result) => {
-            let elapsed = t0.elapsed();
-            println!("\r");
-            println!("Work      : {}", result.nonce_hex());
-            println!("Difficulty: {} ({:#018x})", result.difficulty, result.difficulty);
-            println!("Multiplier: {:.4}x", result.multiplier());
-            println!("Time      : {:.3}s", elapsed.as_secs_f64());
+            let mut parts = line.split(':');
+            let hash_str = parts.next().unwrap_or("");
+            let line_threshold_str = parts.next();
+
+            let hash = match parse_hash(hash_str) {
+                Ok(h) => h,
+                Err(e) => {
+                    eprintln!("Error parsing hash '{hash_str}': {e}");
+                    continue;
+                }
+            };
+
+            let current_threshold = if let Some(ts) = line_threshold_str {
+                match parse_threshold(ts) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("Error parsing threshold '{ts}': {e}");
+                        continue;
+                    }
+                }
+            } else {
+                default_threshold
+            };
+
+            match generator.generate(&hash, current_threshold) {
+                Some(result) => {
+                    println!("{}:{}", hash_str, result.nonce_hex());
+                }
+                None => {
+                    eprintln!("Generation was cancelled for {hash_str}.");
+                }
+            }
         }
-        None => {
-            eprintln!("Generation was cancelled.");
-            std::process::exit(1);
+    } else {
+        let hash_str = hash_opt.unwrap();
+        let hash = parse_hash(hash_str).unwrap(); // already validated or exits above
+
+        println!("Backend  : {}", generator.backend_name());
+        println!("Hash     : {hash_str}");
+        println!("Threshold: {default_threshold:#018x}");
+        print!("Generating...");
+
+        let t0 = Instant::now();
+        match generator.generate(&hash, default_threshold) {
+            Some(result) => {
+                let elapsed = t0.elapsed();
+                println!("\r");
+                println!("Work      : {}", result.nonce_hex());
+                println!("Difficulty: {} ({:#018x})", result.difficulty, result.difficulty);
+                println!("Multiplier: {:.4}x", result.multiplier());
+                println!("Time      : {:.3}s", elapsed.as_secs_f64());
+            }
+            None => {
+                eprintln!("Generation was cancelled.");
+                std::process::exit(1);
+            }
         }
     }
 }
