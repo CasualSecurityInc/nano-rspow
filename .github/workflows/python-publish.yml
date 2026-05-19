@@ -36,7 +36,7 @@ jobs:
             qemu: true
 
           # macOS x86_64
-          - os: macos-13
+          - os: macos-latest
             target: x86_64-apple-darwin
             qemu: false
 
