@@ -160,8 +160,8 @@ mod tests {
 
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
-        let nonce = backend.generate(&hash, thresholds::EPOCH1, &cancel).unwrap();
+        let nonce = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
         let diff = difficulty::compute(&hash, nonce);
-        assert!(diff >= thresholds::EPOCH1);
+        assert!(diff >= thresholds::DEV);
     }
 }

@@ -1,10 +1,9 @@
 fn main() {
-    // Add the directory containing the Python.framework to the framework search path
-    println!("cargo:rustc-link-search=framework=/opt/homebrew/opt/python@3.14/Frameworks");
-    // Link the Python framework
-    println!("cargo:rustc-link-lib=framework=Python");
-    
-    // Also, we might need to link against the Python library explicitly if the framework doesn't do it?
-    // But linking the framework should be enough.
-    println!("cargo:warning=Linking Python framework via rustc-link-search and rustc-link-lib");
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    if target_os == "macos" {
+        // Tell cargo to pass linker flags to allow undefined symbols on macOS,
+        // which will be resolved by the Python interpreter at runtime.
+        println!("cargo:rustc-link-arg=-undefined");
+        println!("cargo:rustc-link-arg=dynamic_lookup");
+    }
 }
