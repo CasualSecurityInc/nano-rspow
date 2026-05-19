@@ -25,7 +25,7 @@ RSNANO_WORK = "3c82cc724905ee95"
 RSNANO_DIFFICULTY_INT = 18446743921403126366
 
 # Threshold constants from thresholds.rs
-EPOCH2_SEND = 0xFFFFFFFF80000000  # noqa: E741 (intentional hex constant)
+EPOCH2_SEND = 0xfffffff800000000
 EPOCH2_RECEIVE = 0xFFFFFE0000000000
 EPOCH1 = 0xFFFFFFc000000000
 DEV = 0xFE00000000000000
@@ -150,7 +150,7 @@ class TestThresholds:
 
     def test_epoch2_send(self):
         """EPOCH2_SEND must match the Rust constant."""
-        assert nano_rspow.thresholds.EPOCH2_SEND == 0xFFFFFFFF80000000  # noqa: E741
+        assert nano_rspow.thresholds.EPOCH2_SEND == 0xfffffff800000000
 
     def test_epoch2_receive(self):
         assert nano_rspow.thresholds.EPOCH2_RECEIVE == 0xFFFFFE0000000000
