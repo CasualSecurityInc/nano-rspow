@@ -27,7 +27,7 @@ cargo build --release --features opencl
 ## CLI
 
 ```bash
-cargo run -p nano-rspow-cli -- <hash> --type send
+cargo run -p nano-rspow-cli -- generate <hash> --backend gpu
 ```
 
 ## Node.js

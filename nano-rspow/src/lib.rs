@@ -136,8 +136,11 @@ impl WorkGenerator {
 }
 
 /// Convenience: generate work using the best available backend.
+/// Uses a statically cached `WorkGenerator` to avoid re-initializing backends
+/// (which can be expensive, e.g. for wgpu) on every call.
 pub fn work_generate(hash: &[u8; 32], threshold: u64) -> Option<WorkResult> {
-    WorkGenerator::auto().generate(hash, threshold)
+    static GENERATOR: std::sync::OnceLock<WorkGenerator> = std::sync::OnceLock::new();
+    GENERATOR.get_or_init(WorkGenerator::auto).generate(hash, threshold)
 }
 
 /// Convenience: validate work.

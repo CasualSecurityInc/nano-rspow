@@ -25,7 +25,7 @@ struct Uniforms {
 }
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var<storage, read_write> result: array<u32, 3>;
+@group(0) @binding(1) var<storage, read_write> result: array<atomic<u32>, 3>;
 // result[0] = nonce_lo, result[1] = nonce_hi, result[2] = found flag (0 or 1)
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ fn u64_gte(a: vec2<u32>, b: vec2<u32>) -> bool {
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // If already found, skip
-    if result[2] != 0u { return; }
+    if atomicLoad(&result[2]) != 0u { return; }
 
     // Compute nonce = base_nonce + gid.x
     let base = vec2<u32>(u.base_nonce_lo, u.base_nonce_hi);
@@ -202,10 +202,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     if u64_gte(diff, threshold) {
         // Try to claim the result (first writer wins via flag check)
-        if result[2] == 0u {
-            result[0] = nonce.x;
-            result[1] = nonce.y;
-            result[2] = 1u;
+        let claim = atomicCompareExchangeWeak(&result[2], 0u, 1u);
+        if claim.exchanged {
+            atomicStore(&result[0], nonce.x);
+            atomicStore(&result[1], nonce.y);
         }
     }
 }
