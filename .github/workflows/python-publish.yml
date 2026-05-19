@@ -43,6 +43,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install OpenCL (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          vcpkg install opencl --triplet x64-windows
+          $root = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          echo "INCLUDE=$root\include;$env:INCLUDE" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "LIB=$root\lib;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -50,6 +59,8 @@ jobs:
           args: --release --out dist
           manylinux: auto
           working-directory: nano-rspow-python
+          before-script-linux: |
+            yum install -y opencl-headers ocl-icd ocl-icd-devel || apt-get update && apt-get install -y ocl-icd-opencl-dev opencl-headers || true
 
       - name: Upload wheel
         uses: actions/upload-artifact@v4
