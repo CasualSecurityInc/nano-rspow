@@ -29,9 +29,13 @@ Example:
         process.exit(0);
     }
 
-    const hash = args[0];
+    let hash = args[0];
+    if (hash.startsWith('0x')) {
+        hash = hash.slice(2);
+    }
+    
     if (hash.length !== 64) {
-        console.error(`❌ Error: Hash must be exactly 64 hexadecimal characters.`);
+        console.error(`❌ Error: Hash must be exactly 64 hexadecimal characters (excluding optional 0x prefix).`);
         process.exit(1);
     }
 

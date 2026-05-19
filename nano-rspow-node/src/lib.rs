@@ -56,7 +56,7 @@ impl Task for GenerateTask {
 
 #[napi]
 pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<GenerateTask>> {
-    let bytes = hex::decode(hash_hex.trim())
+    let bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
         .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hex: {}", e)))?;
         
     let hash: [u8; 32] = bytes.try_into()
@@ -69,7 +69,7 @@ pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<
 
 #[napi]
 pub fn validate_work(hash_hex: String, work_hex: String, work_type: WorkType) -> Result<bool> {
-    let hash_bytes = hex::decode(hash_hex.trim())
+    let hash_bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
         .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hash hex: {}", e)))?;
     let hash: [u8; 32] = hash_bytes.try_into()
         .map_err(|_| Error::new(Status::InvalidArg, "Hash must be 64 hex chars".to_string()))?;

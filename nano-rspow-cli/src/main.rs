@@ -77,7 +77,7 @@ enum Commands {
 }
 
 fn parse_hash(s: &str) -> Result<[u8; 32], String> {
-    let bytes = hex::decode(s.trim()).map_err(|e| format!("invalid hex: {e}"))?;
+    let bytes = hex::decode(s.trim().trim_start_matches("0x")).map_err(|e| format!("invalid hex: {e}"))?;
     bytes
         .try_into()
         .map_err(|_| "hash must be exactly 32 bytes (64 hex chars)".into())

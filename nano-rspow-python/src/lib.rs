@@ -138,7 +138,7 @@ impl WorkResult {
 // ---------------------------------------------------------------------------
 
 fn parse_hash(hash_hex: &str) -> PyResult<[u8; 32]> {
-    let bytes = hex::decode(hash_hex.trim())
+    let bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
         .map_err(|e| PyValueError::new_err(format!("Invalid hex: {e}")))?;
     let hash: [u8; 32] = bytes
         .try_into()
