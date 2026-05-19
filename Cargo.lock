@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "nano-rspow"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "blake2b_simd",
  "bytemuck",
@@ -880,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "nano-rspow-cli"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "clap",
  "hex",
@@ -889,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "nano-rspow-node"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "hex",
  "nano-rspow",
@@ -901,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "nano-rspow-python"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "hex",
  "nano-rspow",
