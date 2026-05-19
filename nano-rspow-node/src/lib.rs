@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 static GENERATOR: OnceLock<WorkGenerator> = OnceLock::new();
 
 fn get_generator() -> &'static WorkGenerator {
-    GENERATOR.get_or_init(|| WorkGenerator::auto())
+    GENERATOR.get_or_init(WorkGenerator::auto)
 }
 
 #[napi(string_enum)]

@@ -64,10 +64,8 @@ impl WorkGenerator {
 
         #[cfg(feature = "wgpu-backend")]
         {
-            if backends.is_empty() {
-                if let Ok(g) = wgpu_backend::WgpuBackend::new() {
-                    backends.push(Arc::new(g));
-                }
+            if backends.is_empty() && let Ok(g) = wgpu_backend::WgpuBackend::new() {
+                backends.push(Arc::new(g));
             }
         }
 
