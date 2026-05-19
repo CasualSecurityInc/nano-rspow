@@ -15,5 +15,5 @@ opencl = ["nano-rspow/opencl"]
 
 [dependencies]
 pyo3 = { version = "0.28", features = ["extension-module"] }
-nano-rspow = { path = "../nano-rspow", features = ["opencl"] }
+nano-rspow = { path = "../nano-rspow" }
 hex = "0.4"
