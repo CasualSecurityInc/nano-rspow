@@ -14,6 +14,6 @@ crate-type = ["cdylib"]
 opencl = ["nano-rspow/opencl"]
 
 [dependencies]
-pyo3 = { version = "0.28", features = ["extension-module", "auto-initialize"] }
+pyo3 = { version = "0.28", features = ["extension-module"] }
 nano-rspow = { path = "../nano-rspow", features = ["opencl"] }
 hex = "0.4"
