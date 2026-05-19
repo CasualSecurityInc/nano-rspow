@@ -51,31 +51,23 @@ pub(crate) trait Backend {
 }
 
 impl WorkGenerator {
-    /// Priority: GPU (OpenCL or wgpu) + CPU (concurrently)
+    /// Priority: GPU (OpenCL or wgpu), gracefully falling back to CPU.
     pub fn auto() -> Self {
-        let mut backends: Vec<Arc<dyn Backend + Send + Sync>> = Vec::new();
-
         #[cfg(feature = "opencl")]
         {
             if let Ok(g) = opencl_backend::OpenClBackend::new(Default::default()) {
-                backends.push(Arc::new(g));
+                return Self { inner: Arc::new(g) };
             }
         }
 
         #[cfg(feature = "wgpu-backend")]
         {
-            if backends.is_empty() && let Ok(g) = wgpu_backend::WgpuBackend::new() {
-                backends.push(Arc::new(g));
+            if let Ok(g) = wgpu_backend::WgpuBackend::new() {
+                return Self { inner: Arc::new(g) };
             }
         }
 
-        backends.push(Arc::new(cpu::CpuBackend::new()));
-
-        if backends.len() == 1 {
-            Self { inner: backends.pop().unwrap() }
-        } else {
-            Self { inner: Arc::new(RaceBackend { backends }) }
-        }
+        Self { inner: Arc::new(cpu::CpuBackend::new()) }
     }
 
     /// Create a CPU-only generator.
@@ -149,41 +141,5 @@ pub fn work_validate(hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult 
         nonce,
         difficulty: difficulty::compute(hash, nonce),
         threshold,
-    }
-}
-
-/// A backend that races multiple backends concurrently.
-struct RaceBackend {
-    backends: Vec<Arc<dyn Backend + Send + Sync>>,
-}
-
-impl Backend for RaceBackend {
-    fn name(&self) -> &'static str {
-        "hybrid-race"
-    }
-
-    fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
-        let (tx, rx) = std::sync::mpsc::channel();
-        let race_cancel = cancel.clone(); // shared cancel token for this race
-
-        std::thread::scope(|s| {
-            for b in &self.backends {
-                let tx_clone = tx.clone();
-                let b_ref = Arc::clone(b);
-                let rc_clone = race_cancel.clone();
-                s.spawn(move || {
-                    if let Some(nonce) = b_ref.generate(hash, threshold, &rc_clone) {
-                        let _ = tx_clone.send(nonce);
-                        // Cancel other backends immediately
-                        rc_clone.cancel();
-                    }
-                });
-            }
-            
-            // Drop the original sender so `rx.recv()` isn't waiting indefinitely
-            drop(tx);
-        });
-
-        rx.recv().ok()
     }
 }

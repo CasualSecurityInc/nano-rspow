@@ -1,16 +1,19 @@
 # nano-rspow
 
-A Nano (XNO) Proof-of-Work engine written in Rust.
+Standalone Rust library for Nano (XNO) block signing and Proof-of-Work with cross-language bindings.
 
-Implements the Blake2b threshold search using a **hybrid race architecture**: CPU (`rayon`) and GPU (`wgpu` / `OpenCL`) run concurrently and the first to find a valid nonce cancels the other. On GPU-capable hardware the GPU typically wins; on CPU-only systems the multi-core path runs uncontested. Running both simultaneously means rayon occupies all CPU cores, which can marginally reduce GPU driver throughput — if you know your GPU is dominant, driving it exclusively may be slightly more efficient.
+Implements the Blake2b threshold search using a zero-configuration **hybrid race architecture**. The library automatically detects and utilizes the most optimal available hardware, running a highly optimized multi-core CPU (`rayon`) implementation whenever GPU (`wgpu` / `OpenCL`) acceleration is unavailable. Developers never need to manage device preferences or fallbacks—the engine opaquely guarantees maximum throughput across any execution environment.
 
-## Crates
+## Packages & Native Bindings
 
-| Crate | Description |
+This repository is organized into multiple components, exposing the native Rust core to different ecosystems:
+
+| Package | Description |
 |---|---|
-| `nano-rspow` | Core library — Blake2b PoW, hybrid race engine, GPU backends |
-| `nano-rspow-cli` | Standalone CLI for benchmarking and local work generation |
-| `nano-rspow-node` | NAPI-RS bindings — see [`nano-rspow-node`](nano-rspow-node/README.md) |
+| `nano-rspow` | **Rust Crate** — Core library containing the cryptographic logic, hybrid race engine, and GPU backends. |
+| `nano-rspow-node` | **NPM Package** — Native, zero-overhead bindings for Node.js and TypeScript. See [`nano-rspow-node`](nano-rspow-node/README.md). |
+| `nano-rspow-python` | **Python Package** — Native module bindings for Python environments. See [`nano-rspow-python`](nano-rspow-python/README.md). |
+| `nano-rspow-cli` | **CLI Tool** — Standalone terminal binary for hardware benchmarking and local work generation. |
 
 ## Building
 
