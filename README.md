@@ -1,52 +1,79 @@
 # nano-rspow
 
-Standalone Rust library for Nano (XNO) block signing and Proof-of-Work with cross-language bindings.
+nano-rspow is a blisteringly fast, zero-configuration hybrid CPU/GPU proof-of-work generator and block signing library for [Nano](https://www.nano.org).
 
-Implements the Blake2b threshold search using a zero-configuration **hybrid race architecture**. The library automatically detects and utilizes the most optimal available hardware, running a highly optimized multi-core CPU (`rayon`) implementation whenever GPU (`wgpu` / `OpenCL`) acceleration is unavailable. Developers never need to manage device preferences or fallbacks—the engine opaquely guarantees maximum throughput across any execution environment.
+Developed for high-throughput node operations, client-side web integrations, and native app developers, this repository packages an optimized Blake2b hashing engine under a transparent, auto-detecting **hybrid race architecture**. It seamlessly runs multi-threaded CPU solvers (powered by `rayon` and Web Workers) or GPU pipelines (`wgpu`, `OpenCL`, and WebGPU) depending on target hardware availability. No boilerplate, no device selection headaches—just instant, maximum-performance PoW generation everywhere.
 
-## Packages & Native Bindings
+---
 
-This repository is organized into multiple components, exposing the native Rust core to different ecosystems:
+## 🎯 Who is this for?
 
-| Package | Description |
-|---|---|
-| `nano-rspow` | **Rust Crate** — Core library containing the cryptographic logic, hybrid race engine, and GPU backends. |
-| `nano-rspow-node` | **NPM Package** — Native, zero-overhead bindings for Node.js and TypeScript. See [`nano-rspow-node`](nano-rspow-node/README.md). |
-| `nano-rspow-python` | **Python Package** — Native module bindings for Python environments. See [`nano-rspow-python`](nano-rspow-python/README.md). |
-| `nano-rspow-cli` | **CLI Tool** — Standalone terminal binary for hardware benchmarking and local work generation. |
+* **Exchange & Wallet Integrators** wanting low-latency, high-volume block generation and local signing.
+* **Server-side Developers** using Node.js or Python who need native bindings running at C-level execution speed.
+* **Frontend Web Developers** building sleek wallets or dApps requiring non-blocking WASM and hardware-accelerated WebGPU directly in user browsers.
+* **Power Users & Node Operators** looking for an ultra-fast benchmarking tool to tune threshold multipliers.
 
-## Building
+---
 
-```bash
-cargo build --release
+## 🗂️ Repository Layout
+
+This monorepo is organized into specialized workspaces to deliver native performance across all environments:
+
+```
+.
+├── .cargo/                 # Target-specific build configurations and cargo aliases
+├── nano-rspow/             # Core Rust library containing cryptographic Blake2b logic & backends
+├── nano-rspow-cli/         # Standalone CLI binary for hardware benchmarking & generation
+├── nano-rspow-node/        # High-performance Node.js & TypeScript native bindings (N-API)
+├── nano-rspow-python/      # Native PyO3 bindings for Python environments
+└── nano-rspow-web/         # Web/WASM target crate & self-contained HTML benchmarking dashboard
 ```
 
-OpenCL support is opt-in:
+---
 
+## 📦 Documentation & Release Channels
+
+Below is the directory mapping for each target, along with their primary release registries:
+
+| Environment | Documentation Link | Latest Releases & Authoritative Registries |
+| :--- | :--- | :--- |
+| **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [npm registry](https://www.npmjs.com/package/nano-rspow-node) |
+| **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
+| **Web (WASM / WebGPU)** | [nano-rspow-web/](nano-rspow-web/) | [Interactive Dashboard](nano-rspow-web/browser-demo/index.html) *(Self-contained `index.html`)* |
+| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+
+---
+
+## ⚡ Quick Start
+
+### 1. Standalone CLI
+Compile and run the native generator directly on your machine:
 ```bash
-cargo build --release --features opencl
+# Build binary in release mode
+cargo build -p nano-rspow-cli --release
+
+# Generate a smoketest PoW on CPU
+cargo run -p nano-rspow-cli -- generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --backend cpu --threshold fe00000000000000
+
+# Run a hardware benchmark
+cargo run -p nano-rspow-cli -- benchmark --count 10
 ```
 
-## CLI
-
+### 2. Node.js & CLI (Zero-Install)
+Execute instantly using precompiled native binaries via npm or pnpm:
 ```bash
-# Using npx (Zero-install)
-npx nano-rspow-node <hash> --type send
-
-# Using pnpm (Zero-install)
-pnpx nano-rspow-node <hash> --type send
+npx nano-rspow-node 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --type send
 ```
 
-If you have a fresh clone of the repository and the Rust toolchain installed, you can use the native Rust CLI for more granular control (like specifying the backend or running benchmarks):
-
+### 3. Interactive Web Dashboard
+Build and open the self-contained HTML5 benchmarking tool with real-time performance stats, non-blocking Web Worker fallback, WebGPU execution, and customizable cellular-signal difficulty thresholds:
 ```bash
-cargo run -p nano-rspow-cli -- generate <hash> --backend gpu
+cargo benchmark-web
 ```
 
-## Node.js
+---
 
-Pre-compiled binaries are published to npm. See [`nano-rspow-node/README.md`](nano-rspow-node/README.md) or the [`nano-rspow-node` npm package](https://www.npmjs.com/package/nano-rspow-node).
+## 🔒 License
 
-## License
-
-MIT — see `LICENSE`. Attribution required per license terms.
+MIT License. See [LICENSE](LICENSE) for more details. Attribution is required.
