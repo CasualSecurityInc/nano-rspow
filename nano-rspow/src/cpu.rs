@@ -4,11 +4,16 @@
 //! random nonces using XorShift1024* (same RNG as rsnano-node).
 
 use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::Ordering,
     Arc,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::{AtomicBool, AtomicU64};
+
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
+
 
 use crate::{Backend, CancelToken, GeneratorDiagnostics, difficulty};
 
@@ -60,39 +65,60 @@ impl Backend for CpuBackend {
 
     fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
         let cancelled = Arc::clone(&cancel.flag);
-        let found = Arc::new(AtomicBool::new(false));
-        let result = Arc::new(AtomicU64::new(0));
-
-        // Use rayon's thread pool — one worker per available CPU core.
-        // Each worker starts from a different random seed and searches in batches.
         let hash = *hash;
-        let thread_count = rayon::current_num_threads();
 
-        (0..thread_count).into_par_iter().for_each(|thread_idx| {
-            let mut rng = XorShift1024Star::new(
-                // Distinct seed per thread using splitmix on thread index
-                thread_idx as u64 ^ 0xdeadbeef_cafebabe,
-            );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let found = Arc::new(AtomicBool::new(false));
+            let result = Arc::new(AtomicU64::new(0));
 
+            // Use rayon's thread pool — one worker per available CPU core.
+            // Each worker starts from a different random seed and searches in batches.
+            let thread_count = rayon::current_num_threads();
+
+            (0..thread_count).into_par_iter().for_each(|thread_idx| {
+                let mut rng = XorShift1024Star::new(
+                    // Distinct seed per thread using splitmix on thread index
+                    thread_idx as u64 ^ 0xdeadbeef_cafebabe,
+                );
+
+                const BATCH: usize = 256;
+
+                while !cancelled.load(Ordering::Relaxed) && !found.load(Ordering::Relaxed) {
+                    for _ in 0..BATCH {
+                        let nonce = rng.next();
+                        if difficulty::compute(&hash, nonce) >= threshold {
+                            // Atomically claim the result
+                            if !found.swap(true, Ordering::AcqRel) {
+                                result.store(nonce, Ordering::Release);
+                            }
+                            return;
+                        }
+                    }
+                }
+            });
+
+            if found.load(Ordering::Acquire) {
+                Some(result.load(Ordering::Acquire))
+            } else {
+                None
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // WASM single-threaded fallback uses a random seed
+            let mut rng = XorShift1024Star::new(rand::random());
             const BATCH: usize = 256;
 
-            while !cancelled.load(Ordering::Relaxed) && !found.load(Ordering::Relaxed) {
+            while !cancelled.load(Ordering::Relaxed) {
                 for _ in 0..BATCH {
                     let nonce = rng.next();
                     if difficulty::compute(&hash, nonce) >= threshold {
-                        // Atomically claim the result
-                        if !found.swap(true, Ordering::AcqRel) {
-                            result.store(nonce, Ordering::Release);
-                        }
-                        return;
+                        return Some(nonce);
                     }
                 }
             }
-        });
-
-        if found.load(Ordering::Acquire) {
-            Some(result.load(Ordering::Acquire))
-        } else {
             None
         }
     }
@@ -104,6 +130,7 @@ impl Backend for CpuBackend {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
