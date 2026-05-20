@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node-darwin-arm64",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "cpu": [
     "arm64"
   ],

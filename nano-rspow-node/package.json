@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "repository": {
     "type": "git",
@@ -31,7 +31,7 @@
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm"
+    "prepublishOnly": "napi prepublish -t npm --skip-optional-publish"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",

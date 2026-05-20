@@ -134,4 +134,5 @@ jobs:
         working-directory: nano-rspow-node
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm publish --provenance --access public
