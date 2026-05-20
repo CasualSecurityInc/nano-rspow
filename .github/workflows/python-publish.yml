@@ -14,11 +14,32 @@ defaults:
     working-directory: nano-rspow-python
 
 jobs:
+  version-check:
+    name: Check major.minor version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare major.minor versions
+        run: |
+          CARGO=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          CARGO_MM=$(echo "$CARGO" | cut -d. -f1-2)
+          NODE=$(jq -r .version nano-rspow-node/package.json)
+          NODE_MM=$(echo "$NODE" | cut -d. -f1-2)
+          WEB=$(jq -r .version nano-rspow-web/package.json)
+          WEB_MM=$(echo "$WEB" | cut -d. -f1-2)
+          echo "Cargo: $CARGO  Node: $NODE  Web: $WEB"
+          FAILED=0
+          [ "$NODE_MM" != "$CARGO_MM" ] && echo "ERROR: Node $NODE vs Cargo $CARGO" && FAILED=1
+          [ "$WEB_MM"  != "$CARGO_MM" ] && echo "ERROR: Web $WEB vs Cargo $CARGO"   && FAILED=1
+          [ $FAILED -eq 1 ] && echo "Patch versions may diverge; major.minor must match." && exit 1
+          echo "OK: all packages on major.minor $CARGO_MM"
+
   # ---------------------------------------------------------------------------
   # Build wheels for each platform
   # ---------------------------------------------------------------------------
   build:
     name: Build (${{ matrix.target }})
+    needs: version-check
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

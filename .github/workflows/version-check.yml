@@ -1,0 +1,50 @@
+name: Version Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    name: Check major.minor version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract and compare major.minor versions
+        run: |
+          # Cargo workspace (source of truth for Rust + Python, which uses dynamic version)
+          CARGO=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          CARGO_MM=$(echo "$CARGO" | cut -d. -f1-2)
+
+          # Node.js binding
+          NODE=$(jq -r .version nano-rspow-node/package.json)
+          NODE_MM=$(echo "$NODE" | cut -d. -f1-2)
+
+          # Web WASM binding
+          WEB=$(jq -r .version nano-rspow-web/package.json)
+          WEB_MM=$(echo "$WEB" | cut -d. -f1-2)
+
+          echo "Cargo:  $CARGO  (major.minor: $CARGO_MM)"
+          echo "Node:   $NODE   (major.minor: $NODE_MM)"
+          echo "Web:    $WEB    (major.minor: $WEB_MM)"
+          echo ""
+          echo "Note: Python version is dynamic and derived from Cargo.toml via maturin."
+
+          FAILED=0
+          if [ "$NODE_MM" != "$CARGO_MM" ]; then
+            echo "ERROR: nano-rspow-node ($NODE) major.minor does not match Cargo.toml ($CARGO)"
+            FAILED=1
+          fi
+          if [ "$WEB_MM" != "$CARGO_MM" ]; then
+            echo "ERROR: nano-rspow-web ($WEB) major.minor does not match Cargo.toml ($CARGO)"
+            FAILED=1
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Patch versions may diverge independently, but major.minor must stay in sync."
+            exit 1
+          fi
+
+          echo "OK: all packages are on major.minor $CARGO_MM"
