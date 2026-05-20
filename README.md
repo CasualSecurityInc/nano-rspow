@@ -44,6 +44,20 @@ cargo benchmark-web
 
 ---
 
+## 📦 Documentation & Release Channels
+
+Below is the directory mapping for each target, along with their primary release registries:
+
+| Environment | Documentation Link | Latest Releases & Authoritative Registries |
+| :--- | :--- | :--- |
+| **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [npm registry](https://www.npmjs.com/package/nano-rspow-node) |
+| **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
+| **Web (WASM / WebGPU)** | [nano-rspow-web/](nano-rspow-web/) | [Interactive Dashboard](nano-rspow-web/browser-demo/index.html) *(Self-contained `index.html`)* |
+| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+
+---
+
 ## 🗂️ Repository Layout
 
 This monorepo is organized into specialized workspaces to deliver native performance across all environments:
@@ -59,21 +73,6 @@ This monorepo is organized into specialized workspaces to deliver native perform
 ```
 
 ---
-
-## 📦 Documentation & Release Channels
-
-Below is the directory mapping for each target, along with their primary release registries:
-
-| Environment | Documentation Link | Latest Releases & Authoritative Registries |
-| :--- | :--- | :--- |
-| **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
-| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [npm registry](https://www.npmjs.com/package/nano-rspow-node) |
-| **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
-| **Web (WASM / WebGPU)** | [nano-rspow-web/](nano-rspow-web/) | [Interactive Dashboard](nano-rspow-web/browser-demo/index.html) *(Self-contained `index.html`)* |
-| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
-
----
-
 
 ## 🔒 License
 
