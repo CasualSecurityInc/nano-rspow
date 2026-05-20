@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "repository": {
     "type": "git",

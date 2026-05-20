@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node-linux-arm64-gnu",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "cpu": [
     "arm64"
   ],
