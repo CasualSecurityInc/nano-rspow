@@ -11,7 +11,7 @@ fn test_cli_oneshot_generate() {
         .arg("generate")
         .arg("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2")
         .arg("--threshold")
-        .arg("fffffedc9067ca94") // A very low threshold for fast tests
+        .arg("fe00000000000000") // Use truly low dev threshold for fast tests
         .arg("--backend")
         .arg("cpu") // Force CPU backend to avoid GPU initialization overhead in CI
         .output()
@@ -28,7 +28,7 @@ fn test_cli_stream_mode() {
         .arg("generate")
         .arg("--stream")
         .arg("--threshold")
-        .arg("fffffedc9067ca94") // A very low threshold for fast tests
+        .arg("fe00000000000000") // Use truly low dev threshold for fast tests
         .arg("--backend")
         .arg("cpu")
         .stdin(Stdio::piped())
@@ -40,7 +40,7 @@ fn test_cli_stream_mode() {
 
     // We write two hashes, one with a custom low threshold
     let hash1 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2";
-    let hash2 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:fffffedc9067ca94";
+    let hash2 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:fe00000000000000";
 
     writeln!(stdin, "{}", hash1).unwrap();
     writeln!(stdin, "{}", hash2).unwrap();
@@ -85,10 +85,39 @@ fn test_cli_benchmark_warm_retune_count1() {
         .arg("--retune")
         .arg("--count")
         .arg("1")
+        .arg("--tier")
+        .arg("dev") // Limit to dev tier to make the test pass instantly
         .output()
         .expect("Failed to execute command");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("nano-rspow benchmark"));
+}
+
+#[test]
+fn test_cli_benchmark_json_parseable() {
+    let output = Command::new(get_bin_path())
+        .arg("benchmark")
+        .arg("--format")
+        .arg("json")
+        .arg("--count")
+        .arg("1")
+        .arg("--mode")
+        .arg("warm")
+        .arg("--backend")
+        .arg("cpu")
+        .arg("--tier")
+        .arg("dev")
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("benchmark output should be valid JSON");
+    assert_eq!(json["backend"], "cpu");
+    assert_eq!(json["tier"], "dev");
+    assert!(json["rows"].as_array().unwrap().len() == 1);
+    assert!(json["backends"].as_array().unwrap().len() == 1);
+    assert!(json["backends"][0]["timings"]["warmup_ms"].is_number());
 }
