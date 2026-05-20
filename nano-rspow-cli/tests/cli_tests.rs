@@ -58,3 +58,37 @@ fn test_cli_stream_mode() {
     assert!(lines[0].starts_with(&format!("{}:", hash1)));
     assert!(lines[1].starts_with(&format!("{}:", hash1)));
 }
+
+#[test]
+fn test_cli_diag_json_parseable() {
+    let output = Command::new(get_bin_path())
+        .arg("diag")
+        .arg("--backend")
+        .arg("cpu")
+        .arg("--format")
+        .arg("json")
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"backend\":\"cpu\""));
+    assert!(stdout.contains("\"gpu\":null"));
+}
+
+#[test]
+fn test_cli_benchmark_warm_retune_count1() {
+    let output = Command::new(get_bin_path())
+        .arg("benchmark")
+        .arg("--mode")
+        .arg("warm")
+        .arg("--retune")
+        .arg("--count")
+        .arg("1")
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("nano-rspow benchmark"));
+}

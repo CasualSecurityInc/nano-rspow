@@ -10,7 +10,7 @@ use std::sync::{
 
 use rayon::prelude::*;
 
-use crate::{Backend, CancelToken, difficulty};
+use crate::{Backend, CancelToken, GeneratorDiagnostics, difficulty};
 
 /// XorShift1024* PRNG — same algorithm as rsnano-node's `XorShift1024Star`.
 /// Fast, non-cryptographic, good for PoW nonce exploration.
@@ -94,6 +94,13 @@ impl Backend for CpuBackend {
             Some(result.load(Ordering::Acquire))
         } else {
             None
+        }
+    }
+
+    fn diagnostics(&self) -> GeneratorDiagnostics {
+        GeneratorDiagnostics {
+            backend: "cpu".to_string(),
+            gpu: None,
         }
     }
 }

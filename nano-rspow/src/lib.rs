@@ -32,7 +32,9 @@ mod wgpu_backend;
 #[cfg(feature = "opencl")]
 mod opencl_backend;
 
-pub use types::{CancelToken, WorkError, WorkResult};
+pub use types::{CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError, WorkResult};
+#[cfg(feature = "wgpu-backend")]
+pub use wgpu_backend::WgpuConfig;
 
 use std::sync::Arc;
 
@@ -48,6 +50,7 @@ pub struct WorkGenerator {
 pub(crate) trait Backend {
     fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64>;
     fn name(&self) -> &'static str;
+    fn diagnostics(&self) -> GeneratorDiagnostics;
 }
 
 impl WorkGenerator {
@@ -62,7 +65,7 @@ impl WorkGenerator {
 
         #[cfg(feature = "wgpu-backend")]
         {
-            if let Ok(g) = wgpu_backend::WgpuBackend::new() {
+            if let Ok(g) = wgpu_backend::WgpuBackend::new(Default::default()) {
                 return Self { inner: Arc::new(g) };
             }
         }
@@ -80,7 +83,13 @@ impl WorkGenerator {
     /// Create a generator using the wgpu GPU backend (Vulkan/Metal/DX12).
     #[cfg(feature = "wgpu-backend")]
     pub fn gpu() -> Result<Self, WorkError> {
-        let b = wgpu_backend::WgpuBackend::new()?;
+        let b = wgpu_backend::WgpuBackend::new(Default::default())?;
+        Ok(Self { inner: Arc::new(b) })
+    }
+
+    #[cfg(feature = "wgpu-backend")]
+    pub fn gpu_with_config(config: WgpuConfig) -> Result<Self, WorkError> {
+        let b = wgpu_backend::WgpuBackend::new(config)?;
         Ok(Self { inner: Arc::new(b) })
     }
 
@@ -94,6 +103,10 @@ impl WorkGenerator {
     /// Returns the name of the active backend.
     pub fn backend_name(&self) -> &'static str {
         self.inner.name()
+    }
+
+    pub fn diagnostics(&self) -> GeneratorDiagnostics {
+        self.inner.diagnostics()
     }
 
     /// Generate work for a 32-byte block root hash.
@@ -141,5 +154,107 @@ pub fn work_validate(hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult 
         nonce,
         difficulty: difficulty::compute(hash, nonce),
         threshold,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::thread;
+    use std::time::Duration;
+
+    fn test_hash() -> [u8; 32] {
+        let hash = hex::decode("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2")
+            .unwrap();
+        hash.try_into().unwrap()
+    }
+
+    fn assert_repeated_generate_valid(generator: &WorkGenerator) {
+        let hash = test_hash();
+        for _ in 0..3 {
+            let result = generator.generate(&hash, thresholds::DEV).unwrap();
+            assert!(result.is_valid());
+        }
+    }
+
+    fn assert_concurrent_generate_valid(generator: WorkGenerator) {
+        let g = Arc::new(generator);
+        let hash = test_hash();
+        let mut handles = Vec::new();
+        for _ in 0..4 {
+            let g = Arc::clone(&g);
+            handles.push(thread::spawn(move || {
+                let result = g.generate(&hash, thresholds::DEV).unwrap();
+                assert!(result.is_valid());
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
+    fn assert_cancellation(generator: WorkGenerator) {
+        let hash = test_hash();
+        let cancel = CancelToken::new();
+        let cancel_clone = cancel.clone();
+        let handle = thread::spawn(move || generator.generate_with_cancel(&hash, u64::MAX, &cancel_clone));
+        thread::sleep(Duration::from_millis(10));
+        cancel.cancel();
+        assert!(handle.join().unwrap().is_none());
+    }
+
+    #[test]
+    fn cpu_diagnostics_are_present() {
+        let g = WorkGenerator::cpu();
+        let d = g.diagnostics();
+        assert_eq!(d.backend, "cpu");
+        assert!(d.gpu.is_none());
+    }
+
+    #[cfg(feature = "wgpu-backend")]
+    #[test]
+    fn wgpu_diagnostics_coherent_when_available() {
+        if let Ok(g) = WorkGenerator::gpu() {
+            let d = g.diagnostics();
+            assert_eq!(d.backend, "wgpu");
+            let gpu = d.gpu.expect("wgpu backend should provide gpu diagnostics");
+            assert!(gpu.dispatch_x > 0);
+            assert_eq!(gpu.nonces_per_dispatch, gpu.dispatch_x as u64 * 64);
+        }
+    }
+
+    #[cfg(feature = "wgpu-backend")]
+    #[test]
+    fn wgpu_reuse_and_concurrency() {
+        if let Ok(generator) = WorkGenerator::gpu() {
+            assert_repeated_generate_valid(&generator);
+            assert_concurrent_generate_valid(generator);
+        }
+    }
+
+    #[cfg(feature = "wgpu-backend")]
+    #[test]
+    fn wgpu_cancellation() {
+        if let Ok(generator) = WorkGenerator::gpu() {
+            assert_cancellation(generator);
+        }
+    }
+
+    #[cfg(feature = "opencl")]
+    #[test]
+    fn opencl_reuse_and_concurrency() {
+        if let Ok(generator) = WorkGenerator::opencl(Default::default()) {
+            assert_repeated_generate_valid(&generator);
+            assert_concurrent_generate_valid(generator);
+        }
+    }
+
+    #[cfg(feature = "opencl")]
+    #[test]
+    fn opencl_cancellation() {
+        if let Ok(generator) = WorkGenerator::opencl(Default::default()) {
+            assert_cancellation(generator);
+        }
     }
 }

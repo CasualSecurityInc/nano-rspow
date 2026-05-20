@@ -4,6 +4,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+use std::path::PathBuf;
 
 use crate::thresholds;
 use thiserror::Error;
@@ -88,6 +89,34 @@ impl Default for CancelToken {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratorDiagnostics {
+    pub backend: String,
+    pub gpu: Option<GpuDiagnostics>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GpuDiagnostics {
+    pub backend_api: String,
+    pub adapter_name: String,
+    pub driver_info: String,
+    pub vendor_id: u32,
+    pub device_id: u32,
+    pub max_compute_workgroups_per_dimension: u32,
+    pub dispatch_x: u32,
+    pub nonces_per_dispatch: u64,
+    pub tuning_source: TuningSource,
+    pub cache_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TuningSource {
+    Cache,
+    Probe,
+    Heuristic,
+    Manual,
 }
 
 #[cfg(test)]

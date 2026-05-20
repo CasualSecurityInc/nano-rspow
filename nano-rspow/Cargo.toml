@@ -22,7 +22,7 @@ hex = "0.4"
 thiserror = "2"
 
 # wgpu backend (default — Vulkan/Metal/DX12)
-wgpu = { version = "24", optional = true, default-features = false, features = ["wgsl", "metal", "vulkan-portability", "dx12"] }
+wgpu = { version = "29.0.3", optional = true, default-features = false, features = ["wgsl", "metal", "vulkan", "vulkan-portability", "dx12"] }
 pollster = { version = "0.4", optional = true }
 bytemuck = { version = "1", optional = true, features = ["derive"] }
 

@@ -8,8 +8,8 @@
 
 use std::time::Instant;
 
-use clap::{Parser, Subcommand};
-use nano_rspow::{WorkGenerator, difficulty, thresholds};
+use clap::{Parser, Subcommand, ValueEnum};
+use nano_rspow::{GpuDiagnostics, WgpuConfig, WorkGenerator, difficulty, thresholds};
 
 #[derive(Parser)]
 #[command(
@@ -41,6 +41,10 @@ enum Commands {
         /// Backend to use: cpu, gpu, opencl
         #[arg(short, long, default_value = "gpu")]
         backend: String,
+
+        /// For GPU backend: bypass cache and run dispatch tuning probe
+        #[arg(long)]
+        retune: bool,
     },
 
     /// Validate that a work value meets the threshold for a hash
@@ -74,10 +78,35 @@ enum Commands {
             default_value = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2"
         )]
         hash: String,
+
+        /// Benchmark mode: cold (construct backend in timed loop), warm (reuse backend), or both
+        #[arg(long, value_enum, default_value_t = BenchMode::Both)]
+        mode: BenchMode,
+
+        /// For GPU backend: bypass cache and run dispatch tuning probe
+        #[arg(long)]
+        retune: bool,
     },
 
     /// Print information about available backends and GPU
     Info,
+
+    /// Print detailed backend diagnostics
+    Diag {
+        #[arg(long, default_value = "gpu")]
+        backend: String,
+        #[arg(long)]
+        retune: bool,
+        #[arg(long, default_value = "table")]
+        format: String,
+    },
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
+enum BenchMode {
+    Cold,
+    Warm,
+    Both,
 }
 
 fn parse_hash(s: &str) -> Result<[u8; 32], String> {
@@ -102,11 +131,12 @@ fn main() {
 
     match cli.command {
         Commands::Info => cmd_info(),
-        Commands::Generate { hash, stream, threshold, backend } => {
-            cmd_generate(hash.as_deref(), stream, &threshold, &backend)
+        Commands::Diag { backend, retune, format } => cmd_diag(&backend, retune, &format),
+        Commands::Generate { hash, stream, threshold, backend, retune } => {
+            cmd_generate(hash.as_deref(), stream, &threshold, &backend, retune)
         }
         Commands::Validate { hash, work, threshold } => cmd_validate(&hash, &work, &threshold),
-        Commands::Benchmark { count, format, hash } => cmd_benchmark(count, &format, &hash),
+        Commands::Benchmark { count, format, hash, mode, retune } => cmd_benchmark(count, &format, &hash, mode, retune),
     }
 }
 
@@ -122,7 +152,13 @@ fn cmd_info() {
     #[cfg(feature = "wgpu-backend")]
     {
         match WorkGenerator::gpu() {
-            Ok(g) => println!("  [✓] gpu     — {} (wgpu)", g.backend_name()),
+            Ok(g) => {
+                println!("  [✓] gpu     — {} (wgpu)", g.backend_name());
+                if let Some(d) = g.diagnostics().gpu {
+                    println!("      adapter : {} [{}]", d.adapter_name, d.backend_api);
+                    println!("      dispatch: {} ({:?})", d.dispatch_x, d.tuning_source);
+                }
+            }
             Err(e) => println!("  [✗] gpu     — wgpu unavailable: {e}"),
         }
     }
@@ -148,9 +184,96 @@ fn cmd_info() {
     println!("  dev (testing)  = {:#018x}", thresholds::DEV);
 }
 
+fn print_gpu_diag_table(d: &GpuDiagnostics) {
+    println!("backend_api : {}", d.backend_api);
+    println!("adapter     : {}", d.adapter_name);
+    println!("driver      : {}", d.driver_info);
+    println!("vendor_id   : {}", d.vendor_id);
+    println!("device_id   : {}", d.device_id);
+    println!("max_dispatch: {}", d.max_compute_workgroups_per_dimension);
+    println!("dispatch_x  : {}", d.dispatch_x);
+    println!("nonces/disp : {}", d.nonces_per_dispatch);
+    println!("tuning      : {:?}", d.tuning_source);
+    if let Some(path) = &d.cache_path {
+        println!("cache_path  : {}", path.display());
+    }
+}
+
+fn print_gpu_diag_json(d: &GpuDiagnostics) {
+    let backend_api = d.backend_api.replace('\"', "\\\"");
+    let adapter_name = d.adapter_name.replace('\"', "\\\"");
+    let driver_info = d.driver_info.replace('\"', "\\\"");
+    let cache_path = d
+        .cache_path
+        .as_ref()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default()
+        .replace('\"', "\\\"");
+    println!(
+        "{{\"backend_api\":\"{}\",\"adapter_name\":\"{}\",\"driver_info\":\"{}\",\"vendor_id\":{},\"device_id\":{},\"max_compute_workgroups_per_dimension\":{},\"dispatch_x\":{},\"nonces_per_dispatch\":{},\"tuning_source\":\"{:?}\",\"cache_path\":\"{}\"}}",
+        backend_api,
+        adapter_name,
+        driver_info,
+        d.vendor_id,
+        d.device_id,
+        d.max_compute_workgroups_per_dimension,
+        d.dispatch_x,
+        d.nonces_per_dispatch,
+        d.tuning_source,
+        cache_path,
+    );
+}
+
+fn cmd_diag(backend: &str, retune: bool, format: &str) {
+    let generator = match backend {
+        "gpu" => {
+            #[cfg(feature = "wgpu-backend")]
+            {
+                WorkGenerator::gpu_with_config(WgpuConfig { retune, ..Default::default() }).ok()
+            }
+            #[cfg(not(feature = "wgpu-backend"))]
+            {
+                None
+            }
+        }
+        "cpu" => Some(WorkGenerator::cpu()),
+        "opencl" => {
+            #[cfg(feature = "opencl")]
+            {
+                WorkGenerator::opencl(Default::default()).ok()
+            }
+            #[cfg(not(feature = "opencl"))]
+            {
+                None
+            }
+        }
+        _ => None,
+    };
+
+    let Some(generator) = generator else {
+        eprintln!("backend unavailable: {backend}");
+        std::process::exit(1);
+    };
+    let diag = generator.diagnostics();
+    if let Some(gpu) = diag.gpu {
+        if format == "json" {
+            print_gpu_diag_json(&gpu);
+        } else {
+            print_gpu_diag_table(&gpu);
+        }
+    } else {
+        if format == "json" {
+            println!("{{\"backend\":\"{}\",\"gpu\":null}}", diag.backend);
+        } else {
+            println!("backend: {}", diag.backend);
+            println!("gpu: none");
+        }
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
-fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backend_str: &str) {
+fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backend_str: &str, retune: bool) {
     if !stream && hash_opt.is_none() {
         eprintln!("Error: must provide a hash unless using --stream");
         std::process::exit(1);
@@ -166,7 +289,7 @@ fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backe
         "gpu" => {
             #[cfg(feature = "wgpu-backend")]
             {
-                match WorkGenerator::gpu() {
+                match WorkGenerator::gpu_with_config(WgpuConfig { retune, ..Default::default() }) {
                     Ok(g) => g,
                     Err(e) => {
                         eprintln!("GPU unavailable ({e}), falling back to CPU");
@@ -307,6 +430,7 @@ fn cmd_validate(hash_str: &str, work_str: &str, threshold_str: &str) {
 
 struct BenchRow {
     backend: &'static str,
+    mode: &'static str,
     threshold_name: &'static str,
     threshold: u64,
     samples: usize,
@@ -316,7 +440,7 @@ struct BenchRow {
     median_ms: f64,
 }
 
-fn run_backend_bench(
+fn run_backend_bench_warm(
     generator: &WorkGenerator,
     hash: &[u8; 32],
     threshold: u64,
@@ -324,7 +448,7 @@ fn run_backend_bench(
     threshold_name: &'static str,
 ) -> BenchRow {
     let mut timings: Vec<f64> = Vec::with_capacity(count);
-    eprint!("  {} × {} ... ", count, threshold_name);
+    eprint!("  warm {} × {} ... ", count, threshold_name);
     for _ in 0..count {
         let t0 = Instant::now();
         generator.generate(hash, threshold).expect("generation must succeed");
@@ -341,6 +465,7 @@ fn run_backend_bench(
 
     BenchRow {
         backend: generator.backend_name(),
+        mode: "warm",
         threshold_name,
         threshold,
         samples: count,
@@ -351,7 +476,44 @@ fn run_backend_bench(
     }
 }
 
-fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
+fn run_backend_bench_cold(
+    backend_label: &'static str,
+    make_generator: impl Fn() -> Option<WorkGenerator>,
+    hash: &[u8; 32],
+    threshold: u64,
+    count: usize,
+    threshold_name: &'static str,
+) -> Option<BenchRow> {
+    let mut timings: Vec<f64> = Vec::with_capacity(count);
+    eprint!("  cold {} × {} ... ", count, threshold_name);
+    for _ in 0..count {
+        let t0 = Instant::now();
+        let generator = make_generator()?;
+        generator.generate(hash, threshold).expect("generation must succeed");
+        timings.push(t0.elapsed().as_secs_f64() * 1000.0);
+    }
+    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let min = timings.first().copied().unwrap_or(0.0);
+    let max = timings.last().copied().unwrap_or(0.0);
+    let mean = timings.iter().sum::<f64>() / timings.len() as f64;
+    let median = timings[timings.len() / 2];
+    eprintln!("done (median {median:.1}ms)");
+
+    Some(BenchRow {
+        backend: backend_label,
+        mode: "cold",
+        threshold_name,
+        threshold,
+        samples: count,
+        min_ms: min,
+        max_ms: max,
+        mean_ms: mean,
+        median_ms: median,
+    })
+}
+
+fn cmd_benchmark(count: usize, format: &str, hash_str: &str, mode: BenchMode, retune: bool) {
     let hash = match parse_hash(hash_str) {
         Ok(h) => h,
         Err(e) => { eprintln!("Error: {e}"); std::process::exit(1); }
@@ -360,6 +522,7 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
     println!("nano-rspow benchmark");
     println!("  Hash    : {hash_str}");
     println!("  Samples : {count} per backend per tier");
+    println!("  Mode    : {}", match mode { BenchMode::Cold => "cold", BenchMode::Warm => "warm", BenchMode::Both => "both" });
     println!();
 
     let tiers: &[(&'static str, u64)] = &[
@@ -373,21 +536,44 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
 
     // ── CPU backend ──
     {
-        let generator = WorkGenerator::cpu();
         eprintln!("CPU backend:");
-        for &(name, thresh) in tiers {
-            rows.push(run_backend_bench(&generator, &hash, thresh, count, name));
+        if mode != BenchMode::Warm {
+            for &(name, thresh) in tiers {
+                if let Some(row) = run_backend_bench_cold("cpu", || Some(WorkGenerator::cpu()), &hash, thresh, count, name) {
+                    rows.push(row);
+                }
+            }
+        }
+        if mode != BenchMode::Cold {
+            let generator = WorkGenerator::cpu();
+            generator.generate(&hash, thresholds::DEV);
+            for &(name, thresh) in tiers {
+                rows.push(run_backend_bench_warm(&generator, &hash, thresh, count, name));
+            }
         }
     }
 
     // ── wgpu GPU backend ──
     #[cfg(feature = "wgpu-backend")]
     {
-        match WorkGenerator::gpu() {
+        match WorkGenerator::gpu_with_config(WgpuConfig { retune, ..Default::default() }) {
             Ok(generator) => {
                 eprintln!("wgpu GPU backend:");
-                for &(name, thresh) in tiers {
-                    rows.push(run_backend_bench(&generator, &hash, thresh, count, name));
+                if mode != BenchMode::Warm {
+                    for &(name, thresh) in tiers {
+                        if let Some(row) = run_backend_bench_cold("wgpu", || WorkGenerator::gpu_with_config(WgpuConfig { retune, ..Default::default() }).ok(), &hash, thresh, count, name) {
+                            rows.push(row);
+                        } else {
+                            eprintln!("  wgpu GPU backend became unavailable during cold mode");
+                            break;
+                        }
+                    }
+                }
+                if mode != BenchMode::Cold {
+                    generator.generate(&hash, thresholds::DEV);
+                    for &(name, thresh) in tiers {
+                        rows.push(run_backend_bench_warm(&generator, &hash, thresh, count, name));
+                    }
                 }
             }
             Err(e) => {
@@ -402,8 +588,21 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
         match WorkGenerator::opencl(Default::default()) {
             Ok(generator) => {
                 eprintln!("OpenCL GPU backend:");
-                for &(name, thresh) in tiers {
-                    rows.push(run_backend_bench(&generator, &hash, thresh, count, name));
+                if mode != BenchMode::Warm {
+                    for &(name, thresh) in tiers {
+                        if let Some(row) = run_backend_bench_cold("opencl", || WorkGenerator::opencl(Default::default()).ok(), &hash, thresh, count, name) {
+                            rows.push(row);
+                        } else {
+                            eprintln!("  OpenCL backend became unavailable during cold mode");
+                            break;
+                        }
+                    }
+                }
+                if mode != BenchMode::Cold {
+                    generator.generate(&hash, thresholds::DEV);
+                    for &(name, thresh) in tiers {
+                        rows.push(run_backend_bench_warm(&generator, &hash, thresh, count, name));
+                    }
                 }
             }
             Err(e) => {
@@ -421,8 +620,8 @@ fn cmd_benchmark(count: usize, format: &str, hash_str: &str) {
 
 fn print_ascii_table(rows: &[BenchRow]) {
     let header = format!(
-        "{:<10} {:<14} {:<22} {:<8} {:>10} {:>10} {:>10} {:>10}",
-        "Backend", "Tier", "Threshold", "Samples", "Min(ms)", "Max(ms)", "Mean(ms)", "Median(ms)"
+        "{:<10} {:<6} {:<14} {:<22} {:<8} {:>10} {:>10} {:>10} {:>10}",
+        "Backend", "Mode", "Tier", "Threshold", "Samples", "Min(ms)", "Max(ms)", "Mean(ms)", "Median(ms)"
     );
     let sep = "─".repeat(header.len() + 2);
 
@@ -432,32 +631,37 @@ fn print_ascii_table(rows: &[BenchRow]) {
 
     for r in rows {
         println!(
-            "{:<10} {:<14} {:#018x}     {:<8} {:>10.1} {:>10.1} {:>10.1} {:>10.1}",
-            r.backend, r.threshold_name, r.threshold, r.samples,
+            "{:<10} {:<6} {:<14} {:#018x}     {:<8} {:>10.1} {:>10.1} {:>10.1} {:>10.1}",
+            r.backend, r.mode, r.threshold_name, r.threshold, r.samples,
             r.min_ms, r.max_ms, r.mean_ms, r.median_ms
         );
     }
 
     println!("{sep}");
     println!();
-    println!("Tiers: dev={:#018x}  epoch1={:#018x}", thresholds::DEV, thresholds::EPOCH1);
-    println!("Note: epoch2_send omitted (too slow for quick benchmarks — use --count 1).");
+    println!(
+        "Tiers benchmarked: dev={:#018x} ep2_recv={:#018x} epoch1={:#018x} ep2_send={:#018x}",
+        thresholds::DEV,
+        thresholds::EPOCH2_RECEIVE,
+        thresholds::EPOCH1,
+        thresholds::EPOCH2_SEND
+    );
 }
 
 fn print_markdown_table(rows: &[BenchRow]) {
     println!("## nano-rspow Benchmark Results");
     println!();
-    println!("| Backend | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |");
-    println!("|---------|------|-----------|--------:|---------:|---------:|----------:|------------:|");
+    println!("| Backend | Mode | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |");
+    println!("|---------|------|------|-----------|--------:|---------:|---------:|----------:|------------:|");
 
     for r in rows {
         println!(
-            "| `{}` | `{}` | `{:#018x}` | {} | {:.1} | {:.1} | {:.1} | {:.1} |",
-            r.backend, r.threshold_name, r.threshold, r.samples,
+            "| `{}` | `{}` | `{}` | `{:#018x}` | {} | {:.1} | {:.1} | {:.1} | {:.1} |",
+            r.backend, r.mode, r.threshold_name, r.threshold, r.samples,
             r.min_ms, r.max_ms, r.mean_ms, r.median_ms
         );
     }
 
     println!();
-    println!("> Tiers benchmarked: `dev` and `epoch1`. `epoch2_send` omitted for speed.");
+    println!("> Tiers benchmarked: `dev`, `ep2_recv`, `epoch1`, `ep2_send`.");
 }
