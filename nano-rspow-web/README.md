@@ -51,7 +51,12 @@ Synchronously validates whether a nonce meets the difficulty threshold for the g
 
 ## Browser Compatibility
 
-WebGPU works correctly in Chromium-based browsers (Chrome, Brave, Edge). **Safari on macOS and iOS has a known WebGPU compute shader defect** — the GPU pipeline initialises and dispatches successfully, but result readback via `mapAsync` consistently returns zeros regardless of the nonce search, meaning valid work is never found. The root cause is Safari's cross-process GPU architecture: unlike Chromium's in-process model, each `submit()` → `mapAsync()` round-trip is an IPC call to a separate GPU process, and the result buffer clear issued via `writeBuffer()` before the dispatch can be reordered by the driver to arrive *after* the compute pass, causing every readback to appear empty. Moving the clear inside the command encoder (`encoder.clear_buffer`) makes the ordering atomic within a single submission and is the correct workaround, but as of mid-2026 Safari's WebGPU implementation still does not produce correct compute results with this codebase. There is also an open WebKit bug ([#272804](https://bugs.webkit.org/show_bug.cgi?id=272804)) where `mapAsync` waits on unrelated prior command buffers before resolving, compounding per-batch latency. For these reasons the demo page applies a 5-second watchdog: if WebGPU fails to return a result within that window it automatically falls back to the CPU WASM backend, which works correctly on all platforms including Safari and iOS.
+WebGPU works correctly in Chromium-based browsers (Chrome, Brave, Edge).
+
+> [!WARNING]
+> **Safari on macOS and iOS has a WebGPU compute shader defect** confirmed on Safari 26.5 (21624.2.5.11.4) on macOS 26.5 — the latest publicly available release as of mid-2026. The GPU pipeline initialises and dispatches without error, but `mapAsync` readback consistently returns zeros regardless of actual compute results, meaning valid work is never found. This is likely caused by [WebKit bug #240436](https://bugs.webkit.org/show_bug.cgi?id=240436) — "Synchronize resources for data downloads on discrete GPUs" — which has been open since May 2022 and remains unassigned.
+>
+> The library detects this at runtime using a known-answer smoke test and automatically falls back to the CPU WASM backend, which works correctly on all platforms including Safari and iOS. A 5-second watchdog provides a secondary safety net for any browser that passes the smoke test but hangs during real PoW generation.
 
 
 
