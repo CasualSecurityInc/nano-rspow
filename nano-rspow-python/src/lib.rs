@@ -1,4 +1,4 @@
-//! Python bindings for `nano-rspow` — GPU-accelerated Nano (XNO) Proof of Work.
+//! Python bindings for `nano-rspow` — Hybrid CPU/GPU Nano (XNO) Proof of Work.
 //!
 //! Exposes the core Rust PoW engine to Python via PyO3.
 //! The GIL is released during work generation so Python threads remain unblocked.
@@ -267,7 +267,7 @@ fn register_thresholds(parent: &Bound<'_, PyModule>) -> PyResult<()> {
 // Module definition
 // ---------------------------------------------------------------------------
 
-/// GPU-accelerated Nano (XNO) Proof of Work — Python bindings.
+/// Hybrid CPU/GPU Nano (XNO) Proof of Work — Python bindings.
 ///
 /// This module wraps the ``nano-rspow`` Rust library, providing access to
 /// the Silicon Race hybrid CPU+GPU work generation engine.

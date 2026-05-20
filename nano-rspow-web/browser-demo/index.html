@@ -2391,7 +2391,7 @@ elBtnRun.addEventListener('click', async () => {
         // Nonce & Details
         const nonce = result.nonce;
         const isGpu = result.is_gpu;
-        const backendName = isGpu ? 'WebGPU' : 'WASM CPU Fallback';
+        const backendName = isGpu ? 'WebGPU' : 'WASM CPU';
         
         log('Success', `PoW exploration finished! Valid Nonce found: ${nonce}`);
         log('Success', `Backend utilized: ${backendName}`);

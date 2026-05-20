@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "nano-rspow-python"
 dynamic = ["version"]
-description = "GPU-accelerated Nano (XNO) Proof of Work library — Python bindings."
+description = "Hybrid CPU/GPU Nano (XNO) Proof of Work library — Python bindings."
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [

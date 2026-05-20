@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Web/WASM Proof of Work generation for Nano (XNO) using WebGPU and CPU fallback."
+description = "Web/WASM Proof of Work generation for Nano (XNO) using WebGPU and WASM CPU."
 
 [lib]
 crate-type = ["cdylib", "rlib"]

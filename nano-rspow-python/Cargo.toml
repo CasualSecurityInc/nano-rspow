@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "GPU-accelerated Nano (XNO) Proof of Work library — Python bindings."
+description = "Hybrid CPU/GPU Nano (XNO) Proof of Work library — Python bindings."
 
 [lib]
 name = "nano_rspow"
