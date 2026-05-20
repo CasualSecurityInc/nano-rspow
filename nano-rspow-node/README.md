@@ -32,6 +32,10 @@ validateWork(hash, work, WorkType.Send); // → true
 npx nano-rspow <hash> --type send
 ```
 
+## See Also
+
+- **[nano-rspow-web](https://www.npmjs.com/package/nano-rspow-web)**: WebGPU-accelerated browser WebAssembly PoW package.
+
 ## Source
 
 Part of the [nano-rspow](https://github.com/CasualSecurityInc/nano-rspow) workspace.

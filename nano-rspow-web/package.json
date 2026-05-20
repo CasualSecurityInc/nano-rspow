@@ -1,0 +1,21 @@
+{
+  "name": "nano-rspow-web",
+  "version": "0.5.0",
+  "description": "WebGPU-accelerated Nano (XNO) Proof of Work generation in the browser using WebAssembly",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CasualSecurityInc/nano-rspow"
+  },
+  "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
+  "main": "nano_rspow_web.js",
+  "types": "nano_rspow_web.d.ts",
+  "files": [
+    "nano_rspow_web.js",
+    "nano_rspow_web_bg.wasm",
+    "nano_rspow_web.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "cargo build -p nano-rspow-web --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir . ../target/wasm32-unknown-unknown/release/nano_rspow_web.wasm"
+  }
+}
