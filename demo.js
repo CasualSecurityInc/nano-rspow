@@ -459,10 +459,16 @@ elBtnRun.addEventListener('click', async () => {
             log('WebGPU', 'Running GPU compute smoke test...');
             const computeOk = await checkWebGpuComputeWorks();
             if (!computeOk) {
-                throw new Error("WebGPU compute readback is broken in this browser (known Safari/iOS defect). Use AUTO or CPU mode.");
+                log('WebGPU', 'WARNING: Smoke test failed (known Safari/iOS defect) — proceeding anyway as WebGPU is forced.');
             }
             log('WebGPU', 'Forcing WebGPU. Instantiating GPU pipeline...');
-            result = await generateWorkGpuWithTimeout(hash, threshold, 5000);
+            // No timeout — user explicitly wants GPU; cancel button is the only abort.
+            activeGpuCancelToken = new globalThis.WasmCancelToken();
+            try {
+                result = await globalThis.generate_work_gpu(hash, threshold, activeGpuCancelToken);
+            } finally {
+                activeGpuCancelToken = null;
+            }
         } else {
             log('CPU', 'Forcing WASM CPU. Spawning background Web Worker...');
             result = await generateWorkCpuWorker(hash, threshold);
