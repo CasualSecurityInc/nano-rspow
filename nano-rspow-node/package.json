@@ -12,23 +12,32 @@
   "bin": {
     "nano-rspow": "bin/cli.js"
   },
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "bin/"
+  ],
   "napi": {
-    "name": "nano-rspow-node",
-    "triples": {
-      "defaults": true,
-      "additional": [
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-pc-windows-msvc"
-      ]
-    }
+    "binaryName": "nano-rspow-node",
+    "targets": [
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc"
+    ]
   },
   "scripts": {
+    "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
-    "build:debug": "napi build --platform"
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.3"
+    "@napi-rs/cli": "^3.6.2"
   }
 }

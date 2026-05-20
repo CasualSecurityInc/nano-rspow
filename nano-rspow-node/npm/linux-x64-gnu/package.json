@@ -1,0 +1,27 @@
+{
+  "name": "nano-rspow-node-linux-x64-gnu",
+  "version": "0.5.0",
+  "cpu": [
+    "x64"
+  ],
+  "main": "nano-rspow-node.linux-x64-gnu.node",
+  "files": [
+    "nano-rspow-node.linux-x64-gnu.node"
+  ],
+  "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
+  "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CasualSecurityInc/nano-rspow"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ]
+}

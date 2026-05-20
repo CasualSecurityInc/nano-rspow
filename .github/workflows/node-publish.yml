@@ -19,16 +19,14 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            architecture: x64
           - host: macos-latest
             target: aarch64-apple-darwin
-            architecture: aarch64
           - host: windows-latest
             target: x86_64-pc-windows-msvc
-            architecture: x64
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            architecture: x64
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
 
@@ -47,8 +45,15 @@ jobs:
         with:
           workspaces: nano-rspow-node
 
-      - name: Install OpenCL (Linux)
-        if: matrix.settings.host == 'ubuntu-latest'
+      - name: Install cross-compilation tools (aarch64-linux)
+        if: matrix.settings.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu ocl-icd-opencl-dev
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Install OpenCL (x86_64 Linux)
+        if: matrix.settings.target == 'x86_64-unknown-linux-gnu'
         run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev
 
       - name: Install OpenCL (Windows)
@@ -68,11 +73,12 @@ jobs:
         working-directory: nano-rspow-node
         run: npm run build -- --target ${{ matrix.settings.target }}
 
-      - name: Upload Artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
           path: nano-rspow-node/*.node
+          if-no-files-found: error
 
   publish:
     name: Publish to NPM
@@ -91,16 +97,35 @@ jobs:
         working-directory: nano-rspow-node
         run: npm install
 
+      - name: Create npm platform dirs
+        working-directory: nano-rspow-node
+        run: npx napi create-npm-dirs
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Move artifacts
-        run: |
-          mkdir -p nano-rspow-node/artifacts
-          mv artifacts/*/*.node nano-rspow-node/artifacts/ || true
-
-      - name: Publish package
+      - name: Move artifacts into platform dirs
         working-directory: nano-rspow-node
+        run: npx napi artifacts --output-dir ../artifacts --dist npm
+
+      - name: List platform packages
+        run: ls -R nano-rspow-node/npm
+
+      - name: Publish platform packages
+        working-directory: nano-rspow-node
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for dir in npm/*/; do
+            echo "Publishing $dir"
+            npm publish "$dir" --provenance --access public || \
+              echo "Skipping $dir (already published or error)"
+          done
+
+      - name: Publish main package
+        working-directory: nano-rspow-node
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
