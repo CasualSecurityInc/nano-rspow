@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use wgpu::BufferAsyncError;
 use wasm_bindgen::prelude::*;
 
@@ -183,7 +184,7 @@ impl WgpuWebGenerator {
     }
 
     pub async fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
-        console_log!("[WebGPU] generate called. threshold: {:016x}", threshold);
+        console_log!("[WebGPU] Starting generation. threshold: {:016x}", threshold);
         let mut hash0 = [0u32; 4];
         let mut hash1 = [0u32; 4];
         for (i, chunk) in hash[..16].chunks_exact(4).enumerate() {
@@ -195,19 +196,21 @@ impl WgpuWebGenerator {
 
         let threshold_lo = threshold as u32;
         let threshold_hi = (threshold >> 32) as u32;
-        const DISPATCH_X: u32 = 8192;
+        // 65535 is the WebGPU spec minimum for maxComputeWorkgroupsPerDimension, safe on all
+        // WebGPU implementations. Larger batches amortize the per-batch IPC cost in Safari's
+        // GPU process architecture — each submit→map_async round-trip is a cross-process call.
+        // 65535 × 64 workgroup threads = ~4.19M nonces per batch.
+        const DISPATCH_X: u32 = 65535;
         let nonces_per_batch = (WORKGROUP_SIZE * DISPATCH_X) as u64;
 
         let mut base_nonce: u64 = rand::random();
-        let zero_result = [0u32; 3];
-        let mut batch_count = 0;
+        let mut batch_count = 0u64;
 
         loop {
             batch_count += 1;
-            console_log!("[WebGPU] Batch #{} starting. base_nonce: {:016x}", batch_count, base_nonce);
-            
+
             if cancel.is_cancelled() {
-                console_log!("[WebGPU] Generation cancelled. Exiting loop.");
+                console_log!("[WebGPU] Generation cancelled after {} batch(es).", batch_count - 1);
                 return None;
             }
 
@@ -221,11 +224,17 @@ impl WgpuWebGenerator {
             };
 
             self.queue.write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&uniforms));
-            self.queue.write_buffer(&self.result_buf, 0, bytemuck::cast_slice(&zero_result));
 
             let mut encoder = self
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+
+            // Clear result buffer inside the encoder so the zero, dispatch, and
+            // copy-to-readback are all in a single atomic submission. Using
+            // write_buffer (a queue staging op) to clear allows Safari's GPU
+            // process to pipeline it separately from the dispatch, causing stale
+            // zeros to appear in readback on some batches.
+            encoder.clear_buffer(&self.result_buf, 0, None);
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -238,41 +247,35 @@ impl WgpuWebGenerator {
             }
 
             encoder.copy_buffer_to_buffer(&self.result_buf, 0, &self.readback_buf, 0, 12);
-            
-            console_log!("[WebGPU] Submitting command encoder to queue...");
             self.queue.submit(std::iter::once(encoder.finish()));
 
             let slice = self.readback_buf.slice(..);
-            let shared = Arc::new(Mutex::new(MapResult {
+            let shared = Rc::new(RefCell::new(MapResult {
                 done: false,
                 result: None,
             }));
 
-            let shared_clone = Arc::clone(&shared);
-            console_log!("[WebGPU] Calling slice.map_async...");
+            let shared_clone = Rc::clone(&shared);
             slice.map_async(wgpu::MapMode::Read, move |res| {
-                console_log!("[WebGPU] map_async callback executed!");
-                let mut shared = shared_clone.lock().unwrap();
+                let mut shared = shared_clone.borrow_mut();
                 shared.done = true;
                 shared.result = Some(res);
             });
 
-            // Poll for completion with a timeout to avoid hangs
-            let mut timeout_ticks = 0;
-            const MAX_TICKS: u32 = 100; // 100 * 10ms = 1000ms total timeout
-
+            // Poll for completion — no hard timeout; cancelled only via CancelToken.
+            // Safari's GPU process can be slower per batch, so we must not abort early.
             loop {
                 if cancel.is_cancelled() {
-                    console_log!("[WebGPU] Generation cancelled. Exiting loop.");
+                    console_log!("[WebGPU] Generation cancelled after {} batch(es).", batch_count);
                     return None;
                 }
 
                 {
-                    let shared_lock = shared.lock().unwrap();
+                    let shared_lock = shared.borrow();
                     if shared_lock.done {
                         if let Some(res) = &shared_lock.result {
                             if res.is_err() {
-                                console_log!("[WebGPU] Error: map_async callback returned error: {:?}", res);
+                                console_log!("[WebGPU] Error: map_async returned error: {:?}", res);
                                 return None;
                             }
                             break;
@@ -280,31 +283,22 @@ impl WgpuWebGenerator {
                     }
                 }
 
-                if timeout_ticks >= MAX_TICKS {
-                    console_log!("[WebGPU] Error: map_async timed out after 1000ms. Aborting WebGPU.");
-                    return None;
-                }
-
-                timeout_ticks += 1;
                 // Yield to browser event loop to allow GPU mapping callback to execute
-                js_sleep_ms(10.0).await;
+                js_sleep_ms(1.0).await;
             }
-            console_log!("[WebGPU] map_async successfully completed. Reading data...");
 
             let data: Vec<u32> = {
                 let mapped = slice.get_mapped_range();
                 bytemuck::cast_slice(&mapped).to_vec()
             };
             self.readback_buf.unmap();
-            console_log!("[WebGPU] Buffer unmapped. Data: {:?}", data);
 
             if data[2] != 0 {
                 let found_nonce = data[0] as u64 | ((data[1] as u64) << 32);
-                console_log!("[WebGPU] Success! Found valid nonce: {:016x}", found_nonce);
+                console_log!("[WebGPU] Found valid nonce after {} batch(es): {:016x}", batch_count, found_nonce);
                 return Some(found_nonce);
             }
 
-            console_log!("[WebGPU] No valid nonce found in this batch. Incrementing nonce.");
             base_nonce = base_nonce.wrapping_add(nonces_per_batch);
         }
     }

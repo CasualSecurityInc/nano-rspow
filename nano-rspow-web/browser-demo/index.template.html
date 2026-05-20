@@ -100,6 +100,11 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
+        @media (max-width: 480px) {
+            body { padding: 1.25rem 0.75rem; }
+            .card { padding: 1rem; }
+        }
+
         .card:hover {
             box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
         }
@@ -186,6 +191,7 @@
             padding: 0.75rem 0.5rem;
             background: transparent;
             border-radius: 8px;
+            border: 1.5px solid transparent;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: 600;
@@ -196,9 +202,9 @@
         }
 
         .mode-option input[type="radio"]:checked + .mode-label {
-            background: var(--accent-primary);
-            color: #ffffff;
-            box-shadow: 0 4px 12px var(--accent-glow);
+            background: hsla(210, 100%, 55%, 0.12);
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
         }
 
         /* Large Action Button */
@@ -235,6 +241,15 @@
             cursor: not-allowed;
             box-shadow: none;
             transform: none;
+        }
+
+        .btn-generate.btn-cancel {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-generate.btn-cancel:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
         }
 
         /* Grid for Stats */
@@ -321,6 +336,38 @@
         /* Terminal Console */
         .console-container {
             margin-top: 0.5rem;
+        }
+
+        .console-wrapper {
+            position: relative;
+        }
+
+        .console-copy-btn {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.5rem;
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            border-radius: 6px;
+            color: #34d399;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            line-height: 1;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .console-copy-btn:hover {
+            background: rgba(52, 211, 153, 0.2);
+            border-color: rgba(52, 211, 153, 0.5);
+        }
+
+        .console-copy-btn.copied {
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.5);
+            background: rgba(16, 185, 129, 0.15);
         }
 
         .console {
@@ -612,8 +659,11 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
             Console Output
         </div>
-        <div class="console" id="console-log">
-            <div class="console-line"><span class="timestamp">[12:00:00]</span><span class="tag-system">[System]</span> Ready. Click "Generate Work" to initiate.</div>
+        <div class="console-wrapper">
+            <div class="console" id="console-log">
+                <div class="console-line"><span class="timestamp">[12:00:00]</span><span class="tag-system">[System]</span> Ready. Click "Generate Work" to initiate.</div>
+            </div>
+            <button class="console-copy-btn" id="btn-copy-console" title="Copy console output">⎘ Copy</button>
         </div>
     </section>
 </div>
@@ -621,6 +671,11 @@
 <footer>
     &copy; 2026 Casual Security Inc. Powered by Rust, WebGPU & WebAssembly.
 </footer>
+
+<!-- Inlined PoW WGSL shader source — read by the GPU smoke test and available for inspection -->
+<script id="pow-wgsl-source" type="x-shader/wgsl">
+// POW_WGSL_SOURCE
+</script>
 
 <!-- Load the inlined/global JS glue code and demo script -->
 <script id="wasm-glue-script">

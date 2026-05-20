@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import sys
 import base64
 import subprocess
@@ -103,17 +104,14 @@ def main():
             
     # 4b. Strip ES export syntax to make it compatible with regular non-module <script> tags over file://
     print("\n3b. Adapting exports for non-module script tag (file:// compatibility)...")
-    js_inlined = js_inlined.replace("export class GenerateResult ", "class GenerateResult ")
-    js_inlined = js_inlined.replace("export function generate_work(", "function generate_work(")
-    js_inlined = js_inlined.replace("export function generate_work_cpu(", "function generate_work_cpu(")
-    js_inlined = js_inlined.replace("export function generate_work_gpu(", "function generate_work_gpu(")
-    js_inlined = js_inlined.replace("export function validate_work(", "function validate_work(")
+    js_inlined = re.sub(r'\bexport (class|function) ', r'\1 ', js_inlined)
     
     # Replace the final export statement
     final_export_pattern = "export { initSync, __wbg_init as default };"
     global_bindings = """
 // Binds to globalThis for worker & window context support
 globalThis.GenerateResult = GenerateResult;
+globalThis.WasmCancelToken = WasmCancelToken;
 globalThis.generate_work = generate_work;
 globalThis.generate_work_cpu = generate_work_cpu;
 globalThis.generate_work_gpu = generate_work_gpu;
@@ -149,8 +147,16 @@ globalThis.initSync = initSync;
         demo_content = f.read()
         
     # Perform substitutions
+    wgsl_path = os.path.join(workspace_dir, "nano-rspow", "src", "wgpu_backend", "pow.wgsl")
+    if not os.path.exists(wgsl_path):
+        print(f"✗ Error: WGSL shader not found at {wgsl_path}")
+        sys.exit(1)
+    with open(wgsl_path, "r") as f:
+        wgsl_content = f.read()
+
     html_content = template_content.replace("// WASM_GLUE_CODE", js_inlined)
     html_content = html_content.replace("// DEMO_CODE", demo_content)
+    html_content = html_content.replace("// POW_WGSL_SOURCE", wgsl_content)
     
     with open(index_html_path, "w") as f:
         f.write(html_content)

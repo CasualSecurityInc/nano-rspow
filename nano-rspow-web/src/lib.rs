@@ -9,6 +9,23 @@ macro_rules! console_log {
     )
 }
 
+/// A cancellation handle that can be passed to `generate_work_gpu` and
+/// called from JavaScript to stop the GPU batch loop.
+#[wasm_bindgen]
+pub struct WasmCancelToken(nano_rspow::CancelToken);
+
+#[wasm_bindgen]
+impl WasmCancelToken {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> WasmCancelToken {
+        WasmCancelToken(nano_rspow::CancelToken::new())
+    }
+
+    pub fn cancel(&self) {
+        self.0.cancel();
+    }
+}
+
 #[wasm_bindgen]
 pub struct GenerateResult {
     nonce: u64,
@@ -59,7 +76,11 @@ pub async fn generate_work(
                     return Ok(GenerateResult { nonce, is_gpu: true });
                 }
                 None => {
-                    console_log!("[WASM] WebGPU generation returned None (cancelled or failed).");
+                    if cancel.is_cancelled() {
+                        console_log!("[WASM] WebGPU generation was cancelled.");
+                        return Err(JsValue::from_str("Work generation cancelled"));
+                    }
+                    console_log!("[WASM] WebGPU generation returned None (failed). Falling back to CPU.");
                 }
             }
         }
@@ -77,10 +98,14 @@ pub async fn generate_work(
 
 
 /// Asynchronously generate Proof of Work forcing WebGPU execution.
+///
+/// Pass a `WasmCancelToken` created via `new WasmCancelToken()` and call
+/// `.cancel()` on it from JavaScript to abort the GPU batch loop (e.g. on timeout).
 #[wasm_bindgen]
 pub async fn generate_work_gpu(
     hash_hex: &str,
     threshold_hex: &str,
+    cancel_token: &WasmCancelToken,
 ) -> Result<GenerateResult, JsValue> {
     console_log!("[WASM] generate_work_gpu called. hash: {}, threshold: {}", hash_hex, threshold_hex);
     let hash_bytes = hex::decode(hash_hex)
@@ -92,8 +117,6 @@ pub async fn generate_work_gpu(
     let threshold = u64::from_str_radix(threshold_hex, 16)
         .map_err(|e| JsValue::from_str(&format!("Invalid threshold hex: {}", e)))?;
 
-    let cancel = nano_rspow::CancelToken::new();
-
     console_log!("[WASM] Force WebGPU: Initializing WebGPU...");
     let webgpu_gen = webgpu::WgpuWebGenerator::new().await
         .map_err(|e| {
@@ -102,9 +125,14 @@ pub async fn generate_work_gpu(
         })?;
 
     console_log!("[WASM] Force WebGPU: Starting generation...");
-    if let Some(nonce) = webgpu_gen.generate(&hash, threshold, &cancel).await {
+    if let Some(nonce) = webgpu_gen.generate(&hash, threshold, &cancel_token.0).await {
         console_log!("[WASM] Force WebGPU: Succeeded with nonce: {:016x}", nonce);
         return Ok(GenerateResult { nonce, is_gpu: true });
+    }
+
+    if cancel_token.0.is_cancelled() {
+        console_log!("[WASM] Force WebGPU: Generation was cancelled.");
+        return Err(JsValue::from_str("Work generation cancelled"));
     }
 
     console_log!("[WASM] Force WebGPU: Work generation failed.");
