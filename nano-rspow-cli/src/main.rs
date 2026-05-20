@@ -365,9 +365,17 @@ fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backe
                 continue;
             }
 
-            let mut parts = line.split(':');
-            let hash_str = parts.next().unwrap_or("");
-            let line_threshold_str = parts.next();
+            let Some((hash_str, mask_str)) = line.split_once(':') else {
+                eprintln!("Error: line '{line}' does not match [block hash hex]:[difficulty mask] format");
+                continue;
+            };
+            let hash_str = hash_str.trim();
+            let mask_str = mask_str.trim();
+
+            if !mask_str.starts_with("0x") {
+                eprintln!("Error: difficulty mask '{mask_str}' must start with '0x'");
+                continue;
+            }
 
             let hash = match parse_hash(hash_str) {
                 Ok(h) => h,
@@ -377,21 +385,17 @@ fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backe
                 }
             };
 
-            let current_threshold = if let Some(ts) = line_threshold_str {
-                match parse_threshold(ts) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        eprintln!("Error parsing threshold '{ts}': {e}");
-                        continue;
-                    }
+            let current_threshold = match parse_threshold(mask_str) {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("Error parsing threshold '{mask_str}': {e}");
+                    continue;
                 }
-            } else {
-                default_threshold
             };
 
             match generator.generate(&hash, current_threshold) {
                 Some(result) => {
-                    println!("{}:{}", hash_str, result.nonce_hex());
+                    println!("{}:0x{:016x}:{}", hash_str, current_threshold, result.nonce_hex());
                 }
                 None => {
                     eprintln!("Generation was cancelled for {hash_str}.");

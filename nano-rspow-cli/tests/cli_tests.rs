@@ -38,12 +38,13 @@ fn test_cli_stream_mode() {
 
     let mut stdin = child.stdin.take().expect("Failed to open stdin");
 
-    // We write two hashes, one with a custom low threshold
+    // We write two hashes, both with a custom low threshold starting with 0x
     let hash1 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2";
-    let hash2 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:fe00000000000000";
+    let hash1_in = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xfe00000000000000";
+    let hash2_in = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xff00000000000000";
 
-    writeln!(stdin, "{}", hash1).unwrap();
-    writeln!(stdin, "{}", hash2).unwrap();
+    writeln!(stdin, "{}", hash1_in).unwrap();
+    writeln!(stdin, "{}", hash2_in).unwrap();
     
     // Close stdin to signal EOF and allow the stream loop to exit
     drop(stdin); 
@@ -55,8 +56,8 @@ fn test_cli_stream_mode() {
     let lines: Vec<&str> = stdout.trim().lines().collect();
 
     assert_eq!(lines.len(), 2, "Should output exactly 2 lines");
-    assert!(lines[0].starts_with(&format!("{}:", hash1)));
-    assert!(lines[1].starts_with(&format!("{}:", hash1)));
+    assert!(lines[0].starts_with(&format!("{}:0xfe00000000000000:", hash1)));
+    assert!(lines[1].starts_with(&format!("{}:0xff00000000000000:", hash1)));
 }
 
 #[test]
