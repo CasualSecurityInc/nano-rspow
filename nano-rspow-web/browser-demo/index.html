@@ -505,8 +505,9 @@
             font-family: var(--font-mono);
             color: var(--text-secondary);
             text-align: center;
-            min-height: 1.25rem;
+            min-height: 2.5rem;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
@@ -517,8 +518,8 @@
 <div class="dashboard">
     <!-- Interactive Config Card -->
     <section class="card">
-        <h1 class="card-title" style="font-size: 1.5rem; font-weight: 800;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary);"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+        <h1 class="card-title" style="font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+            <span style="color: var(--accent-primary); font-weight: 800; font-size: 1.6rem; line-height: 1; font-family: system-ui, -apple-system, sans-serif;">Ӿ</span>
             <span style="background: linear-gradient(135deg, #ffffff 40%, var(--accent-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Nano PoW Benchmarking</span>
         </h1>
 
@@ -545,7 +546,7 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
                 </div>
-                <div class="difficulty-active-label" id="diff-active-label">Dev / Smoketest Threshold (0xffff000000000000)</div>
+                <div class="difficulty-active-label" id="diff-active-label">Dev / Smoketest Threshold<br>(0xffff000000000000)</div>
                 <input type="hidden" id="difficulty" value="ffff000000000000">
             </div>
 
@@ -1613,9 +1614,9 @@ const elDiffLabel = document.getElementById('diff-active-label');
 const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
-    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold (0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold (0xfffffe0000000000)' },
-    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold (0xffffffc000000000)' }
+    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
+    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold<br>(0xfffffe0000000000)' },
+    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold<br>(0xffffffc000000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -1626,7 +1627,7 @@ function setDifficultyIndex(index) {
     
     const level = difficultyLevels[index];
     if (elDifficulty) elDifficulty.value = level.value;
-    if (elDiffLabel) elDiffLabel.textContent = level.label;
+    if (elDiffLabel) elDiffLabel.innerHTML = level.label;
     
     // Update data-level attribute on control for CSS styling
     if (elDiffControl) elDiffControl.setAttribute('data-level', index.toString());

@@ -19,9 +19,9 @@ const elDiffLabel = document.getElementById('diff-active-label');
 const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
-    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold (0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold (0xfffffe0000000000)' },
-    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold (0xffffffc000000000)' }
+    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
+    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold<br>(0xfffffe0000000000)' },
+    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold<br>(0xffffffc000000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -32,7 +32,7 @@ function setDifficultyIndex(index) {
     
     const level = difficultyLevels[index];
     if (elDifficulty) elDifficulty.value = level.value;
-    if (elDiffLabel) elDiffLabel.textContent = level.label;
+    if (elDiffLabel) elDiffLabel.innerHTML = level.label;
     
     // Update data-level attribute on control for CSS styling
     if (elDiffControl) elDiffControl.setAttribute('data-level', index.toString());
