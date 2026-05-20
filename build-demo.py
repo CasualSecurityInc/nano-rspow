@@ -154,9 +154,20 @@ globalThis.initSync = initSync;
     with open(wgsl_path, "r") as f:
         wgsl_content = f.read()
 
+    # Read crate version from workspace Cargo.toml
+    workspace_cargo = os.path.join(workspace_dir, "Cargo.toml")
+    crate_version = "unknown"
+    with open(workspace_cargo, "r") as f:
+        for line in f:
+            m = re.match(r'^version\s*=\s*"([^"]+)"', line)
+            if m:
+                crate_version = m.group(1)
+                break
+
     html_content = template_content.replace("// WASM_GLUE_CODE", js_inlined)
     html_content = html_content.replace("// DEMO_CODE", demo_content)
     html_content = html_content.replace("// POW_WGSL_SOURCE", wgsl_content)
+    html_content = html_content.replace("// CRATE_VERSION", f"v{crate_version}")
     
     with open(index_html_path, "w") as f:
         f.write(html_content)
