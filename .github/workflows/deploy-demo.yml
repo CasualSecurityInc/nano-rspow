@@ -1,0 +1,36 @@
+name: Deploy Browser Demo to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build and deploy browser demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        run: |
+          wget -qO- https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.100/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl.tar.gz | tar -xz
+          echo "${{ github.workspace }}/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl" >> $GITHUB_PATH
+
+      - name: Build demo
+        run: python3 nano-rspow-web/browser-demo/build-demo.py
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: nano-rspow-web/browser-demo
+          publish_branch: gh-pages
