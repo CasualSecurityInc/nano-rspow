@@ -3,7 +3,7 @@ requires = ["maturin>=1.5"]
 build-backend = "maturin"
 
 [project]
-name = "nano-rspow"
+name = "nano-rspow-python"
 dynamic = ["version"]
 description = "GPU-accelerated Nano (XNO) Proof of Work library — Python bindings."
 requires-python = ">=3.9"

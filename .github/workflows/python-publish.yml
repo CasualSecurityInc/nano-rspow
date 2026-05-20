@@ -108,7 +108,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     environment:
       name: pypi
-      url: https://pypi.org/p/nano-rspow
+      url: https://pypi.org/p/nano-rspow-python
     permissions:
       id-token: write  # Trusted publishing
 
