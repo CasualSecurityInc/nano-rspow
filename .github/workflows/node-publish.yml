@@ -114,7 +114,7 @@ jobs:
 
       - name: Move artifacts into platform dirs
         working-directory: nano-rspow-node
-        run: npx napi artifacts --output-dir ../artifacts --dist npm
+        run: npx napi artifacts --output-dir ../artifacts --npm-dir npm
 
       - name: List platform packages
         run: ls -R nano-rspow-node/npm
