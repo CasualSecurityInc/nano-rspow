@@ -116,7 +116,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: nano-rspow-python/dist
           merge-multiple: true
 
       - name: Publish to PyPI
@@ -124,3 +124,4 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*
+          working-directory: nano-rspow-python
