@@ -1,0 +1,41 @@
+name: Publish Web WASM Bindings
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish Web Crate to NPM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        run: |
+          wget -qO- https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.100/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl.tar.gz | tar -xz
+          echo "${{ github.workspace }}/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl" >> $GITHUB_PATH
+
+      - name: Build Web Package
+        working-directory: nano-rspow-web
+        run: npm run build
+
+      - name: Publish package
+        working-directory: nano-rspow-web
+        run: npm publish --provenance --access public
