@@ -4,6 +4,7 @@ members = [
     "nano-rspow-cli",
     "nano-rspow-node",
     "nano-rspow-python",
+    "nano-rspow-web",
 ]
 resolver = "2"
 
