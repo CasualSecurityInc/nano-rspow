@@ -55,11 +55,12 @@ impl GenerateResult {
 ///
 /// Tries WebGPU first, then falls back to single-threaded CPU WASM.
 #[wasm_bindgen]
-pub async fn generate_work(
-    hash_hex: &str,
-    threshold_hex: &str,
-) -> Result<GenerateResult, JsValue> {
-    console_log!("[WASM] generate_work called. hash: {}, threshold: {}", hash_hex, threshold_hex);
+pub async fn generate_work(hash_hex: &str, threshold_hex: &str) -> Result<GenerateResult, JsValue> {
+    console_log!(
+        "[WASM] generate_work called. hash: {}, threshold: {}",
+        hash_hex,
+        threshold_hex
+    );
     let hash_bytes = hex::decode(hash_hex)
         .map_err(|e| JsValue::from_str(&format!("Invalid hash hex: {}", e)))?;
     let hash: [u8; 32] = hash_bytes
@@ -78,20 +79,31 @@ pub async fn generate_work(
             console_log!("[WASM] WebGPU successfully initialized. Starting generation...");
             match webgpu_gen.generate(&hash, threshold, &cancel).await {
                 Some(nonce) => {
-                    console_log!("[WASM] WebGPU generation succeeded with nonce: {:016x}", nonce);
-                    return Ok(GenerateResult { nonce, is_gpu: true });
+                    console_log!(
+                        "[WASM] WebGPU generation succeeded with nonce: {:016x}",
+                        nonce
+                    );
+                    return Ok(GenerateResult {
+                        nonce,
+                        is_gpu: true,
+                    });
                 }
                 None => {
                     if cancel.is_cancelled() {
                         console_log!("[WASM] WebGPU generation was cancelled.");
                         return Err(JsValue::from_str("Work generation cancelled"));
                     }
-                    console_log!("[WASM] WebGPU generation returned None (failed). Falling back to CPU.");
+                    console_log!(
+                        "[WASM] WebGPU generation returned None (failed). Falling back to CPU."
+                    );
                 }
             }
         }
         Err(e) => {
-            console_log!("[WASM] WebGPU initialization failed (falling back to CPU): {}", e);
+            console_log!(
+                "[WASM] WebGPU initialization failed (falling back to CPU): {}",
+                e
+            );
         }
     }
 
@@ -99,9 +111,11 @@ pub async fn generate_work(
     console_log!("[WASM] Falling back to CPU generation...");
     let nonce = cpu::generate_cpu(&hash, threshold);
     console_log!("[WASM] CPU generation succeeded with nonce: {:016x}", nonce);
-    Ok(GenerateResult { nonce, is_gpu: false })
+    Ok(GenerateResult {
+        nonce,
+        is_gpu: false,
+    })
 }
-
 
 /// Asynchronously generate Proof of Work forcing WebGPU execution.
 ///
@@ -113,7 +127,11 @@ pub async fn generate_work_gpu(
     threshold_hex: &str,
     cancel_token: &WasmCancelToken,
 ) -> Result<GenerateResult, JsValue> {
-    console_log!("[WASM] generate_work_gpu called. hash: {}, threshold: {}", hash_hex, threshold_hex);
+    console_log!(
+        "[WASM] generate_work_gpu called. hash: {}, threshold: {}",
+        hash_hex,
+        threshold_hex
+    );
     let hash_bytes = hex::decode(hash_hex)
         .map_err(|e| JsValue::from_str(&format!("Invalid hash hex: {}", e)))?;
     let hash: [u8; 32] = hash_bytes
@@ -124,16 +142,18 @@ pub async fn generate_work_gpu(
         .map_err(|e| JsValue::from_str(&format!("Invalid threshold hex: {}", e)))?;
 
     console_log!("[WASM] Force WebGPU: Initializing WebGPU...");
-    let webgpu_gen = webgpu::WgpuWebGenerator::new().await
-        .map_err(|e| {
-            console_log!("[WASM] Force WebGPU: Initialization failed: {}", e);
-            JsValue::from_str(&format!("WebGPU initialization failed: {}", e))
-        })?;
+    let webgpu_gen = webgpu::WgpuWebGenerator::new().await.map_err(|e| {
+        console_log!("[WASM] Force WebGPU: Initialization failed: {}", e);
+        JsValue::from_str(&format!("WebGPU initialization failed: {}", e))
+    })?;
 
     console_log!("[WASM] Force WebGPU: Starting generation...");
     if let Some(nonce) = webgpu_gen.generate(&hash, threshold, &cancel_token.0).await {
         console_log!("[WASM] Force WebGPU: Succeeded with nonce: {:016x}", nonce);
-        return Ok(GenerateResult { nonce, is_gpu: true });
+        return Ok(GenerateResult {
+            nonce,
+            is_gpu: true,
+        });
     }
 
     if cancel_token.0.is_cancelled() {
@@ -147,11 +167,12 @@ pub async fn generate_work_gpu(
 
 /// Synchronously generate Proof of Work forcing single-threaded WASM CPU execution.
 #[wasm_bindgen]
-pub fn generate_work_cpu(
-    hash_hex: &str,
-    threshold_hex: &str,
-) -> Result<GenerateResult, JsValue> {
-    console_log!("[WASM] generate_work_cpu called. hash: {}, threshold: {}", hash_hex, threshold_hex);
+pub fn generate_work_cpu(hash_hex: &str, threshold_hex: &str) -> Result<GenerateResult, JsValue> {
+    console_log!(
+        "[WASM] generate_work_cpu called. hash: {}, threshold: {}",
+        hash_hex,
+        threshold_hex
+    );
     let hash_bytes = hex::decode(hash_hex)
         .map_err(|e| JsValue::from_str(&format!("Invalid hash hex: {}", e)))?;
     let hash: [u8; 32] = hash_bytes
@@ -164,7 +185,10 @@ pub fn generate_work_cpu(
     console_log!("[WASM] Force CPU: Starting synchronous generation...");
     let nonce = cpu::generate_cpu(&hash, threshold);
     console_log!("[WASM] Force CPU: Succeeded with nonce: {:016x}", nonce);
-    Ok(GenerateResult { nonce, is_gpu: false })
+    Ok(GenerateResult {
+        nonce,
+        is_gpu: false,
+    })
 }
 
 /// Synchronously validate if a nonce meets the difficulty threshold for a given block hash.

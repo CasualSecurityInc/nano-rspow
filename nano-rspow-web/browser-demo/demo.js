@@ -109,10 +109,9 @@ async function checkWebGpuComputeWorks() {
         if (!adapter) { gpuSmokeTestResult = false; return false; }
         const device = await adapter.requestDevice();
 
-        // Full Blake2b PoW shader — identical to the real shader used during generation.
         const powShaderEl = document.getElementById('pow-wgsl-source');
         if (!powShaderEl) throw new Error('pow-wgsl-source element not found');
-        const wgsl = powShaderEl.textContent;
+        const wgsl = powShaderEl.textContent.replace("WGS_PLACEHOLDER", "256");
 
         const module = device.createShaderModule({ code: wgsl });
         const pipeline = await device.createComputePipelineAsync({

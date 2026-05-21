@@ -1,10 +1,10 @@
 //! Shared types for the nano-rspow library.
 
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
 use std::path::PathBuf;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use crate::thresholds;
 use thiserror::Error;

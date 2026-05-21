@@ -1,5 +1,5 @@
 use crate::{Backend, CancelToken, GeneratorDiagnostics, WorkError};
-use ocl::{ProQue, Buffer, SpatialDims, flags};
+use ocl::{Buffer, ProQue, SpatialDims, flags};
 use std::sync::Mutex;
 
 const SHADER: &str = include_str!("pow.cl");

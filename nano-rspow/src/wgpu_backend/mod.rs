@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::{Backend, CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError};
 
-use crate::wgpu_shared::{Uniforms, SHADER, WORKGROUP_SIZE};
+use crate::wgpu_shared::{SHADER, Uniforms, WORKGROUP_SIZE};
 const DEFAULT_TUNE_BUDGET_MS: u64 = 2000;
 const TUNE_CACHE_VERSION: &str = "v2";
 
@@ -148,7 +148,9 @@ impl WgpuBackend {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(&format!("result-{i}")),
                 size: 12,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         });
@@ -263,7 +265,9 @@ fn read_cached_dispatch(path: &PathBuf, candidates: &[u32]) -> Option<u32> {
 }
 
 fn write_cached_dispatch(path: &PathBuf, dispatch_x: u32) {
-    let Some(parent) = path.parent() else { return; };
+    let Some(parent) = path.parent() else {
+        return;
+    };
     if fs::create_dir_all(parent).is_err() {
         return;
     }
@@ -290,7 +294,9 @@ fn select_dispatch(
         return (v, TuningSource::Manual);
     }
 
-    if !config.retune && let Some(v) = read_cached_dispatch(cache_path, candidates) {
+    if !config.retune
+        && let Some(v) = read_cached_dispatch(cache_path, candidates)
+    {
         return (v, TuningSource::Cache);
     }
 
@@ -344,7 +350,16 @@ fn probe_dispatch(
                 break;
             }
             let t0 = Instant::now();
-            run_dispatch_once(device, queue, pipeline, uniform_buf, result_buf, readback_buf, bind_group, dispatch_x)?;
+            run_dispatch_once(
+                device,
+                queue,
+                pipeline,
+                uniform_buf,
+                result_buf,
+                readback_buf,
+                bind_group,
+                dispatch_x,
+            )?;
             let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
             if elapsed_ms > 0.0 && elapsed_ms < min_elapsed_ms {
                 min_elapsed_ms = elapsed_ms;
@@ -385,7 +400,9 @@ fn run_dispatch_once(
     queue.write_buffer(uniform_buf, 0, bytemuck::bytes_of(&uniforms));
     queue.write_buffer(result_buf, 0, bytemuck::cast_slice(&zero_result));
 
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-probe") });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("nano-rspow-probe"),
+    });
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("pow-probe"),
@@ -445,26 +462,44 @@ impl Backend for WgpuBackend {
         // Submit the very first batch so slot 0 is in-flight before the loop.
         {
             let uniforms = Uniforms {
-                hash0, hash1,
+                hash0,
+                hash1,
                 base_nonce_lo: base_nonce as u32,
                 base_nonce_hi: (base_nonce >> 32) as u32,
-                threshold_lo, threshold_hi,
+                threshold_lo,
+                threshold_hi,
             };
-            self.queue.write_buffer(&session.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
-            self.queue.write_buffer(&session.result_bufs[slot], 0, bytemuck::cast_slice(&zero_result));
-            let mut encoder = self.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+            self.queue.write_buffer(
+                &session.uniform_bufs[slot],
+                0,
+                bytemuck::bytes_of(&uniforms),
+            );
+            self.queue.write_buffer(
+                &session.result_bufs[slot],
+                0,
+                bytemuck::cast_slice(&zero_result),
+            );
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("nano-rspow-enc"),
+                });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pow"), timestamp_writes: None,
+                    label: Some("pow"),
+                    timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &session.bind_groups[slot], &[]);
                 pass.dispatch_workgroups(self.dispatch_x, 1, 1);
             }
             encoder.copy_buffer_to_buffer(
-                &session.result_bufs[slot], 0,
-                &session.readback_bufs[slot], 0, 12);
+                &session.result_bufs[slot],
+                0,
+                &session.readback_bufs[slot],
+                0,
+                12,
+            );
             self.queue.submit(std::iter::once(encoder.finish()));
             base_nonce = base_nonce.wrapping_add(nonces_per_batch);
             slot ^= 1;
@@ -477,26 +512,44 @@ impl Backend for WgpuBackend {
 
             // Submit the CURRENT batch into `slot`.
             let uniforms = Uniforms {
-                hash0, hash1,
+                hash0,
+                hash1,
                 base_nonce_lo: base_nonce as u32,
                 base_nonce_hi: (base_nonce >> 32) as u32,
-                threshold_lo, threshold_hi,
+                threshold_lo,
+                threshold_hi,
             };
-            self.queue.write_buffer(&session.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
-            self.queue.write_buffer(&session.result_bufs[slot], 0, bytemuck::cast_slice(&zero_result));
-            let mut encoder = self.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+            self.queue.write_buffer(
+                &session.uniform_bufs[slot],
+                0,
+                bytemuck::bytes_of(&uniforms),
+            );
+            self.queue.write_buffer(
+                &session.result_bufs[slot],
+                0,
+                bytemuck::cast_slice(&zero_result),
+            );
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("nano-rspow-enc"),
+                });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pow"), timestamp_writes: None,
+                    label: Some("pow"),
+                    timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &session.bind_groups[slot], &[]);
                 pass.dispatch_workgroups(self.dispatch_x, 1, 1);
             }
             encoder.copy_buffer_to_buffer(
-                &session.result_bufs[slot], 0,
-                &session.readback_bufs[slot], 0, 12);
+                &session.result_bufs[slot],
+                0,
+                &session.readback_bufs[slot],
+                0,
+                12,
+            );
             self.queue.submit(std::iter::once(encoder.finish()));
 
             // Read back the PREVIOUS batch (slot ^ 1) — guaranteed retired.

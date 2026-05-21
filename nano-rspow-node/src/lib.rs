@@ -1,8 +1,8 @@
 #![deny(clippy::all)]
 
+use nano_rspow::{WorkGenerator, thresholds};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use nano_rspow::{WorkGenerator, thresholds};
 use std::sync::OnceLock;
 
 static GENERATOR: OnceLock<WorkGenerator> = OnceLock::new();
@@ -42,10 +42,16 @@ impl Task for GenerateTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let generator = get_generator();
-        
-        let result = generator.generate(&self.hash, self.threshold)
-            .ok_or_else(|| Error::new(Status::GenericFailure, "Work generation failed or cancelled".to_string()))?;
-            
+
+        let result = generator
+            .generate(&self.hash, self.threshold)
+            .ok_or_else(|| {
+                Error::new(
+                    Status::GenericFailure,
+                    "Work generation failed or cancelled".to_string(),
+                )
+            })?;
+
         Ok(result.nonce_hex())
     }
 
@@ -58,9 +64,13 @@ impl Task for GenerateTask {
 pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<GenerateTask>> {
     let bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
         .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hex: {}", e)))?;
-        
-    let hash: [u8; 32] = bytes.try_into()
-        .map_err(|_| Error::new(Status::InvalidArg, "Hash must be exactly 32 bytes (64 hex chars)".to_string()))?;
+
+    let hash: [u8; 32] = bytes.try_into().map_err(|_| {
+        Error::new(
+            Status::InvalidArg,
+            "Hash must be exactly 32 bytes (64 hex chars)".to_string(),
+        )
+    })?;
 
     let threshold = work_type.threshold();
 
@@ -71,7 +81,8 @@ pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<
 pub fn validate_work(hash_hex: String, work_hex: String, work_type: WorkType) -> Result<bool> {
     let hash_bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
         .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hash hex: {}", e)))?;
-    let hash: [u8; 32] = hash_bytes.try_into()
+    let hash: [u8; 32] = hash_bytes
+        .try_into()
         .map_err(|_| Error::new(Status::InvalidArg, "Hash must be 64 hex chars".to_string()))?;
 
     let work = u64::from_str_radix(work_hex.trim(), 16)

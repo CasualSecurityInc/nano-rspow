@@ -40,14 +40,16 @@ fn test_cli_stream_mode() {
 
     // We write two hashes, both with a custom low threshold starting with 0x
     let hash1 = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2";
-    let hash1_in = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xfe00000000000000";
-    let hash2_in = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xff00000000000000";
+    let hash1_in =
+        "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xfe00000000000000";
+    let hash2_in =
+        "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2:0xff00000000000000";
 
     writeln!(stdin, "{}", hash1_in).unwrap();
     writeln!(stdin, "{}", hash2_in).unwrap();
-    
+
     // Close stdin to signal EOF and allow the stream loop to exit
-    drop(stdin); 
+    drop(stdin);
 
     let output = child.wait_with_output().expect("Failed to read stdout");
     assert!(output.status.success());
@@ -115,7 +117,8 @@ fn test_cli_benchmark_json_parseable() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value = serde_json::from_str(&stdout).expect("benchmark output should be valid JSON");
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).expect("benchmark output should be valid JSON");
     assert_eq!(json["backend"], "cpu");
     assert_eq!(json["tier"], "dev");
     assert!(json["rows"].as_array().unwrap().len() == 1);

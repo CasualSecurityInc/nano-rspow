@@ -1,6 +1,5 @@
-
-use nano_rspow::wgpu_types::{Uniforms, SHADER, WORKGROUP_SIZE};
 use nano_rspow::CancelToken;
+use nano_rspow::wgpu_types::{SHADER, Uniforms, WORKGROUP_SIZE};
 
 macro_rules! console_log {
     ($($t:tt)*) => (
@@ -22,15 +21,10 @@ pub struct WgpuWebGenerator {
     bind_groups: [wgpu::BindGroup; 2],
 }
 
-
-
 /// Map a GPU readback buffer asynchronously.
 /// The double-buffer ping-pong guarantees the buffer being mapped was submitted
 /// one full batch ago, so it is already retired — no explicit sync needed.
-async fn map_readback_async(
-    buf: &wgpu::Buffer,
-    cancel: &CancelToken,
-) -> bool {
+async fn map_readback_async(buf: &wgpu::Buffer, cancel: &CancelToken) -> bool {
     use js_sys::Function;
     use wasm_bindgen::JsValue;
 
@@ -52,7 +46,6 @@ async fn map_readback_async(
     // Await the map completion promise.
     wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
 }
-
 
 impl WgpuWebGenerator {
     pub async fn new() -> Result<Self, String> {
@@ -144,7 +137,9 @@ impl WgpuWebGenerator {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(&format!("result-{i}")),
                 size: 12,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         });
@@ -185,8 +180,16 @@ impl WgpuWebGenerator {
         })
     }
 
-    pub async fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
-        console_log!("[WebGPU] Starting generation (double-buffered). threshold: {:016x}", threshold);
+    pub async fn generate(
+        &self,
+        hash: &[u8; 32],
+        threshold: u64,
+        cancel: &CancelToken,
+    ) -> Option<u64> {
+        console_log!(
+            "[WebGPU] Starting generation (double-buffered). threshold: {:016x}",
+            threshold
+        );
         let mut hash0 = [0u32; 4];
         let mut hash1 = [0u32; 4];
         for (i, chunk) in hash[..16].chunks_exact(4).enumerate() {
@@ -208,26 +211,31 @@ impl WgpuWebGenerator {
         // Submit one compute batch into `slot`.
         let submit = |slot: usize, nonce: u64| {
             let uniforms = Uniforms {
-                hash0, hash1,
+                hash0,
+                hash1,
                 base_nonce_lo: nonce as u32,
                 base_nonce_hi: (nonce >> 32) as u32,
-                threshold_lo, threshold_hi,
+                threshold_lo,
+                threshold_hi,
             };
-            self.queue.write_buffer(&self.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
-            let mut enc = self.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+            self.queue
+                .write_buffer(&self.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
+            let mut enc = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("nano-rspow-enc"),
+                });
             enc.clear_buffer(&self.result_bufs[slot], 0, None);
             {
                 let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pow"), timestamp_writes: None,
+                    label: Some("pow"),
+                    timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &self.bind_groups[slot], &[]);
                 pass.dispatch_workgroups(DISPATCH_X, 1, 1);
             }
-            enc.copy_buffer_to_buffer(
-                &self.result_bufs[slot], 0,
-                &self.readback_bufs[slot], 0, 12);
+            enc.copy_buffer_to_buffer(&self.result_bufs[slot], 0, &self.readback_bufs[slot], 0, 12);
             self.queue.submit(std::iter::once(enc.finish()));
         };
 
@@ -265,13 +273,24 @@ impl WgpuWebGenerator {
             self.readback_bufs[prev].unmap();
 
             if batch_count <= 3 {
-                console_log!("[WebGPU] batch={} slot={} prev={} data=[{:#010x}, {:#010x}, {}]",
-                    batch_count, slot, prev, data[0], data[1], data[2]);
+                console_log!(
+                    "[WebGPU] batch={} slot={} prev={} data=[{:#010x}, {:#010x}, {}]",
+                    batch_count,
+                    slot,
+                    prev,
+                    data[0],
+                    data[1],
+                    data[2]
+                );
             }
 
             if data[2] != 0 {
                 let found_nonce = data[0] as u64 | ((data[1] as u64) << 32);
-                console_log!("[WebGPU] Found nonce after {} batch(es): {:016x}", batch_count, found_nonce);
+                console_log!(
+                    "[WebGPU] Found nonce after {} batch(es): {:016x}",
+                    batch_count,
+                    found_nonce
+                );
                 return Some(found_nonce);
             }
 

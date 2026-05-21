@@ -38,7 +38,7 @@ impl XorShift1024Star {
 pub fn generate_cpu(hash: &[u8; 32], threshold: u64) -> u64 {
     // Initialize RNG with a secure seed
     let mut rng = XorShift1024Star::new(rand::random());
-    
+
     loop {
         let nonce = rng.next();
         if difficulty::compute(hash, nonce) >= threshold {

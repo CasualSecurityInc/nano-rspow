@@ -3,17 +3,13 @@
 //! Uses rayon for parallelism. Each worker thread independently searches
 //! random nonces using XorShift1024* (same RNG as rsnano-node).
 
-use std::sync::{
-    atomic::Ordering,
-    Arc,
-};
+use std::sync::{Arc, atomic::Ordering};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::{AtomicBool, AtomicU64};
 
 #[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
-
 
 use crate::{Backend, CancelToken, GeneratorDiagnostics, difficulty};
 
@@ -130,7 +126,6 @@ impl Backend for CpuBackend {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

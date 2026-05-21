@@ -38,10 +38,12 @@ mod opencl_backend;
 // Shared wgpu types exposed to WASM builds that compile wgpu independently.
 #[cfg(feature = "wgpu-types")]
 pub mod wgpu_types {
-    pub use crate::wgpu_shared::{Uniforms, SHADER, WORKGROUP_SIZE};
+    pub use crate::wgpu_shared::{SHADER, Uniforms, WORKGROUP_SIZE};
 }
 
-pub use types::{CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError, WorkResult};
+pub use types::{
+    CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError, WorkResult,
+};
 #[cfg(feature = "wgpu-backend")]
 pub use wgpu_backend::WgpuConfig;
 
@@ -79,7 +81,9 @@ impl WorkGenerator {
             }
         }
 
-        Self { inner: Arc::new(cpu::CpuBackend::new()) }
+        Self {
+            inner: Arc::new(cpu::CpuBackend::new()),
+        }
     }
 
     /// Create a CPU-only generator.
@@ -145,7 +149,11 @@ impl WorkGenerator {
     /// Validate that a given nonce meets the threshold for a hash.
     pub fn validate(&self, hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult {
         let diff = difficulty::compute(hash, nonce);
-        WorkResult { nonce, difficulty: diff, threshold }
+        WorkResult {
+            nonce,
+            difficulty: diff,
+            threshold,
+        }
     }
 }
 
@@ -154,7 +162,9 @@ impl WorkGenerator {
 /// (which can be expensive, e.g. for wgpu) on every call.
 pub fn work_generate(hash: &[u8; 32], threshold: u64) -> Option<WorkResult> {
     static GENERATOR: std::sync::OnceLock<WorkGenerator> = std::sync::OnceLock::new();
-    GENERATOR.get_or_init(WorkGenerator::auto).generate(hash, threshold)
+    GENERATOR
+        .get_or_init(WorkGenerator::auto)
+        .generate(hash, threshold)
 }
 
 /// Convenience: validate work.
@@ -207,7 +217,8 @@ mod tests {
         let hash = test_hash();
         let cancel = CancelToken::new();
         let cancel_clone = cancel.clone();
-        let handle = thread::spawn(move || generator.generate_with_cancel(&hash, u64::MAX, &cancel_clone));
+        let handle =
+            thread::spawn(move || generator.generate_with_cancel(&hash, u64::MAX, &cancel_clone));
         thread::sleep(Duration::from_millis(10));
         cancel.cancel();
         assert!(handle.join().unwrap().is_none());
@@ -229,7 +240,10 @@ mod tests {
             assert_eq!(d.backend, "wgpu");
             let gpu = d.gpu.expect("wgpu backend should provide gpu diagnostics");
             assert!(gpu.dispatch_x > 0);
-            assert_eq!(gpu.nonces_per_dispatch, gpu.dispatch_x as u64 * 64);
+            assert_eq!(
+                gpu.nonces_per_dispatch,
+                gpu.dispatch_x as u64 * wgpu_shared::WORKGROUP_SIZE as u64
+            );
         }
     }
 

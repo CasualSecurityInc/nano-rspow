@@ -18,10 +18,8 @@ use nano_rspow::{difficulty, thresholds};
 
 // Official known-good test vector — same hash used by the CLI benchmark command.
 const BENCH_HASH: [u8; 32] = [
-    0x71, 0x8C, 0xC2, 0x12, 0x1C, 0x3E, 0x64, 0x10,
-    0x59, 0xBC, 0x1C, 0x2C, 0xFC, 0x45, 0x66, 0x6C,
-    0x99, 0xE8, 0xAE, 0x92, 0x2F, 0x7A, 0x80, 0x7B,
-    0x7D, 0x07, 0xB6, 0x2C, 0x99, 0x5D, 0x79, 0xE2,
+    0x71, 0x8C, 0xC2, 0x12, 0x1C, 0x3E, 0x64, 0x10, 0x59, 0xBC, 0x1C, 0x2C, 0xFC, 0x45, 0x66, 0x6C,
+    0x99, 0xE8, 0xAE, 0x92, 0x2F, 0x7A, 0x80, 0x7B, 0x7D, 0x07, 0xB6, 0x2C, 0x99, 0x5D, 0x79, 0xE2,
 ];
 
 // ── difficulty_compute ────────────────────────────────────────────────────────
@@ -71,7 +69,11 @@ fn bench_gpu_generation(c: &mut Criterion) {
         });
 
         group.bench_function("ep2_recv", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::EPOCH2_RECEIVE).unwrap());
+            b.iter(|| {
+                generator
+                    .generate(&BENCH_HASH, thresholds::EPOCH2_RECEIVE)
+                    .unwrap()
+            });
         });
 
         group.finish();
@@ -90,7 +92,11 @@ fn bench_gpu_generation(c: &mut Criterion) {
         });
 
         group.bench_function("ep2_send", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::EPOCH2_SEND).unwrap());
+            b.iter(|| {
+                generator
+                    .generate(&BENCH_HASH, thresholds::EPOCH2_SEND)
+                    .unwrap()
+            });
         });
 
         group.finish();
@@ -102,5 +108,10 @@ fn bench_gpu_generation(_c: &mut Criterion) {}
 
 // ── entry point ───────────────────────────────────────────────────────────────
 
-criterion_group!(benches, bench_difficulty, bench_cpu_generation, bench_gpu_generation);
+criterion_group!(
+    benches,
+    bench_difficulty,
+    bench_cpu_generation,
+    bench_gpu_generation
+);
 criterion_main!(benches);
