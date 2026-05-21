@@ -31,7 +31,26 @@ enum Commands {
         /// Block root hash (64 hex chars). Optional if --stream is used.
         hash: Option<String>,
 
-        /// Run in stdio streaming mode (read lines from stdin)
+        /// Run in stdio streaming mode.
+        ///
+        /// Reads newline-delimited requests from stdin and writes results to stdout.
+        /// Empty lines are ignored.
+        ///
+        /// INPUT  (one request per line):
+        ///   <hash_hex>:<threshold_hex>
+        ///   e.g.  718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2:0xfffffff800000000
+        ///
+        /// OUTPUT (one result per line, same order):
+        ///   <hash_hex>:<threshold_hex>:<nonce_hex>
+        ///   e.g.  718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2:0xfffffff800000000:2bf29ef00786a6bc
+        ///
+        /// ERRORS are written to stderr; the offending line is skipped and
+        /// processing continues. Cancellation also goes to stderr.
+        ///
+        /// NOTES:
+        ///   - <threshold_hex> must include the 0x prefix.
+        ///   - --threshold is ignored in stream mode; each line carries its own threshold.
+        ///   - The process exits cleanly when stdin is closed (EOF).
         #[arg(long)]
         stream: bool,
 
