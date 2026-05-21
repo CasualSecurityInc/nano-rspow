@@ -34,6 +34,9 @@ Or pin `rust-toolchain.toml` to `1.81` to stay on stable without these defaults.
 
 The `wasm32v1-none` target (stable since Rust 1.84) is the long-term clean solution, but requires all dependencies including `wgpu` to be `no_std`-compatible, which is not currently the case.
 
-## Safari WebGPU Compute Readback (unrelated to WASM)
+## Safari WebGPU Compute Readback (resolved)
 
-A separate, active Safari bug causes WebGPU compute shaders to return zeros on readback regardless of dispatch results. This is not a WASM or wasm-bindgen issue — it occurs entirely inside Safari's cross-process GPU architecture. See `README.md` for the full description and the mitigation (Blake2b smoke test + CPU fallback).
+A Safari bug previously caused WebGPU compute shaders to return zeros on readback. This was
+fixed by fully unrolling the 12 Blake2b rounds in the WGSL shader (eliminating dynamic
+indexing into `SIGMA[]` which Safari's Metal compiler rejected) and switching to
+fixed-constant rotation helpers (`rotr32/24/16/63`). Safari is now fully supported.

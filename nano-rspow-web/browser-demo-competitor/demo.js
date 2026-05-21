@@ -207,7 +207,7 @@ checkWebGpuSupport().then(supported => {
             if (computeOk) {
                 log('System', 'WebGPU support verified and fully functional in your browser.');
             } else {
-                log('System', 'WARNING: WebGPU is available but compute readback is broken (known Safari/iOS defect). AUTO mode will use CPU.');
+                log('System', 'WARNING: WebGPU is available but compute readback check failed. AUTO mode will use CPU.');
             }
         });
     } else {
@@ -312,7 +312,7 @@ elBtnRun.addEventListener('click', async () => {
                 log('System', 'Running GPU compute smoke test...');
                 const computeOk = await checkWebGpuComputeWorks();
                 if (!computeOk) {
-                    log('System', 'WARNING: WebGPU compute readback returned incorrect results (known Safari/iOS defect). Auto falling back to WASM/CPU...');
+                    log('System', 'WARNING: WebGPU compute smoke test failed. Auto falling back to WASM/CPU...');
                     apiTarget = 'cpu';
                 } else {
                     log('System', 'Auto Mode: WebGPU support verified. Using WebGPU.');

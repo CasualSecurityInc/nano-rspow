@@ -51,12 +51,7 @@ Synchronously validates whether a nonce meets the difficulty threshold for the g
 
 ## Browser Compatibility
 
-WebGPU works correctly in Chromium-based browsers (Chrome, Brave, Edge).
-
-> [!WARNING]
-> **Safari on macOS and iOS has a WebGPU compute shader defect** confirmed on Safari 26.5 (21624.2.5.11.4) on macOS 26.5 — the latest publicly available release as of mid-2026. The GPU pipeline initialises and dispatches without error, but `mapAsync` readback consistently returns zeros regardless of actual compute results, meaning valid work is never found. This is likely caused by [WebKit bug #240436](https://bugs.webkit.org/show_bug.cgi?id=240436) — "Synchronize resources for data downloads on discrete GPUs" — which has been open since May 2022 and remains unassigned.
->
-> The library detects this at runtime using a known-answer smoke test and automatically falls back to the CPU WASM backend, which works correctly on all platforms including Safari and iOS. A 5-second watchdog provides a secondary safety net for any browser that passes the smoke test but hangs during real PoW generation.
+WebGPU works correctly in all major browsers including Chrome, Brave, Edge, and Safari.
 
 
 
