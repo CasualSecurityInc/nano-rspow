@@ -53,8 +53,8 @@ jobs:
 
       - name: Install wasm-bindgen-cli
         run: |
-          wget -qO- https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.100/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl.tar.gz | tar -xz
-          echo "${{ github.workspace }}/wasm-bindgen-0.2.100-x86_64-unknown-linux-musl" >> $GITHUB_PATH
+          wget -qO- https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.121/wasm-bindgen-0.2.121-x86_64-unknown-linux-musl.tar.gz | tar -xz
+          echo "${{ github.workspace }}/wasm-bindgen-0.2.121-x86_64-unknown-linux-musl" >> $GITHUB_PATH
 
       - name: Build Web Package
         working-directory: nano-rspow-web
