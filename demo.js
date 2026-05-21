@@ -199,7 +199,7 @@ async function checkWebGpuComputeWorks() {
         gpuSmokeTestResult = ok;
         return gpuSmokeTestResult;
     } catch (e) {
-        console.log('[SmokeTest] exception:', e);
+        console.log('[SmokeTest] exception:', e, 'message:', e?.message, 'reason:', e?.reason);
         gpuSmokeTestResult = false;
         return false;
     }
