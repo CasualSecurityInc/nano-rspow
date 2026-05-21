@@ -1,0 +1,75 @@
+name: Publish to Crates.io
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  version-check:
+    name: Check major.minor version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare major.minor versions
+        run: |
+          CARGO=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          CARGO_MM=$(echo "$CARGO" | cut -d. -f1-2)
+          NODE=$(jq -r .version nano-rspow-node/package.json)
+          NODE_MM=$(echo "$NODE" | cut -d. -f1-2)
+          WEB=$(jq -r .version nano-rspow-web/package.json)
+          WEB_MM=$(echo "$WEB" | cut -d. -f1-2)
+          echo "Cargo: $CARGO  Node: $NODE  Web: $WEB"
+          FAILED=0
+          [ "$NODE_MM" != "$CARGO_MM" ] && echo "ERROR: Node $NODE vs Cargo $CARGO" && FAILED=1
+          [ "$WEB_MM"  != "$CARGO_MM" ] && echo "ERROR: Web $WEB vs Cargo $CARGO"   && FAILED=1
+          [ $FAILED -eq 1 ] && echo "Patch versions may diverge; major.minor must match." && exit 1
+          echo "OK: all packages on major.minor $CARGO_MM"
+
+  publish:
+    name: Publish to Crates.io
+    needs: version-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install System Dependencies (OpenCL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ocl-icd-opencl-dev
+
+      - name: Publish Core Crate (nano-rspow)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          cargo publish -p nano-rspow
+
+      - name: Wait for nano-rspow to propagate on crates.io
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "Target version: $VERSION"
+          echo "Waiting for nano-rspow version $VERSION to propagate on crates.io..."
+          for i in {1..30}; do
+            if curl -s https://crates.io/api/v1/crates/nano-rspow | jq -r '.versions[].num' 2>/dev/null | grep -q "^$VERSION$"; then
+              echo "Version $VERSION has propagated!"
+              break
+            fi
+            echo "Not propagated yet. Sleeping 10s..."
+            sleep 10
+          done
+
+      - name: Publish CLI Crate (nano-rspow-cli)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          cargo publish -p nano-rspow-cli
