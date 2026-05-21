@@ -154,15 +154,16 @@ globalThis.initSync = initSync;
     with open(wgsl_path, "r") as f:
         wgsl_content = f.read()
 
-    # Read crate version from workspace Cargo.toml
-    workspace_cargo = os.path.join(workspace_dir, "Cargo.toml")
+    # Read package version from nano-rspow-web/package.json
+    import json
+    web_pkg_json = os.path.join(workspace_dir, "nano-rspow-web", "package.json")
     crate_version = "unknown"
-    with open(workspace_cargo, "r") as f:
-        for line in f:
-            m = re.match(r'^version\s*=\s*"([^"]+)"', line)
-            if m:
-                crate_version = m.group(1)
-                break
+    try:
+        with open(web_pkg_json, "r") as f:
+            pkg_data = json.load(f)
+            crate_version = pkg_data.get("version", "unknown")
+    except Exception as e:
+        print(f"⚠ Warning: Could not read version from {web_pkg_json}: {e}")
 
     html_content = template_content.replace("// WASM_GLUE_CODE", js_inlined)
     html_content = html_content.replace("// DEMO_CODE", demo_content)
