@@ -36,9 +36,9 @@ enum Commands {
         /// Reads newline-delimited requests from stdin and writes results to stdout.
         /// Empty lines are ignored.
         ///
-        /// INPUT  (one request per line):
-        ///   <hash_hex>:<threshold_hex>
-        ///   e.g.  718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2:0xfffffff800000000
+        /// INPUT  (one request per line, threshold is optional):
+        ///   <hash_hex>:<threshold_hex>   — per-request threshold (0x prefix required)
+        ///   <hash_hex>                   — uses --threshold (or the default)
         ///
         /// OUTPUT (one result per line, same order):
         ///   <hash_hex>:<threshold_hex>:<nonce_hex>
@@ -48,8 +48,7 @@ enum Commands {
         /// processing continues. Cancellation also goes to stderr.
         ///
         /// NOTES:
-        ///   - <threshold_hex> must include the 0x prefix.
-        ///   - --threshold is ignored in stream mode; each line carries its own threshold.
+        ///   - Per-line <threshold_hex> must include the 0x prefix.
         ///   - The process exits cleanly when stdin is closed (EOF).
         #[arg(long)]
         stream: bool,
@@ -384,30 +383,29 @@ fn cmd_generate(hash_opt: Option<&str>, stream: bool, threshold_str: &str, backe
                 continue;
             }
 
-            let Some((hash_str, mask_str)) = line.split_once(':') else {
-                eprintln!("Error: line '{line}' does not match [block hash hex]:[difficulty mask] format");
-                continue;
+            // Accept either "<hash>" (uses --threshold / default) or "<hash>:<threshold>".
+            let (hash_str, current_threshold) = if let Some((h, mask_str)) = line.split_once(':') {
+                let mask_str = mask_str.trim();
+                if !mask_str.starts_with("0x") {
+                    eprintln!("Error: difficulty mask '{mask_str}' must start with '0x'");
+                    continue;
+                }
+                let t = match parse_threshold(mask_str) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("Error parsing threshold '{mask_str}': {e}");
+                        continue;
+                    }
+                };
+                (h.trim(), t)
+            } else {
+                (line, default_threshold)
             };
-            let hash_str = hash_str.trim();
-            let mask_str = mask_str.trim();
-
-            if !mask_str.starts_with("0x") {
-                eprintln!("Error: difficulty mask '{mask_str}' must start with '0x'");
-                continue;
-            }
 
             let hash = match parse_hash(hash_str) {
                 Ok(h) => h,
                 Err(e) => {
                     eprintln!("Error parsing hash '{hash_str}': {e}");
-                    continue;
-                }
-            };
-
-            let current_threshold = match parse_threshold(mask_str) {
-                Ok(t) => t,
-                Err(e) => {
-                    eprintln!("Error parsing threshold '{mask_str}': {e}");
                     continue;
                 }
             };
