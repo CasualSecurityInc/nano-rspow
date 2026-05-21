@@ -38,44 +38,16 @@ pub struct WgpuWebGenerator {
 }
 
 
-/// Await `queue.onSubmittedWorkDone()` by bridging the JS Promise into Rust.
-/// This guarantees all previously submitted GPU commands are retired before we
-/// attempt to map a readback buffer — required for Safari's strict WebGPU impl.
-async fn wait_submitted_work_done(queue: &wgpu::Queue) {
-    use js_sys::Function;
-    use wasm_bindgen::JsValue;
-
-    let mut resolve_holder: Option<Function> = None;
-    let promise = js_sys::Promise::new(&mut |resolve, _reject| {
-        resolve_holder = Some(resolve);
-    });
-    let resolve_fn = resolve_holder.expect("Promise constructor called synchronously");
-
-    queue.on_submitted_work_done(move || {
-        let _ = resolve_fn.call0(&JsValue::UNDEFINED);
-    });
-
-    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-}
 
 /// Map a GPU readback buffer asynchronously.
-/// Waits for all submitted GPU work to retire first (Safari requires this),
-/// then calls map_async and awaits the JS Promise.
+/// The double-buffer ping-pong guarantees the buffer being mapped was submitted
+/// one full batch ago, so it is already retired — no explicit sync needed.
 async fn map_readback_async(
-    queue: &wgpu::Queue,
     buf: &wgpu::Buffer,
     cancel: &CancelToken,
 ) -> bool {
     use js_sys::Function;
     use wasm_bindgen::JsValue;
-
-    if cancel.is_cancelled() {
-        return false;
-    }
-
-    // Wait for the GPU to retire all submitted work before mapping.
-    // This is the key fix for Safari: mapAsync on an in-flight buffer returns zeros.
-    wait_submitted_work_done(queue).await;
 
     if cancel.is_cancelled() {
         return false;
@@ -293,7 +265,7 @@ impl WgpuWebGenerator {
 
             // Read back the PREVIOUS slot — guaranteed retired by GPU ordering.
             let prev = slot ^ 1;
-            let ok = map_readback_async(&self.queue, &self.readback_bufs[prev], cancel).await;
+            let ok = map_readback_async(&self.readback_bufs[prev], cancel).await;
             if !ok {
                 if cancel.is_cancelled() {
                     console_log!("[WebGPU] Cancelled after {} batch(es).", batch_count);
