@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-use wgpu::BufferAsyncError;
 use wasm_bindgen::prelude::*;
 
 use nano_rspow::CancelToken;
@@ -24,41 +21,87 @@ struct Uniforms {
     threshold_hi: u32,
 }
 
-struct MapResult {
-    done: bool,
-    result: Option<Result<(), BufferAsyncError>>,
-}
 
+
+// Double-buffered WebGPU generator.
+// Two slots (ping/pong) let us submit batch N while reading back batch N-1,
+// guaranteeing the mapped buffer is always already retired — fixing Safari's
+// mapAsync bug where mapping an in-flight buffer returns only zeros.
 pub struct WgpuWebGenerator {
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,
-    uniform_buf: wgpu::Buffer,
-    result_buf: wgpu::Buffer,
-    readback_buf: wgpu::Buffer,
-    bind_group: wgpu::BindGroup,
+    uniform_bufs: [wgpu::Buffer; 2],
+    result_bufs: [wgpu::Buffer; 2],
+    readback_bufs: [wgpu::Buffer; 2],
+    bind_groups: [wgpu::BindGroup; 2],
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_name = setTimeout)]
-    fn set_timeout(callback: &js_sys::Function, ms: f64) -> wasm_bindgen::JsValue;
-}
 
-async fn js_sleep_ms(ms: f64) {
+/// Await `queue.onSubmittedWorkDone()` by bridging the JS Promise into Rust.
+/// This guarantees all previously submitted GPU commands are retired before we
+/// attempt to map a readback buffer — required for Safari's strict WebGPU impl.
+async fn wait_submitted_work_done(queue: &wgpu::Queue) {
+    use js_sys::Function;
+    use wasm_bindgen::JsValue;
+
+    let mut resolve_holder: Option<Function> = None;
     let promise = js_sys::Promise::new(&mut |resolve, _reject| {
-        let _ = set_timeout(&resolve, ms);
+        resolve_holder = Some(resolve);
     });
+    let resolve_fn = resolve_holder.expect("Promise constructor called synchronously");
+
+    queue.on_submitted_work_done(move || {
+        let _ = resolve_fn.call0(&JsValue::UNDEFINED);
+    });
+
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
 }
 
+/// Map a GPU readback buffer asynchronously.
+/// Waits for all submitted GPU work to retire first (Safari requires this),
+/// then calls map_async and awaits the JS Promise.
+async fn map_readback_async(
+    queue: &wgpu::Queue,
+    buf: &wgpu::Buffer,
+    cancel: &CancelToken,
+) -> bool {
+    use js_sys::Function;
+    use wasm_bindgen::JsValue;
+
+    if cancel.is_cancelled() {
+        return false;
+    }
+
+    // Wait for the GPU to retire all submitted work before mapping.
+    // This is the key fix for Safari: mapAsync on an in-flight buffer returns zeros.
+    wait_submitted_work_done(queue).await;
+
+    if cancel.is_cancelled() {
+        return false;
+    }
+
+    // Build a JS Promise whose resolve we hand to map_async.
+    let mut resolve_holder: Option<Function> = None;
+    let promise = js_sys::Promise::new(&mut |resolve, _reject| {
+        resolve_holder = Some(resolve);
+    });
+    let resolve_fn = resolve_holder.expect("Promise constructor called synchronously");
+
+    buf.slice(..).map_async(wgpu::MapMode::Read, move |_res| {
+        let _ = resolve_fn.call0(&JsValue::UNDEFINED);
+    });
+
+    // Await the map completion promise.
+    wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
+}
 
 
 impl WgpuWebGenerator {
     pub async fn new() -> Result<Self, String> {
         console_log!("[WebGPU] Instantiating wgpu::Instance...");
         let instance = wgpu::Instance::default();
-        
+
         console_log!("[WebGPU] Requesting adapter...");
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -89,7 +132,6 @@ impl WgpuWebGenerator {
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),
         });
 
-        console_log!("[WebGPU] Shader module created. Creating bind group layout...");
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("nano-rspow-bgl"),
             entries: &[
@@ -116,14 +158,12 @@ impl WgpuWebGenerator {
             ],
         });
 
-        console_log!("[WebGPU] Bind group layout created. Creating pipeline layout...");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("nano-rspow-pl"),
             bind_group_layouts: &[Some(&bind_group_layout)],
             immediate_size: 0,
         });
 
-        console_log!("[WebGPU] Pipeline layout created. Creating compute pipeline...");
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("nano-rspow-pipeline"),
             layout: Some(&pipeline_layout),
@@ -133,58 +173,63 @@ impl WgpuWebGenerator {
             cache: None,
         });
 
-        console_log!("[WebGPU] Compute pipeline compiled. Allocating buffers...");
-        let uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("uniforms"),
-            size: std::mem::size_of::<Uniforms>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        console_log!("[WebGPU] Pipeline compiled. Allocating double-buffered slots...");
+
+        let uniform_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("uniforms-{i}")),
+                size: std::mem::size_of::<Uniforms>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        });
+        let result_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("result-{i}")),
+                size: 12,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        });
+        let readback_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("readback-{i}")),
+                size: 12,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        });
+        let bind_groups = std::array::from_fn(|i| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some(&format!("nano-rspow-bg-{i}")),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform_bufs[i].as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: result_bufs[i].as_entire_binding(),
+                    },
+                ],
+            })
         });
 
-        let result_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("result"),
-            size: 12,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("readback"),
-            size: 12,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        console_log!("[WebGPU] Buffers allocated. Creating bind group...");
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("nano-rspow-bg"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: result_buf.as_entire_binding(),
-                },
-            ],
-        });
-
-        console_log!("[WebGPU] Initialization complete!");
+        console_log!("[WebGPU] Initialization complete (double-buffered)!");
         Ok(Self {
             device,
             queue,
             pipeline,
-            uniform_buf,
-            result_buf,
-            readback_buf,
-            bind_group,
+            uniform_bufs,
+            result_bufs,
+            readback_bufs,
+            bind_groups,
         })
     }
 
     pub async fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
-        console_log!("[WebGPU] Starting generation. threshold: {:016x}", threshold);
+        console_log!("[WebGPU] Starting generation (double-buffered). threshold: {:016x}", threshold);
         let mut hash0 = [0u32; 4];
         let mut hash1 = [0u32; 4];
         for (i, chunk) in hash[..16].chunks_exact(4).enumerate() {
@@ -196,9 +241,6 @@ impl WgpuWebGenerator {
 
         let threshold_lo = threshold as u32;
         let threshold_hi = (threshold >> 32) as u32;
-        // 65535 is the WebGPU spec minimum for maxComputeWorkgroupsPerDimension, safe on all
-        // WebGPU implementations. Larger batches amortize the per-batch IPC cost in Safari's
-        // GPU process architecture — each submit→map_async round-trip is a cross-process call.
         // 65535 × 64 workgroup threads = ~4.19M nonces per batch.
         const DISPATCH_X: u32 = 65535;
         let nonces_per_batch = (WORKGROUP_SIZE * DISPATCH_X) as u64;
@@ -206,100 +248,77 @@ impl WgpuWebGenerator {
         let mut base_nonce: u64 = rand::random();
         let mut batch_count = 0u64;
 
+        // Submit one compute batch into `slot`.
+        let submit = |slot: usize, nonce: u64| {
+            let uniforms = Uniforms {
+                hash0, hash1,
+                base_nonce_lo: nonce as u32,
+                base_nonce_hi: (nonce >> 32) as u32,
+                threshold_lo, threshold_hi,
+            };
+            self.queue.write_buffer(&self.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
+            let mut enc = self.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+            enc.clear_buffer(&self.result_bufs[slot], 0, None);
+            {
+                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("pow"), timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.pipeline);
+                pass.set_bind_group(0, &self.bind_groups[slot], &[]);
+                pass.dispatch_workgroups(DISPATCH_X, 1, 1);
+            }
+            enc.copy_buffer_to_buffer(
+                &self.result_bufs[slot], 0,
+                &self.readback_bufs[slot], 0, 12);
+            self.queue.submit(std::iter::once(enc.finish()));
+        };
+
+        // Warm-up: submit slot 0 so there is always a prior batch to read back.
+        submit(0, base_nonce);
+        base_nonce = base_nonce.wrapping_add(nonces_per_batch);
+        let mut slot: usize = 1;
+
         loop {
             batch_count += 1;
 
             if cancel.is_cancelled() {
-                console_log!("[WebGPU] Generation cancelled after {} batch(es).", batch_count - 1);
+                console_log!("[WebGPU] Cancelled after {} batch(es).", batch_count - 1);
                 return None;
             }
 
-            let uniforms = Uniforms {
-                hash0,
-                hash1,
-                base_nonce_lo: base_nonce as u32,
-                base_nonce_hi: (base_nonce >> 32) as u32,
-                threshold_lo,
-                threshold_hi,
-            };
+            // Submit current slot.
+            submit(slot, base_nonce);
+            base_nonce = base_nonce.wrapping_add(nonces_per_batch);
 
-            self.queue.write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&uniforms));
-
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
-
-            // Clear result buffer inside the encoder so the zero, dispatch, and
-            // copy-to-readback are all in a single atomic submission. Using
-            // write_buffer (a queue staging op) to clear allows Safari's GPU
-            // process to pipeline it separately from the dispatch, causing stale
-            // zeros to appear in readback on some batches.
-            encoder.clear_buffer(&self.result_buf, 0, None);
-
-            {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pow"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.pipeline);
-                pass.set_bind_group(0, &self.bind_group, &[]);
-                pass.dispatch_workgroups(DISPATCH_X, 1, 1);
-            }
-
-            encoder.copy_buffer_to_buffer(&self.result_buf, 0, &self.readback_buf, 0, 12);
-            self.queue.submit(std::iter::once(encoder.finish()));
-
-            let slice = self.readback_buf.slice(..);
-            let shared = Rc::new(RefCell::new(MapResult {
-                done: false,
-                result: None,
-            }));
-
-            let shared_clone = Rc::clone(&shared);
-            slice.map_async(wgpu::MapMode::Read, move |res| {
-                let mut shared = shared_clone.borrow_mut();
-                shared.done = true;
-                shared.result = Some(res);
-            });
-
-            // Poll for completion — no hard timeout; cancelled only via CancelToken.
-            // Safari's GPU process can be slower per batch, so we must not abort early.
-            loop {
+            // Read back the PREVIOUS slot — guaranteed retired by GPU ordering.
+            let prev = slot ^ 1;
+            let ok = map_readback_async(&self.queue, &self.readback_bufs[prev], cancel).await;
+            if !ok {
                 if cancel.is_cancelled() {
-                    console_log!("[WebGPU] Generation cancelled after {} batch(es).", batch_count);
-                    return None;
+                    console_log!("[WebGPU] Cancelled after {} batch(es).", batch_count);
                 }
-
-                {
-                    let shared_lock = shared.borrow();
-                    if shared_lock.done {
-                        if let Some(res) = &shared_lock.result {
-                            if res.is_err() {
-                                console_log!("[WebGPU] Error: map_async returned error: {:?}", res);
-                                return None;
-                            }
-                            break;
-                        }
-                    }
-                }
-
-                // Yield to browser event loop to allow GPU mapping callback to execute
-                js_sleep_ms(1.0).await;
+                return None;
             }
 
             let data: Vec<u32> = {
-                let mapped = slice.get_mapped_range();
+                let mapped = self.readback_bufs[prev].slice(..).get_mapped_range();
                 bytemuck::cast_slice(&mapped).to_vec()
             };
-            self.readback_buf.unmap();
+            self.readback_bufs[prev].unmap();
+
+            if batch_count <= 3 {
+                console_log!("[WebGPU] batch={} slot={} prev={} data=[{:#010x}, {:#010x}, {}]",
+                    batch_count, slot, prev, data[0], data[1], data[2]);
+            }
 
             if data[2] != 0 {
                 let found_nonce = data[0] as u64 | ((data[1] as u64) << 32);
-                console_log!("[WebGPU] Found valid nonce after {} batch(es): {:016x}", batch_count, found_nonce);
+                console_log!("[WebGPU] Found nonce after {} batch(es): {:016x}", batch_count, found_nonce);
                 return Some(found_nonce);
             }
 
-            base_nonce = base_nonce.wrapping_add(nonces_per_batch);
+            slot ^= 1;
         }
     }
 }

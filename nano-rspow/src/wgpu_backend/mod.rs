@@ -54,10 +54,14 @@ pub(crate) struct WgpuBackend {
 }
 
 struct WgpuSession {
-    uniform_buf: wgpu::Buffer,
-    result_buf: wgpu::Buffer,
-    readback_buf: wgpu::Buffer,
-    bind_group: wgpu::BindGroup,
+    // Two slots for double-buffered ping-pong dispatch.
+    // Slot index alternates each iteration so we always map the *previous*
+    // batch's readback buffer (already retired by GPU) rather than the
+    // currently-active one — this is the fix for Safari's mapAsync bug.
+    uniform_bufs: [wgpu::Buffer; 2],
+    result_bufs: [wgpu::Buffer; 2],
+    readback_bufs: [wgpu::Buffer; 2],
+    bind_groups: [wgpu::BindGroup; 2],
 }
 
 impl WgpuBackend {
@@ -141,40 +145,49 @@ impl WgpuBackend {
             cache: None,
         });
 
-        let uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("uniforms"),
-            size: std::mem::size_of::<Uniforms>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        // Create two slots for ping-pong double-buffering.
+        let uniform_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("uniforms-{i}")),
+                size: std::mem::size_of::<Uniforms>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
         });
 
-        let result_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("result"),
-            size: 12,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        let result_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("result-{i}")),
+                size: 12,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
         });
 
-        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("readback"),
-            size: 12,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        let readback_bufs = std::array::from_fn(|i| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("readback-{i}")),
+                size: 12,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("nano-rspow-bg"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: result_buf.as_entire_binding(),
-                },
-            ],
+        let bind_groups = std::array::from_fn(|i| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some(&format!("nano-rspow-bg-{i}")),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform_bufs[i].as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: result_bufs[i].as_entire_binding(),
+                    },
+                ],
+            })
         });
 
         let candidates = dispatch_candidates(max_dispatch);
@@ -187,10 +200,10 @@ impl WgpuBackend {
             &device,
             &queue,
             &pipeline,
-            &uniform_buf,
-            &result_buf,
-            &readback_buf,
-            &bind_group,
+            &uniform_bufs[0],
+            &result_bufs[0],
+            &readback_bufs[0],
+            &bind_groups[0],
         );
 
         let diagnostics = GpuDiagnostics {
@@ -211,10 +224,10 @@ impl WgpuBackend {
             queue,
             pipeline,
             session: Mutex::new(WgpuSession {
-                uniform_buf,
-                result_buf,
-                readback_buf,
-                bind_group,
+                uniform_bufs,
+                result_bufs,
+                readback_bufs,
+                bind_groups,
             }),
             dispatch_x,
             diagnostics,
@@ -418,59 +431,98 @@ impl Backend for WgpuBackend {
         let mut base_nonce: u64 = rand::random();
         let zero_result = [0u32; 3];
 
+        // --- Double-buffer ping-pong ---
+        // `slot` alternates 0→1→0→1…  We SUBMIT to slot `slot` and MAP the
+        // *previous* slot (`slot ^ 1`).  Because GPU commands execute in
+        // order, by the time we call mapAsync on slot N-1 the GPU has already
+        // retired it (it is behind the currently-queued slot N work).  This
+        // is what fixes Safari's mapAsync bug: we never map an in-flight buffer.
+        //
+        // Iteration 0 is a "warm-up" submit with no read-back (no previous slot).
+        let mut slot: usize = 0;
+        let mut iteration: u64 = 0;
+
+        // Submit the very first batch so slot 0 is in-flight before the loop.
+        {
+            let uniforms = Uniforms {
+                hash0, hash1,
+                base_nonce_lo: base_nonce as u32,
+                base_nonce_hi: (base_nonce >> 32) as u32,
+                threshold_lo, threshold_hi,
+            };
+            self.queue.write_buffer(&session.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
+            self.queue.write_buffer(&session.result_bufs[slot], 0, bytemuck::cast_slice(&zero_result));
+            let mut encoder = self.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("pow"), timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.pipeline);
+                pass.set_bind_group(0, &session.bind_groups[slot], &[]);
+                pass.dispatch_workgroups(self.dispatch_x, 1, 1);
+            }
+            encoder.copy_buffer_to_buffer(
+                &session.result_bufs[slot], 0,
+                &session.readback_bufs[slot], 0, 12);
+            self.queue.submit(std::iter::once(encoder.finish()));
+            base_nonce = base_nonce.wrapping_add(nonces_per_batch);
+            slot ^= 1;
+        }
+
         loop {
             if cancel.is_cancelled() {
                 return None;
             }
 
+            // Submit the CURRENT batch into `slot`.
             let uniforms = Uniforms {
-                hash0,
-                hash1,
+                hash0, hash1,
                 base_nonce_lo: base_nonce as u32,
                 base_nonce_hi: (base_nonce >> 32) as u32,
-                threshold_lo,
-                threshold_hi,
+                threshold_lo, threshold_hi,
             };
-
-            self.queue.write_buffer(&session.uniform_buf, 0, bytemuck::bytes_of(&uniforms));
-            self.queue.write_buffer(&session.result_buf, 0, bytemuck::cast_slice(&zero_result));
-
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
-
+            self.queue.write_buffer(&session.uniform_bufs[slot], 0, bytemuck::bytes_of(&uniforms));
+            self.queue.write_buffer(&session.result_bufs[slot], 0, bytemuck::cast_slice(&zero_result));
+            let mut encoder = self.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor { label: Some("nano-rspow-enc") });
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("pow"),
-                    timestamp_writes: None,
+                    label: Some("pow"), timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.pipeline);
-                pass.set_bind_group(0, &session.bind_group, &[]);
+                pass.set_bind_group(0, &session.bind_groups[slot], &[]);
                 pass.dispatch_workgroups(self.dispatch_x, 1, 1);
             }
-
-            encoder.copy_buffer_to_buffer(&session.result_buf, 0, &session.readback_buf, 0, 12);
+            encoder.copy_buffer_to_buffer(
+                &session.result_bufs[slot], 0,
+                &session.readback_bufs[slot], 0, 12);
             self.queue.submit(std::iter::once(encoder.finish()));
 
-            let slice = session.readback_buf.slice(..);
+            // Read back the PREVIOUS batch (slot ^ 1) — guaranteed retired.
+            let prev = slot ^ 1;
+            let prev_slice = session.readback_bufs[prev].slice(..);
             let (tx, rx) = std::sync::mpsc::channel();
-            slice.map_async(wgpu::MapMode::Read, move |r| {
+            prev_slice.map_async(wgpu::MapMode::Read, move |r| {
                 let _ = tx.send(r);
             });
             let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
             rx.recv().ok()?.ok()?;
 
             let data: Vec<u32> = {
-                let mapped = slice.get_mapped_range();
+                let mapped = prev_slice.get_mapped_range();
                 bytemuck::cast_slice(&mapped).to_vec()
             };
-            session.readback_buf.unmap();
+            session.readback_bufs[prev].unmap();
 
             if data[2] != 0 {
                 return Some(data[0] as u64 | ((data[1] as u64) << 32));
             }
 
             base_nonce = base_nonce.wrapping_add(nonces_per_batch);
+            slot ^= 1;
+            iteration += 1;
+            let _ = iteration; // suppress unused warning
         }
     }
 
