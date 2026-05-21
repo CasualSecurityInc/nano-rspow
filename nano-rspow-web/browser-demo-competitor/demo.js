@@ -179,6 +179,7 @@ async function checkWebGpuComputeWorks() {
         enc.copyBufferToBuffer(resultBuf, 0, readBuf, 0, 12);
         device.queue.submit([enc.finish()]);
 
+        await device.queue.onSubmittedWorkDone();
         await readBuf.mapAsync(GPUMapMode.READ);
         const data = new Uint32Array(readBuf.getMappedRange());
         const foundFlag  = data[2];

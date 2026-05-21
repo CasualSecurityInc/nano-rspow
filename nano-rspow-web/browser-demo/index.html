@@ -966,7 +966,7 @@ fn u64_gte(a: vec2<u32>, b: vec2<u32>) -> bool {
 // Compute kernel — one invocation per nonce candidate
 // ──────────────────────────────────────────────────────────────────────────────
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // If already found, skip
     if atomicLoad(&result[2]) != 0u { return; }
@@ -2187,11 +2187,12 @@ async function checkWebGpuComputeWorks() {
         const pass = enc.beginComputePass();
         pass.setPipeline(pipeline);
         pass.setBindGroup(0, bg);
-        pass.dispatchWorkgroups(1); // one workgroup of 64 threads; thread 0 holds the answer
+        pass.dispatchWorkgroups(1); // one workgroup of 256 threads; thread 0 holds the answer
         pass.end();
         enc.copyBufferToBuffer(resultBuf, 0, readBuf, 0, 12);
         device.queue.submit([enc.finish()]);
 
+        await device.queue.onSubmittedWorkDone();
         await readBuf.mapAsync(GPUMapMode.READ);
         const data = new Uint32Array(readBuf.getMappedRange());
         const foundFlag  = data[2];
