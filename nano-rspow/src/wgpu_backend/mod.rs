@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 use crate::{Backend, CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError};
 
 use crate::wgpu_shared::{Uniforms, SHADER, WORKGROUP_SIZE};
-const DEFAULT_TUNE_BUDGET_MS: u64 = 250;
-const TUNE_CACHE_VERSION: &str = "v1";
+const DEFAULT_TUNE_BUDGET_MS: u64 = 2000;
+const TUNE_CACHE_VERSION: &str = "v2";
 
 #[derive(Debug, Clone)]
 pub struct WgpuConfig {
@@ -326,6 +326,10 @@ fn probe_dispatch(
     readback_buf: &wgpu::Buffer,
     bind_group: &wgpu::BindGroup,
 ) -> Option<u32> {
+    // Run up to PROBE_SAMPLES dispatches per candidate and take the best (minimum)
+    // elapsed time — standard microbenchmark practice to reduce scheduling jitter.
+    const PROBE_SAMPLES: usize = 3;
+
     let budget = Duration::from_millis(budget_ms.max(1));
     let start = Instant::now();
     let mut best: Option<(u32, f64)> = None;
@@ -333,13 +337,22 @@ fn probe_dispatch(
         if start.elapsed() >= budget {
             break;
         }
-        let t0 = Instant::now();
-        run_dispatch_once(device, queue, pipeline, uniform_buf, result_buf, readback_buf, bind_group, dispatch_x)?;
-        let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        if elapsed_ms <= 0.0 {
+        let mut min_elapsed_ms = f64::MAX;
+        for _ in 0..PROBE_SAMPLES {
+            if start.elapsed() >= budget {
+                break;
+            }
+            let t0 = Instant::now();
+            run_dispatch_once(device, queue, pipeline, uniform_buf, result_buf, readback_buf, bind_group, dispatch_x)?;
+            let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
+            if elapsed_ms > 0.0 && elapsed_ms < min_elapsed_ms {
+                min_elapsed_ms = elapsed_ms;
+            }
+        }
+        if min_elapsed_ms == f64::MAX {
             continue;
         }
-        let throughput = (dispatch_x as f64 * WORKGROUP_SIZE as f64) / elapsed_ms;
+        let throughput = (dispatch_x as f64 * WORKGROUP_SIZE as f64) / min_elapsed_ms;
         match best {
             Some((_, best_tp)) if throughput <= best_tp => {}
             _ => best = Some((dispatch_x, throughput)),
