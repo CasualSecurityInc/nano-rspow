@@ -295,7 +295,7 @@ async function generateWorkGpuWithTimeout(hash, threshold, timeoutMs = 5000) {
     const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
             if (activeGpuCancelToken) activeGpuCancelToken.cancel();
-            const err = new Error("WebGPU execution timed out (Safari GPU process hung)");
+            const err = new Error("WebGPU execution timed out");
             err.isGpuTimeout = true;
             reject(err);
         }, timeoutMs);
@@ -325,7 +325,7 @@ checkWebGpuSupport().then(supported => {
             if (computeOk) {
                 log('System', 'WebGPU support verified and fully functional in your browser.');
             } else {
-                log('System', 'WARNING: WebGPU is available but compute readback is broken (known Safari/iOS defect). AUTO mode will use CPU Worker.');
+                log('System', 'WARNING: WebGPU is available but compute readback check failed. AUTO mode will use CPU Worker.');
             }
         });
     } else {
@@ -427,7 +427,7 @@ elBtnRun.addEventListener('click', async () => {
                 log('System', 'Running GPU compute smoke test...');
                 const computeOk = await checkWebGpuComputeWorks();
                 if (!computeOk) {
-                    log('System', 'WARNING: WebGPU compute readback returned incorrect results (known Safari/iOS defect). Skipping GPU, using CPU Worker...');
+                    log('System', 'WARNING: WebGPU compute smoke test failed. Skipping GPU, using CPU Worker...');
                     result = await generateWorkCpuWorker(hash, threshold);
                 } else {
                     log('System', 'Auto Mode: Attempting WebGPU primary...');
@@ -459,7 +459,7 @@ elBtnRun.addEventListener('click', async () => {
             log('WebGPU', 'Running GPU compute smoke test...');
             const computeOk = await checkWebGpuComputeWorks();
             if (!computeOk) {
-                log('WebGPU', 'WARNING: Smoke test failed (known Safari/iOS defect) — proceeding anyway as WebGPU is forced.');
+                log('WebGPU', 'WARNING: Smoke test failed — proceeding anyway as WebGPU is forced.');
             }
             log('WebGPU', 'Forcing WebGPU. Instantiating GPU pipeline...');
             // No timeout — user explicitly wants GPU; cancel button is the only abort.
