@@ -289,7 +289,7 @@ fn u64_gte(a: vec2<u32>, b: vec2<u32>) -> bool {
 // Compute kernel — one invocation per nonce candidate
 // ──────────────────────────────────────────────────────────────────────────────
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(WGS_PLACEHOLDER)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // If already found, skip
     if atomicLoad(&result[2]) != 0u { return; }

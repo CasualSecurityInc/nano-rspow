@@ -142,3 +142,33 @@ overhead-dominated dispatch loops.
 2. Browser GPU scheduler may pipeline more aggressively
 3. High variance (max 6124 ms) suggests per-work probabilistic distribution is dominating — this is fundamental (some PoW computations require many more batches by chance)
 
+### Attempt 2 — Multiple compute passes per encoder submit (REVERTED — made things worse)
+
+**Hypothesis**: bundle N compute passes into one encoder + submit to reduce CPU↔GPU poll round-trips.
+
+**What went wrong**: `queue.write_buffer()` is a CPU-side queue operation that executes immediately —
+all N passes shared one `uniform_buf` per slot, so the last `write_buffer` call overwrote
+the value before earlier passes could read it. All N passes searched the same nonce range.
+~7× regression in warm median (8714 ms vs 1144 ms).
+
+**Correct approach for a future attempt**: allocate N uniform buffers + N bind groups per slot,
+chain N passes each with its own bind group. Larger structural change, not a quick tweak.
+
+### Attempt 3 — 2 nonces per shader invocation via stride uniform (REVERTED — made things worse)
+
+**Hypothesis**: double the nonces tested per dispatch by having each thread compute
+`blake2b(nonce_a)` and `blake2b(nonce_b = nonce_a + stride)`, halving the number of
+GPU round-trips needed on average.
+
+**What went wrong**: the extra `blake2b_8` call per thread doubled per-dispatch GPU time
+(~70 ms → ~140 ms per batch). The median for a probabilistic search is dominated by
+GPU batch size, and doubling the batch duration offset the halved round-trip count.
+Warm median regressed: 1417 ms vs Attempt 1's 1144 ms.
+
+**Deeper reason**: the Metal shader compiler can't overlap the two sequential `blake2b_8`
+calls within a thread — they're data-independent but the GPU executes them serially within
+a single invocation. A different approach (e.g. increasing workgroup_size so more threads
+run in parallel) would be needed. But `WORKGROUP_SIZE = 64` is already capped by the
+dispatch dimension — the real knob is `dispatch_x`, not threads-per-invocation.
+
+**Current best**: Attempt 1 (dispatch_x = 65535, warm median 1144 ms). Reverting to that baseline.

@@ -87,9 +87,10 @@ impl WgpuBackend {
             .await
             .map_err(|e| WorkError::GpuInit(e.to_string()))?;
 
+        let shader_src = SHADER.replace("WGS_PLACEHOLDER", &WORKGROUP_SIZE.to_string());
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("nano-rspow-pow"),
-            source: wgpu::ShaderSource::Wgsl(SHADER.into()),
+            source: wgpu::ShaderSource::Wgsl(shader_src.into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -83,7 +83,7 @@ impl WgpuWebGenerator {
             .map_err(|e| format!("Failed to request WebGPU device: {}", e))?;
 
         console_log!("[WebGPU] Device and Queue acquired. Compiling WGSL shader...");
-        let shader_src = SHADER;
+        let shader_src = SHADER.replace("WGS_PLACEHOLDER", &WORKGROUP_SIZE.to_string());
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("nano-rspow-pow"),
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),
