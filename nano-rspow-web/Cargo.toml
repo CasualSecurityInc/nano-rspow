@@ -10,7 +10,7 @@ description = "Web/WASM Proof of Work generation for Nano (XNO) using WebGPU and
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-nano-rspow = { path = "../nano-rspow", default-features = false }
+nano-rspow = { path = "../nano-rspow", default-features = false, features = ["wgpu-types"] }
 wasm-bindgen = "0.2.100"
 wasm-bindgen-futures = "0.4.50"
 js-sys = "0.3.77"

@@ -1,5 +1,5 @@
-use wasm_bindgen::prelude::*;
 
+use nano_rspow::wgpu_types::{Uniforms, SHADER, WORKGROUP_SIZE};
 use nano_rspow::CancelToken;
 
 macro_rules! console_log {
@@ -7,21 +7,6 @@ macro_rules! console_log {
         web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!($($t)*)))
     )
 }
-
-const WORKGROUP_SIZE: u32 = 64;
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Uniforms {
-    hash0: [u32; 4],
-    hash1: [u32; 4],
-    base_nonce_lo: u32,
-    base_nonce_hi: u32,
-    threshold_lo: u32,
-    threshold_hi: u32,
-}
-
-
 
 // Double-buffered WebGPU generator.
 // Two slots (ping/pong) let us submit batch N while reading back batch N-1,
@@ -98,7 +83,7 @@ impl WgpuWebGenerator {
             .map_err(|e| format!("Failed to request WebGPU device: {}", e))?;
 
         console_log!("[WebGPU] Device and Queue acquired. Compiling WGSL shader...");
-        let shader_src = include_str!("../../nano-rspow/src/wgpu_backend/pow.wgsl");
+        let shader_src = SHADER;
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("nano-rspow-pow"),
             source: wgpu::ShaderSource::Wgsl(shader_src.into()),

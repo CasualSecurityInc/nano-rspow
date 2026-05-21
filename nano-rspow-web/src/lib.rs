@@ -26,6 +26,12 @@ impl WasmCancelToken {
     }
 }
 
+impl Default for WasmCancelToken {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen]
 pub struct GenerateResult {
     nonce: u64,

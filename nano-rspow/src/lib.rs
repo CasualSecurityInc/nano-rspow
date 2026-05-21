@@ -26,11 +26,20 @@ pub mod types;
 
 mod cpu;
 
+#[cfg(any(feature = "wgpu-backend", feature = "wgpu-types"))]
+mod wgpu_shared;
+
 #[cfg(feature = "wgpu-backend")]
 mod wgpu_backend;
 
 #[cfg(feature = "opencl")]
 mod opencl_backend;
+
+// Shared wgpu types exposed to WASM builds that compile wgpu independently.
+#[cfg(feature = "wgpu-types")]
+pub mod wgpu_types {
+    pub use crate::wgpu_shared::{Uniforms, SHADER, WORKGROUP_SIZE};
+}
 
 pub use types::{CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError, WorkResult};
 #[cfg(feature = "wgpu-backend")]

@@ -20,15 +20,13 @@ Developed for high-throughput node operations, client-side web integrations, and
 ### 1. Standalone CLI
 Compile and run the native generator directly on your machine:
 ```bash
-# Build binary in release mode
+# Build binary in release mode (output at target/release/nano-rspow-cli)
 cargo build -p nano-rspow-cli --release
 
-# Generate a smoketest PoW on CPU
-cargo run -p nano-rspow-cli -- generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --backend cpu --threshold fe00000000000000
-
-# Run a hardware benchmark
-cargo run -p nano-rspow-cli -- benchmark --count 10
+# Run the compiled binary
+./target/release/nano-rspow-cli benchmark --count 10
 ```
+Alternatively, you can use `cargo run -p nano-rspow-cli -- <args>` to automatically build and execute in one step.
 
 ### 2. Node.js & CLI (Zero-Install)
 Execute instantly using precompiled native binaries via npm or pnpm:

@@ -11,6 +11,9 @@ categories = ["cryptography", "hardware-support"]
 [features]
 default = ["wgpu-backend"]
 wgpu-backend = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
+# Exposes the shared wgpu shader constants and Uniforms type for WASM builds
+# that compile wgpu separately (e.g. nano-rspow-web).  Only requires bytemuck.
+wgpu-types = ["dep:bytemuck"]
 opencl = ["dep:ocl"]
 # cuda = ["dep:cudarc"]  # Future: NVIDIA only, see feat/cuda-oxide branch
 

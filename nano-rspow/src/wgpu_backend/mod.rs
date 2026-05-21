@@ -9,8 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::{Backend, CancelToken, GeneratorDiagnostics, GpuDiagnostics, TuningSource, WorkError};
 
-const SHADER: &str = include_str!("pow.wgsl");
-const WORKGROUP_SIZE: u32 = 64;
+use crate::wgpu_shared::{Uniforms, SHADER, WORKGROUP_SIZE};
 const DEFAULT_TUNE_BUDGET_MS: u64 = 250;
 const TUNE_CACHE_VERSION: &str = "v1";
 
@@ -31,17 +30,6 @@ impl Default for WgpuConfig {
             tune_budget_ms: DEFAULT_TUNE_BUDGET_MS,
         }
     }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Uniforms {
-    hash0: [u32; 4],
-    hash1: [u32; 4],
-    base_nonce_lo: u32,
-    base_nonce_hi: u32,
-    threshold_lo: u32,
-    threshold_hi: u32,
 }
 
 pub(crate) struct WgpuBackend {
@@ -301,10 +289,8 @@ fn select_dispatch(
         return (v, TuningSource::Manual);
     }
 
-    if !config.retune {
-        if let Some(v) = read_cached_dispatch(cache_path, candidates) {
-            return (v, TuningSource::Cache);
-        }
+    if !config.retune && let Some(v) = read_cached_dispatch(cache_path, candidates) {
+        return (v, TuningSource::Cache);
     }
 
     if let Some(v) = probe_dispatch(
