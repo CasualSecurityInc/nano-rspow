@@ -147,8 +147,14 @@ jobs:
         working-directory: nano-rspow-node
         run: |
           for dir in npm/*/; do
-            echo "Publishing $dir"
-            npm publish "$dir" --provenance --access public
+            name=$(node -p "require('./${dir}package.json').name")
+            version=$(node -p "require('./${dir}package.json').version")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "✅ $name@$version is already published! Skipping."
+            else
+              echo "🚀 Publishing $dir ($name@$version)..."
+              npm publish "$dir" --provenance --access public
+            fi
           done
 
   publish-main:
@@ -172,4 +178,12 @@ jobs:
         working-directory: nano-rspow-node
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish --provenance --access public
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "✅ $name@$version is already published! Skipping."
+          else
+            echo "🚀 Publishing $name@$version..."
+            npm publish --provenance --access public
+          fi
