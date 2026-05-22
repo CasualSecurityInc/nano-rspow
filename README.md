@@ -29,9 +29,9 @@ cargo build -p nano-rspow-cli --release
 Alternatively, you can use `cargo run -p nano-rspow-cli -- <args>` to automatically build and execute in one step.
 
 ### 2. Node.js & CLI (Zero-Install)
-Execute instantly using precompiled native binaries via npm or pnpm:
+Execute the high-performance CLI instantly using precompiled native binaries:
 ```bash
-npx nano-rspow-node 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --type send
+npx -p nano-rspow-node nano-rspow generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --backend cpu
 ```
 
 ### 3. Interactive Web Dashboard

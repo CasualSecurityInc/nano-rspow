@@ -13,11 +13,30 @@ let nativeBinding = null
 let localFileExisted = false
 let loadError = null
 
+function findLdd() {
+  const pathEnv = process.env.PATH || ''
+  const delimiter = process.platform === 'win32' ? ';' : ':'
+  const paths = pathEnv.split(delimiter)
+  for (const dir of paths) {
+    if (!dir) continue
+    const fullPath = join(dir, 'ldd')
+    try {
+      if (existsSync(fullPath)) {
+        return fullPath
+      }
+    } catch (e) {
+      // Ignore access errors
+    }
+  }
+  return null
+}
+
 function isMusl() {
   // For Node 10
   if (!process.report || typeof process.report.getReport !== 'function') {
     try {
-      const lddPath = require('child_process').execSync('which ldd').toString().trim()
+      const lddPath = findLdd()
+      if (!lddPath) return true
       return readFileSync(lddPath, 'utf8').includes('musl')
     } catch (e) {
       return true
