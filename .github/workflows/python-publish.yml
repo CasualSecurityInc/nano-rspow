@@ -18,8 +18,10 @@ defaults:
 
 jobs:
   version-check:
-    name: Check major.minor version consistency
+    name: Check version and publication status
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check-pypi.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
       - name: Compare major.minor versions
@@ -38,12 +40,27 @@ jobs:
           [ $FAILED -eq 1 ] && echo "Patch versions may diverge; major.minor must match." && exit 1
           echo "OK: all packages on major.minor $CARGO_MM"
 
+      - name: Check if already published on PyPI
+        id: check-pypi
+        working-directory: .
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          # Curl the PyPI JSON endpoint for this specific version.
+          if curl -s -f -o /dev/null "https://pypi.org/pypi/nano-rspow-python/$VERSION/json"; then
+            echo "✅ nano-rspow-python@$VERSION is already published! Skipping build."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 nano-rspow-python@$VERSION is not yet published. Building wheels."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+
   # ---------------------------------------------------------------------------
   # Build wheels for each platform
   # ---------------------------------------------------------------------------
   build:
     name: Build (${{ matrix.target }})
     needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -106,6 +123,8 @@ jobs:
   # ---------------------------------------------------------------------------
   sdist:
     name: Source distribution
+    needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -128,9 +147,9 @@ jobs:
   # ---------------------------------------------------------------------------
   publish:
     name: Publish to PyPI
-    needs: [build, sdist]
+    needs: [version-check, build, sdist]
+    if: needs.version-check.outputs.should_publish == 'true' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     environment:
       name: pypi
       url: https://pypi.org/p/nano-rspow-python

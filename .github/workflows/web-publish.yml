@@ -14,8 +14,10 @@ env:
 
 jobs:
   version-check:
-    name: Check major.minor version consistency
+    name: Check version and publication status
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check-npm.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
       - name: Compare major.minor versions
@@ -33,9 +35,23 @@ jobs:
           [ $FAILED -eq 1 ] && echo "Patch versions may diverge; major.minor must match." && exit 1
           echo "OK: all packages on major.minor $CARGO_MM"
 
+      - name: Check if already published on NPM
+        id: check-npm
+        run: |
+          NAME=$(jq -r .name nano-rspow-web/package.json)
+          VERSION=$(jq -r .version nano-rspow-web/package.json)
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "✅ $NAME@$VERSION is already published! Skipping build."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 $NAME@$VERSION is not yet published. Building."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+
   publish:
     name: Publish Web Crate to NPM
     needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

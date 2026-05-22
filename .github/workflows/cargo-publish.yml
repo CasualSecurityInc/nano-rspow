@@ -14,8 +14,10 @@ env:
 
 jobs:
   version-check:
-    name: Check major.minor version consistency
+    name: Check version and publication status
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check-crates.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
       - name: Compare major.minor versions
@@ -33,9 +35,24 @@ jobs:
           [ $FAILED -eq 1 ] && echo "Patch versions may diverge; major.minor must match." && exit 1
           echo "OK: all packages on major.minor $CARGO_MM"
 
+      - name: Check if already published on Crates.io
+        id: check-crates
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          # If BOTH crates are already on crates.io, we skip the entire publish job
+          if curl -s -f "https://crates.io/api/v1/crates/nano-rspow/$VERSION" >/dev/null && \
+             curl -s -f "https://crates.io/api/v1/crates/nano-rspow-cli/$VERSION" >/dev/null; then
+            echo "✅ Both nano-rspow@$VERSION and nano-rspow-cli@$VERSION are already on Crates.io! Skipping publish job."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 At least one crate is not yet published. Proceeding to publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+
   publish:
     name: Publish to Crates.io
     needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
