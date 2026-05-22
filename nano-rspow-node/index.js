@@ -3,96 +3,42 @@ const { join } = require('path')
 
 const { platform, arch } = process
 
+// Supported platform-to-package mappings for the built targets
+const PLATFORMS = {
+  'darwin-x64': { file: 'nano-rspow-node.darwin-x64.node', pkg: 'nano-rspow-node-darwin-x64' },
+  'darwin-arm64': { file: 'nano-rspow-node.darwin-arm64.node', pkg: 'nano-rspow-node-darwin-arm64' },
+  'win32-x64': { file: 'nano-rspow-node.win32-x64-msvc.node', pkg: 'nano-rspow-node-win32-x64-msvc' },
+  'linux-x64': { file: 'nano-rspow-node.linux-x64-gnu.node', pkg: 'nano-rspow-node-linux-x64-gnu' },
+  'linux-arm64': { file: 'nano-rspow-node.linux-arm64-gnu.node', pkg: 'nano-rspow-node-linux-arm64-gnu' }
+}
+
+const key = `${platform}-${arch}`
+const target = PLATFORMS[key]
+
+if (!target) {
+  throw new Error(`Unsupported OS/Architecture combination: ${key}`)
+}
+
+const localPath = join(__dirname, target.file)
 let nativeBinding = null
-let localFileExisted = false
 let loadError = null
 
-switch (platform) {
-  case 'darwin':
-    switch (arch) {
-      case 'x64':
-        localFileExisted = existsSync(join(__dirname, 'nano-rspow-node.darwin-x64.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./nano-rspow-node.darwin-x64.node')
-          } else {
-            nativeBinding = require('nano-rspow-node-darwin-x64')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      case 'arm64':
-        localFileExisted = existsSync(join(__dirname, 'nano-rspow-node.darwin-arm64.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./nano-rspow-node.darwin-arm64.node')
-          } else {
-            nativeBinding = require('nano-rspow-node-darwin-arm64')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      default:
-        throw new Error(`Unsupported architecture on macOS: ${arch}`)
-    }
-    break
-  case 'win32':
-    if (arch === 'x64') {
-      localFileExisted = existsSync(join(__dirname, 'nano-rspow-node.win32-x64-msvc.node'))
-      try {
-        if (localFileExisted) {
-          nativeBinding = require('./nano-rspow-node.win32-x64-msvc.node')
-        } else {
-          nativeBinding = require('nano-rspow-node-win32-x64-msvc')
-        }
-      } catch (e) {
-        loadError = e
-      }
-    } else {
-      throw new Error(`Unsupported architecture on Windows: ${arch}`)
-    }
-    break
-  case 'linux':
-    switch (arch) {
-      case 'x64':
-        localFileExisted = existsSync(join(__dirname, 'nano-rspow-node.linux-x64-gnu.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./nano-rspow-node.linux-x64-gnu.node')
-          } else {
-            nativeBinding = require('nano-rspow-node-linux-x64-gnu')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      case 'arm64':
-        localFileExisted = existsSync(join(__dirname, 'nano-rspow-node.linux-arm64-gnu.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./nano-rspow-node.linux-arm64-gnu.node')
-          } else {
-            nativeBinding = require('nano-rspow-node-linux-arm64-gnu')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      default:
-        throw new Error(`Unsupported architecture on Linux: ${arch}`)
-    }
-    break
-  default:
-    throw new Error(`Unsupported OS: ${platform}, architecture: ${arch}`)
+if (existsSync(localPath)) {
+  try {
+    nativeBinding = require(localPath)
+  } catch (e) {
+    loadError = e
+  }
+} else {
+  try {
+    nativeBinding = require(target.pkg)
+  } catch (e) {
+    loadError = e
+  }
 }
 
 if (!nativeBinding) {
-  if (loadError) {
-    throw loadError
-  }
-  throw new Error(`Failed to load native binding`)
+  throw loadError || new Error(`Failed to load native binding for ${key}`)
 }
 
 const { WorkType, generateWork, validateWork } = nativeBinding
