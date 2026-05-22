@@ -3,23 +3,72 @@
 const fs = require('fs');
 const path = require('path');
 
-const newVersion = process.argv[2];
-
-if (!newVersion) {
-  console.error('Error: Please provide the new version as an argument.');
-  console.error('Example: node scripts/bump-version.js 0.5.8');
-  process.exit(1);
-}
-
-if (!/^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$/.test(newVersion)) {
-  console.error(`Error: Invalid semver version format: "${newVersion}"`);
-  process.exit(1);
-}
-
 const rootDir = path.resolve(__dirname, '..');
+const cargoPath = path.join(rootDir, 'Cargo.toml');
+
+// Read the current version from Cargo.toml
+let currentVersion = null;
+if (fs.existsSync(cargoPath)) {
+  const content = fs.readFileSync(cargoPath, 'utf8');
+  const match = content.match(/\[workspace\.package\][^]*?version\s*=\s*"([^"]+)"/);
+  if (match) {
+    currentVersion = match[1];
+  }
+}
+
+if (!currentVersion) {
+  console.error('Error: Could not read the current workspace version from Cargo.toml');
+  process.exit(1);
+}
+
+const semverRegex = /^(\d+)\.(\d+)\.(\d+)(-[a-zA-Z0-9.]+)?$/;
+const parsed = currentVersion.match(semverRegex);
+if (!parsed) {
+  console.error(`Error: Current version "${currentVersion}" in Cargo.toml is not valid semver.`);
+  process.exit(1);
+}
+
+let major = parseInt(parsed[1], 10);
+let minor = parseInt(parsed[2], 10);
+let patch = parseInt(parsed[3], 10);
+
+const inputArg = process.argv[2];
+
+if (!inputArg) {
+  console.error('Error: Please provide a bump type or a new version.');
+  console.error('Usage:');
+  console.error('  node scripts/bump-version.js patch          (Increment patch: e.g. 0.5.7 -> 0.5.8)');
+  console.error('  node scripts/bump-version.js minor          (Increment minor: e.g. 0.5.7 -> 0.6.0)');
+  console.error('  node scripts/bump-version.js major          (Increment major: e.g. 0.5.7 -> 1.0.0)');
+  console.error('  node scripts/bump-version.js <new-version>  (Set to explicit version string)');
+  process.exit(1);
+}
+
+let newVersion;
+if (['major', 'minor', 'patch'].includes(inputArg)) {
+  if (inputArg === 'major') {
+    major += 1;
+    minor = 0;
+    patch = 0;
+  } else if (inputArg === 'minor') {
+    minor += 1;
+    patch = 0;
+  } else if (inputArg === 'patch') {
+    patch += 1;
+  }
+  newVersion = `${major}.${minor}.${patch}`;
+  console.log(`Bumping ${inputArg} version from ${currentVersion} ➡️ ${newVersion}`);
+} else {
+  if (!semverRegex.test(inputArg)) {
+    console.error(`Error: Invalid version or bump type: "${inputArg}"`);
+    console.error('Must be "major", "minor", "patch", or an explicit semver string (e.g. "0.5.8")');
+    process.exit(1);
+  }
+  newVersion = inputArg;
+  console.log(`Setting explicit version: ${currentVersion} ➡️ ${newVersion}`);
+}
 
 // 1. Update Cargo.toml workspace version
-const cargoPath = path.join(rootDir, 'Cargo.toml');
 if (fs.existsSync(cargoPath)) {
   let content = fs.readFileSync(cargoPath, 'utf8');
   // Match version line inside [workspace.package] section
