@@ -6,6 +6,8 @@
 //!   benchmark [--count <n>] [--format <table|markdown|json>]
 //!   info
 
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -106,13 +108,18 @@ enum Commands {
         #[arg(long)]
         retune: bool,
 
-        /// Backend to benchmark: cpu, gpu, opencl, or all
+        /// Backend to benchmark: cpu, gpu, opencl, competitor, or all
         #[arg(long, value_enum, default_value_t = BenchBackend::All)]
         backend: BenchBackend,
 
         /// Tier to benchmark: dev, ep2_recv, epoch1, ep2_send, or all
         #[arg(long, value_enum, default_value_t = BenchTier::All)]
         tier: BenchTier,
+
+        /// Path to the nano-pow competitor's built CLI script (dist/bin/cli.js).
+        /// Auto-detected from the worktree if not specified.
+        #[arg(long)]
+        competitor_path: Option<PathBuf>,
     },
 
     /// Print information about available backends and GPU
@@ -143,6 +150,8 @@ enum BenchBackend {
     Cpu,
     Gpu,
     Opencl,
+    /// The nano-pow Node.js/WebGPU competitor (shells out via subprocess)
+    Competitor,
     All,
 }
 
@@ -204,7 +213,8 @@ fn main() {
             retune,
             backend,
             tier,
-        } => cmd_benchmark(count, &format, &hash, mode, retune, backend, tier),
+            competitor_path,
+        } => cmd_benchmark(count, &format, &hash, mode, retune, backend, tier, competitor_path.as_deref()),
     }
 }
 
@@ -660,6 +670,91 @@ fn run_backend_bench_cold(
     })
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Competitor (nano-pow) helpers
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Default location of the competitor's built CLI script relative to the repo root.
+const COMPETITOR_DEFAULT_REL: &str =
+    "worktrees/nano-pow-competitor/vendor/nano-pow/dist/bin/cli.js";
+
+/// Resolve the competitor CLI path: use the explicit override, or auto-detect
+/// from the repo root (two levels up from this binary's manifest directory).
+fn resolve_competitor_path(override_path: Option<&Path>) -> Option<PathBuf> {
+    if let Some(p) = override_path {
+        return Some(p.to_path_buf());
+    }
+    // Try to locate the worktree relative to CARGO_MANIFEST_DIR at compile time.
+    let manifest = env!("CARGO_MANIFEST_DIR");
+    let repo_root = Path::new(manifest).parent()?.to_path_buf();
+    let candidate = repo_root.join(COMPETITOR_DEFAULT_REL);
+    if candidate.exists() { Some(candidate) } else { None }
+}
+
+/// Run N samples of the competitor CLI, one subprocess per sample.
+/// Each call: `node <cli_js> <hash_hex> --difficulty <threshold_hex>`
+/// Times wall-clock from process spawn to exit. Returns None if the CLI is
+/// unavailable or consistently errors.
+fn run_competitor_bench(
+    node_cli: &Path,
+    hash_hex: &str,
+    threshold: u64,
+    count: usize,
+    threshold_name: &'static str,
+) -> Option<BenchRow> {
+    // The nano-pow CLI parses hashes by popping from the tail of argv,
+    // so the hash must come LAST. Flags (--difficulty) go before it.
+    // Difficulty must be a 16-char lowercase hex string (no 0x prefix).
+    let threshold_hex = format!("{threshold:016x}");
+    let hash_lower = hash_hex.to_lowercase();
+    let mut timings: Vec<f64> = Vec::with_capacity(count);
+    eprint!("  nano-pow {} × {} ... ", count, threshold_name);
+
+    for _ in 0..count {
+        let t0 = Instant::now();
+        let output = Command::new("node")
+            .arg(node_cli)
+            .arg("--difficulty")
+            .arg(&threshold_hex)
+            .arg(&hash_lower)
+            .output()
+            .ok()?;
+        let elapsed = t0.elapsed().as_secs_f64() * 1000.0;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            eprintln!("\n  nano-pow error: {stderr}");
+            return None;
+        }
+        // Validate that stdout contains a work result (JSON with a 'work' key).
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.contains("work") {
+            eprintln!("\n  nano-pow unexpected output: {stdout}");
+            return None;
+        }
+        timings.push(elapsed);
+    }
+
+    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let min = timings.first().copied().unwrap_or(0.0);
+    let max = timings.last().copied().unwrap_or(0.0);
+    let mean = timings.iter().sum::<f64>() / timings.len() as f64;
+    let median = timings[timings.len() / 2];
+    eprintln!("done (median {median:.1}ms)");
+
+    Some(BenchRow {
+        backend: "nano-pow",
+        mode: "warm",   // Node process stays warm internally; we're timing external
+        threshold_name,
+        threshold,
+        samples: count,
+        min_ms: min,
+        max_ms: max,
+        mean_ms: mean,
+        median_ms: median,
+    })
+}
+
 fn cmd_benchmark(
     count: usize,
     format: &str,
@@ -668,6 +763,7 @@ fn cmd_benchmark(
     retune: bool,
     backend: BenchBackend,
     tier: BenchTier,
+    competitor_path: Option<&Path>,
 ) {
     let hash = match parse_hash(hash_str) {
         Ok(h) => h,
@@ -902,6 +998,48 @@ fn cmd_benchmark(
                     });
                     eprintln!("OpenCL GPU backend: unavailable — {e}");
                 }
+            }
+        }
+    }
+
+    // ── nano-pow competitor backend ──
+    let run_competitor = matches!(backend, BenchBackend::Competitor | BenchBackend::All);
+    if run_competitor {
+        eprintln!("nano-pow competitor backend:");
+        match resolve_competitor_path(competitor_path) {
+            None => {
+                eprintln!("  [skipped] competitor CLI not found.");
+                eprintln!("  Build it first: cd worktrees/nano-pow-competitor/vendor/nano-pow && npm run build");
+                eprintln!("  Or pass --competitor-path <path/to/dist/bin/cli.js>.");
+                backends.push(BackendBenchReport {
+                    backend: "nano-pow",
+                    available: false,
+                    error: Some("competitor CLI not found".into()),
+                    timings: BenchTiming::default(),
+                    rows: Vec::new(),
+                });
+            }
+            Some(cli_path) => {
+                let mut backend_report = BackendBenchReport {
+                    backend: "nano-pow",
+                    available: true,
+                    error: None,
+                    timings: BenchTiming::default(),
+                    rows: Vec::new(),
+                };
+                // nano-pow always behaves like "warm" from our perspective
+                // (one subprocess per sample; Node.js spins up inside each invocation).
+                // We skip the BenchMode::Cold path — it would be identical.
+                for &(name, thresh) in &tiers {
+                    if let Some(row) = run_competitor_bench(&cli_path, hash_str, thresh, count, name) {
+                        backend_report.rows.push(row.clone());
+                        rows.push(row);
+                    } else {
+                        eprintln!("  nano-pow backend failed for tier {name}");
+                        break;
+                    }
+                }
+                backends.push(backend_report);
             }
         }
     }

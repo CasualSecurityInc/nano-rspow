@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import webbrowser
+import shutil
 
 def main():
     # 1. Paths Setup
@@ -11,19 +12,38 @@ def main():
     index_html_path = os.path.join(script_dir, "index.html")
     index_template_path = os.path.join(script_dir, "index.template.html")
     nano_pow_bundle_path = os.path.join(script_dir, "nano-pow-bundle.js")
+    # Path of the freshly-built bundle from the worktree clone.
+    competitor_dist_path = os.path.join(
+        workspace_dir,
+        "worktrees", "nano-pow-competitor", "vendor", "nano-pow",
+        "dist", "main.min.js",
+    )
     demo_js_path = os.path.join(script_dir, "demo.js")
-    
+
     print("=== Competitor Nano PoW Dashboard Builder ===")
-    
-    # 2. Verify all files exist
+
+    # 2. Verify files and auto-sync bundle
     if not os.path.exists(index_template_path):
         print(f"✗ Error: Template file {index_template_path} not found.")
         sys.exit(1)
-        
-    if not os.path.exists(nano_pow_bundle_path):
+
+    if os.path.exists(competitor_dist_path):
+        wt_mtime = os.path.getmtime(competitor_dist_path)
+        local_mtime = os.path.getmtime(nano_pow_bundle_path) if os.path.exists(nano_pow_bundle_path) else 0
+        if wt_mtime > local_mtime:
+            shutil.copy2(competitor_dist_path, nano_pow_bundle_path)
+            import datetime
+            ts = datetime.datetime.fromtimestamp(wt_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            print(f"-> Auto-synced fresh bundle from worktree (built {ts})")
+        else:
+            print("-> Worktree bundle is not newer; using existing nano-pow-bundle.js")
+    elif not os.path.exists(nano_pow_bundle_path):
         print(f"✗ Error: Competitor bundle {nano_pow_bundle_path} not found.")
-        print("Please copy dist/main.min.js from the competitor repo here as nano-pow-bundle.js first.")
+        print("Please build the worktree first:")
+        print("  cd worktrees/nano-pow-competitor/vendor/nano-pow && npm run build")
         sys.exit(1)
+    else:
+        print("-> Worktree not found; using existing nano-pow-bundle.js")
         
     if not os.path.exists(demo_js_path):
         print(f"✗ Error: UI script {demo_js_path} not found.")
