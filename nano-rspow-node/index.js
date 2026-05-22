@@ -41,8 +41,10 @@ if (!nativeBinding) {
   throw loadError || new Error(`Failed to load native binding for ${key}`)
 }
 
-const { WorkType, generateWork, validateWork } = nativeBinding
+const { WorkType, generateWork, validateWork, getBackendName } = nativeBinding
 
 module.exports.WorkType = WorkType
 module.exports.generateWork = generateWork
 module.exports.validateWork = validateWork
+module.exports.getBackendName = getBackendName
+

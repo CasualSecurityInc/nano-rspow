@@ -1,0 +1,7 @@
+# Ignore transient build/installation artifacts for roundtrip tests
+**/node_modules/
+**/target/
+**/.venv/
+**/__pycache__/
+**/Cargo.lock
+**/package-lock.json

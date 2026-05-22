@@ -1,0 +1,13 @@
+{
+  "name": "node-roundtrip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NPM registry roundtrip verification test for nano-rspow-node",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "nano-rspow-node": "^0.5.7"
+  }
+}

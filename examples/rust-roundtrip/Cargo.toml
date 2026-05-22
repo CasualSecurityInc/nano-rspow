@@ -1,0 +1,9 @@
+[package]
+name = "rust-roundtrip"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nano-rspow = "0.5.9"
+
+[workspace]

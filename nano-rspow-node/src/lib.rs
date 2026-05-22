@@ -91,3 +91,9 @@ pub fn validate_work(hash_hex: String, work_hex: String, work_type: WorkType) ->
     let result = nano_rspow::work_validate(&hash, work, work_type.threshold());
     Ok(result.is_valid())
 }
+
+#[napi]
+pub fn get_backend_name() -> String {
+    get_generator().backend_name().to_string()
+}
+

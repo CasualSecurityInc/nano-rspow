@@ -65,18 +65,18 @@ pub(crate) trait Backend {
 }
 
 impl WorkGenerator {
-    /// Priority: GPU (OpenCL or wgpu), gracefully falling back to CPU.
+    /// Priority: GPU (wgpu or OpenCL), gracefully falling back to CPU.
     pub fn auto() -> Self {
-        #[cfg(feature = "opencl")]
+        #[cfg(feature = "wgpu-backend")]
         {
-            if let Ok(g) = opencl_backend::OpenClBackend::new(Default::default()) {
+            if let Ok(g) = wgpu_backend::WgpuBackend::new(Default::default()) {
                 return Self { inner: Arc::new(g) };
             }
         }
 
-        #[cfg(feature = "wgpu-backend")]
+        #[cfg(feature = "opencl")]
         {
-            if let Ok(g) = wgpu_backend::WgpuBackend::new(Default::default()) {
+            if let Ok(g) = opencl_backend::OpenClBackend::new(Default::default()) {
                 return Self { inner: Arc::new(g) };
             }
         }
