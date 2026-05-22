@@ -12,7 +12,7 @@
   "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CasualSecurityInc/nano-rspow"
+    "url": "git+https://github.com/CasualSecurityInc/nano-rspow.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
