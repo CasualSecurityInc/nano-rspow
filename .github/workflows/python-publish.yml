@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compare major.minor versions
+        working-directory: .
         run: |
           CARGO=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           CARGO_MM=$(echo "$CARGO" | cut -d. -f1-2)
