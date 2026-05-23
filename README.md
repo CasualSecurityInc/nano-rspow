@@ -49,9 +49,9 @@ Below is the directory mapping for each target, along with their primary release
 | Environment | Documentation Link | Latest Releases & Authoritative Registries |
 | :--- | :--- | :--- |
 | **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
-| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [npm registry](https://www.npmjs.com/package/nano-rspow-node) |
+| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
-| **Web (WASM / WebGPU)** | [nano-rspow-web/](nano-rspow-web/) | [Interactive Dashboard](nano-rspow-web/browser-demo/index.html) *(Self-contained `index.html`)* |
+| **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](nano-rspow-web/browser-demo/index.html) |
 | **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 
 ---
