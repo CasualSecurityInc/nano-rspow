@@ -25,6 +25,10 @@ struct OpenClSession {
 
 impl OpenClBackend {
     pub fn new(_config: OpenClConfig) -> Result<Self, WorkError> {
+        if ocl::Platform::list().is_empty() {
+            return Err(WorkError::GpuInit("No OpenCL platforms available".to_string()));
+        }
+
         let pro_que = ProQue::builder()
             .src(SHADER)
             .dims(SpatialDims::One(BATCH_SIZE))

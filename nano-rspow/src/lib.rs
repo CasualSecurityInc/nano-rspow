@@ -69,14 +69,20 @@ impl WorkGenerator {
     pub fn auto() -> Self {
         #[cfg(feature = "wgpu-backend")]
         {
-            if let Ok(g) = wgpu_backend::WgpuBackend::new(Default::default()) {
+            let wgpu_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                wgpu_backend::WgpuBackend::new(Default::default())
+            }));
+            if let Ok(Ok(g)) = wgpu_res {
                 return Self { inner: Arc::new(g) };
             }
         }
 
         #[cfg(feature = "opencl")]
         {
-            if let Ok(g) = opencl_backend::OpenClBackend::new(Default::default()) {
+            let opencl_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                opencl_backend::OpenClBackend::new(Default::default())
+            }));
+            if let Ok(Ok(g)) = opencl_res {
                 return Self { inner: Arc::new(g) };
             }
         }
