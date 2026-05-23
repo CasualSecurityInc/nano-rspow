@@ -25,7 +25,8 @@ struct OpenClSession {
 
 impl OpenClBackend {
     pub fn new(_config: OpenClConfig) -> Result<Self, WorkError> {
-        if ocl::Platform::list().is_empty() {
+        let platforms = ocl::core::get_platform_ids();
+        if platforms.is_err() || platforms.as_ref().map(|p| p.is_empty()).unwrap_or(true) {
             return Err(WorkError::GpuInit("No OpenCL platforms available".to_string()));
         }
 
