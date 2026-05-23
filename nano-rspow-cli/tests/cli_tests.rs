@@ -19,7 +19,7 @@ fn test_cli_oneshot_generate() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Work      : "));
+    assert!(stdout.contains("Nonce     : "));
 }
 
 #[test]

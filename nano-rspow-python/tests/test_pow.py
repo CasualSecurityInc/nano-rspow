@@ -95,10 +95,10 @@ class TestValidateWork:
 class TestGenerateWork:
     """Tests for the generate_work function."""
 
-    def test_generate_dev_roundtrip(self):
-        """Generate work at DEV difficulty and round-trip validate."""
+    def test_generate_receive_roundtrip(self):
+        """Generate work at Receive difficulty and round-trip validate."""
         zero_hash = "00" * 32
-        result = nano_rspow.generate_work(zero_hash, WorkType.Dev)
+        result = nano_rspow.generate_work(zero_hash, WorkType.Receive)
 
         # Result should be a WorkResult instance
         assert isinstance(result, WorkResult)
@@ -108,7 +108,7 @@ class TestGenerateWork:
         assert result.multiplier >= 1.0
 
         # Round-trip validation
-        assert nano_rspow.validate_work(zero_hash, result.nonce_hex, WorkType.Dev)
+        assert nano_rspow.validate_work(zero_hash, result.nonce_hex, WorkType.Receive)
 
     def test_generate_epoch1_known_hash(self):
         """Generate work for a known hash at Epoch1 difficulty."""
@@ -118,12 +118,12 @@ class TestGenerateWork:
 
     def test_str_returns_nonce(self):
         """str(result) should return the nonce hex."""
-        result = nano_rspow.generate_work("00" * 32, WorkType.Dev)
+        result = nano_rspow.generate_work("00" * 32, WorkType.Receive)
         assert str(result) == result.nonce_hex
 
     def test_repr_contains_info(self):
         """repr(result) should be informative."""
-        result = nano_rspow.generate_work("00" * 32, WorkType.Dev)
+        result = nano_rspow.generate_work("00" * 32, WorkType.Receive)
         r = repr(result)
         assert "WorkResult" in r
         assert result.nonce_hex in r
@@ -137,7 +137,6 @@ class TestWorkType:
         assert WorkType.Send == 0
         assert WorkType.Receive == 1
         assert WorkType.Epoch1 == 2
-        assert WorkType.Dev == 3
 
     def test_equality(self):
         """Enum equality should work."""

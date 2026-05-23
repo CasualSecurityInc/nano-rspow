@@ -12,13 +12,11 @@ class WorkType(IntEnum):
         Send:    Epoch 2 send/change threshold (0xfffffff800000000)
         Receive: Epoch 2 receive threshold     (0xfffffe0000000000)
         Epoch1:  Legacy / open threshold        (0xffffffc000000000)
-        Dev:     Development threshold          (0xfe00000000000000)
     """
 
     Send = 0
     Receive = 1
     Epoch1 = 2
-    Dev = 3
 
 class WorkResult:
     """The result of a PoW generation or validation.

@@ -52,14 +52,12 @@ fn get_generator() -> &'static WorkGenerator {
 /// - `Send`    → epoch 2 send/change (0xfffffff800000000)
 /// - `Receive` → epoch 2 receive     (0xfffffe0000000000)
 /// - `Epoch1`  → legacy / open       (0xffffffc000000000)
-/// - `Dev`     → development          (0xfe00000000000000)
 #[pyclass(eq, eq_int, from_py_object)]
 #[derive(Clone, Copy, PartialEq)]
 enum WorkType {
     Send = 0,
     Receive = 1,
     Epoch1 = 2,
-    Dev = 3,
 }
 
 impl WorkType {
@@ -68,7 +66,6 @@ impl WorkType {
             WorkType::Send => thresholds::EPOCH2_SEND,
             WorkType::Receive => thresholds::EPOCH2_RECEIVE,
             WorkType::Epoch1 => thresholds::EPOCH1,
-            WorkType::Dev => thresholds::DEV,
         }
     }
 }

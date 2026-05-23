@@ -6,8 +6,7 @@
 export const enum WorkType {
   Send = 'Send',
   Receive = 'Receive',
-  Epoch1 = 'Epoch1',
-  Dev = 'Dev'
+  Epoch1 = 'Epoch1'
 }
 export declare function generateWork(hashHex: string, workType: WorkType): Promise<string>
 export declare function validateWork(hashHex: string, workHex: string, workType: WorkType): boolean

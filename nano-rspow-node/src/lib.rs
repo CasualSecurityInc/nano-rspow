@@ -16,7 +16,6 @@ pub enum WorkType {
     Send,
     Receive,
     Epoch1,
-    Dev,
 }
 
 impl WorkType {
@@ -25,7 +24,6 @@ impl WorkType {
             WorkType::Send => thresholds::EPOCH2_SEND,
             WorkType::Receive => thresholds::EPOCH2_RECEIVE,
             WorkType::Epoch1 => thresholds::EPOCH1,
-            WorkType::Dev => thresholds::DEV,
         }
     }
 }
