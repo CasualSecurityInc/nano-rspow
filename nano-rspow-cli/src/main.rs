@@ -487,13 +487,16 @@ fn cmd_generate(
         match generator.generate(&hash, default_threshold) {
             Some(result) => {
                 let elapsed = t0.elapsed();
-                println!("\r");
-                println!("Work      : {}", result.nonce_hex());
+                println!(" Hash found!");
+                println!("Nonce     : {}  (the work value to submit)", result.nonce_hex());
                 println!(
-                    "Difficulty: {} ({:#018x})",
-                    result.difficulty, result.difficulty
+                    "Difficulty: {:#018x}",
+                    result.difficulty
                 );
-                println!("Multiplier: {:.4}x", result.multiplier());
+                println!(
+                    "Luck      : {:.4}×  (nonce was {:.2}× above min threshold; avg ≈ 1×)",
+                    result.multiplier(), result.multiplier()
+                );
                 println!("Time      : {:.3}s", elapsed.as_secs_f64());
             }
             None => {
