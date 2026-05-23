@@ -54,7 +54,7 @@ const path = require('path');
     await page.waitForTimeout(500);
 
     // 5. Take screenshot
-    const outputPath = path.resolve(__dirname, '../assets/benchmark-ui.png');
+    const outputPath = path.resolve(__dirname, '../../assets/benchmark-ui.png');
     console.log(`Capturing screenshot to ${outputPath}...`);
     await page.screenshot({ path: outputPath });
 

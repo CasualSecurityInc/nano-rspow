@@ -32,7 +32,7 @@ const isValid = validate_work(hash, result.nonce, threshold); // true
 
 ## Benchmarking Dashboard
 
-<img align="right" src="assets/benchmark-ui.png" width="480" alt="Benchmarking Dashboard" />
+<img align="right" src="../assets/benchmark-ui.png" width="480" alt="Benchmarking Dashboard" />
 An interactive benchmarking dashboard is included in `browser-demo/index.html` to measure WebGPU and CPU WebAssembly performance.
 
 Try it out for yourself: **[https://casualsecurityinc.github.io/nano-rspow/](https://casualsecurityinc.github.io/nano-rspow/)**
