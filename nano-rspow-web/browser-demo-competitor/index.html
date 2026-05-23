@@ -302,7 +302,20 @@
             color: var(--warning-color);
         }
 
-        /* Result Panel */
+        /* Result Panel & Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .result-panel {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-color);
@@ -558,6 +571,11 @@
             align-items: center;
             justify-content: center;
         }
+
+        #difficulty-threshold {
+            display: block;
+            scroll-margin-top: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -577,7 +595,7 @@
         </div>
 
         <div class="form-row">
-            <div class="form-group flex-half">
+            <div class="form-group flex-half" id="difficulty-threshold">
                 <label>Difficulty Threshold</label>
                 <div class="difficulty-control" data-level="0" id="difficulty-control">
                     <button type="button" id="diff-prev" class="diff-btn" aria-label="Decrease difficulty">
@@ -594,7 +612,7 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
                 </div>
-                <div class="difficulty-active-label" id="diff-active-label">Dev / Smoketest Threshold<br>(0xffff000000000000)</div>
+                <div class="difficulty-active-label" id="diff-active-label">Dev / Smoketest<br>(0xffff000000000000)</div>
                 <input type="hidden" id="difficulty" value="ffff000000000000">
             </div>
 
@@ -638,18 +656,25 @@
             </div>
         </div>
 
-        <div class="result-panel">
-            <div class="result-row">
-                <span class="result-label">Status</span>
-                <span class="result-value" id="res-status" style="font-weight: bold; color: var(--text-secondary)">Idle</span>
+        <div class="results-grid">
+            <!-- Left Card: Status & Validation stacked vertically -->
+            <div class="result-panel">
+                <div class="result-row">
+                    <span class="result-label">Status</span>
+                    <span class="result-value" id="res-status" style="font-weight: bold; color: var(--text-secondary)">Idle</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Local Validation</span>
+                    <span class="result-value" id="res-validation">—</span>
+                </div>
             </div>
-            <div class="result-row">
-                <span class="result-label">Result Nonce</span>
-                <span class="result-value" id="res-nonce">—</span>
-            </div>
-            <div class="result-row">
-                <span class="result-label">Local Validation</span>
-                <span class="result-value" id="res-validation">—</span>
+
+            <!-- Right Card: Matching Result Nonce -->
+            <div class="result-panel" style="justify-content: center;">
+                <div class="result-row" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; justify-content: center; height: 100%;">
+                    <span class="result-label">Matching Work Nonce</span>
+                    <span class="result-value" id="res-nonce" style="font-size: 1.1rem; word-break: break-all; font-weight: bold; color: var(--accent-primary);">—</span>
+                </div>
             </div>
         </div>
     </section>
@@ -3278,15 +3303,16 @@ const elConsoleLog = document.getElementById('console-log');
 
 // Difficulty Selector bindings & logic
 const elDiffControl = document.getElementById('difficulty-control');
+const elDiffThreshold = document.getElementById('difficulty-threshold');
 const elDiffPrev = document.getElementById('diff-prev');
 const elDiffNext = document.getElementById('diff-next');
 const elDiffLabel = document.getElementById('diff-active-label');
 const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
-    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive/Open/Epoch Threshold<br>(0xfffffe0000000000)' },
-    { value: 'fffffff800000000', label: 'Send/Change Threshold<br>(0xfffffff800000000)' }
+    { value: 'ffff000000000000', label: 'Dev / Smoketest<br>(0xffff000000000000)' },
+    { value: 'fffffe0000000000', label: 'Block subtype: Receive / Open / Epoch<br>(0xfffffe0000000000)' },
+    { value: 'fffffff800000000', label: 'Block subtype: Send / Change<br>(0xfffffff800000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -3374,7 +3400,7 @@ async function checkWebGpuComputeWorks() {
         // Full Blake2b PoW shader — identical to the real shader used during generation.
         const powShaderEl = document.getElementById('pow-wgsl-source');
         if (!powShaderEl) throw new Error('pow-wgsl-source element not found');
-        const wgsl = powShaderEl.textContent.replace("WGS_PLACEHOLDER", "64");
+        const wgsl = powShaderEl.textContent.replace("WGS_PLACEHOLDER", "256");
 
         const module = device.createShaderModule({ code: wgsl });
         const pipeline = await device.createComputePipelineAsync({
@@ -3514,7 +3540,12 @@ elBtnRun.addEventListener('click', async () => {
         return;
     }
 
-    elBtnRun.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll viewport to the difficulty threshold label to bring diagnostics and console into focus
+    if (elDiffThreshold) {
+        elDiffThreshold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (elDiffControl) {
+        elDiffControl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     const hash = elBlockHash.value.trim();
     const threshold = elDifficulty.value;
@@ -3562,7 +3593,7 @@ elBtnRun.addEventListener('click', async () => {
             globalThis.localStorage.removeItem('NanoPowCache');
         }
         
-        let apiTarget = 'cpu';
+        let apiTarget = 'wasm';
         if (mode === 'auto') {
             log('System', 'Checking WebGPU capability...');
             const webgpuOk = await checkWebGpuSupport();
@@ -3570,22 +3601,22 @@ elBtnRun.addEventListener('click', async () => {
                 log('System', 'Running GPU compute smoke test...');
                 const computeOk = await checkWebGpuComputeWorks();
                 if (!computeOk) {
-                    log('System', 'WARNING: WebGPU compute smoke test failed. Auto falling back to WASM/CPU...');
-                    apiTarget = 'cpu';
+                    log('System', 'WARNING: WebGPU compute smoke test failed. Auto falling back to WebGL...');
+                    apiTarget = 'webgl';
                 } else {
                     log('System', 'Auto Mode: WebGPU support verified. Using WebGPU.');
                     apiTarget = 'webgpu';
                 }
             } else {
-                log('System', 'Auto Mode: WebGPU not available or timed out. Using CPU.');
-                apiTarget = 'cpu';
+                log('System', 'Auto Mode: WebGPU not available or timed out. Falling back to WebGL...');
+                apiTarget = 'webgl';
             }
         } else if (mode === 'webgpu') {
             log('WebGPU', 'Forcing WebGPU mode...');
             apiTarget = 'webgpu';
         } else {
-            log('CPU', 'Forcing CPU mode...');
-            apiTarget = 'cpu';
+            log('CPU', 'Forcing WASM CPU mode...');
+            apiTarget = 'wasm';
         }
 
         log('System', `Dispatching to nano-pow.work_generate(hash, { api: "${apiTarget}", difficulty: BigInt("0x${threshold}") })...`);
@@ -3614,8 +3645,8 @@ elBtnRun.addEventListener('click', async () => {
         // Nonce & Details
         const nonce = genResult.work; // 'work' field contains the nonce in competitor API
         const solvedDifficulty = genResult.difficulty;
-        const isGpu = apiTarget === 'webgpu';
-        const backendName = isGpu ? 'WebGPU (nano-pow)' : 'CPU (nano-pow)';
+        const isGpu = apiTarget === 'webgpu' || apiTarget === 'webgl';
+        const backendName = apiTarget === 'webgpu' ? 'WebGPU (nano-pow)' : (apiTarget === 'webgl' ? 'WebGL (nano-pow)' : 'WASM CPU (nano-pow)');
         
         log('Success', `PoW exploration finished! Valid Nonce found: ${nonce}`);
         log('Success', `Backend utilized: ${backendName}`);
@@ -3623,7 +3654,7 @@ elBtnRun.addEventListener('click', async () => {
         log('Success', `Generation Time: ${durationMs.toFixed(1)} ms`);
         
         // Update Diagnostics UI
-        elStatBackend.innerText = isGpu ? 'WEBGPU (COMP)' : 'CPU (COMP)';
+        elStatBackend.innerText = apiTarget === 'webgpu' ? 'WEBGPU (COMP)' : (apiTarget === 'webgl' ? 'WEBGL (COMP)' : 'WASM (COMP)');
         elStatBackend.className = 'stat-value ' + (isGpu ? 'success' : 'warning');
         elStatDuration.innerText = `${durationMs.toFixed(1)} ms`;
         

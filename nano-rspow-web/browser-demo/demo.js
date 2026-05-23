@@ -16,15 +16,16 @@ const elConsoleLog = document.getElementById('console-log');
 
 // Difficulty Selector bindings & logic
 const elDiffControl = document.getElementById('difficulty-control');
+const elDiffThreshold = document.getElementById('difficulty-threshold');
 const elDiffPrev = document.getElementById('diff-prev');
 const elDiffNext = document.getElementById('diff-next');
 const elDiffLabel = document.getElementById('diff-active-label');
 const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
-    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive/Open/Epoch Threshold<br>(0xfffffe0000000000)' },
-    { value: 'fffffff800000000', label: 'Send/Change Threshold<br>(0xfffffff800000000)' }
+    { value: 'ffff000000000000', label: 'Dev / Smoketest<br>(0xffff000000000000)' },
+    { value: 'fffffe0000000000', label: 'Block subtype: Receive / Open / Epoch<br>(0xfffffe0000000000)' },
+    { value: 'fffffff800000000', label: 'Block subtype: Send / Change<br>(0xfffffff800000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -289,7 +290,7 @@ function generateWorkCpuWorker(hash, threshold) {
 }
 
 // Timeout-protected WebGPU runner
-async function generateWorkGpuWithTimeout(hash, threshold, timeoutMs = 5000) {
+async function generateWorkGpuWithTimeout(hash, threshold, timeoutMs = 30000) {
     activeGpuCancelToken = new globalThis.WasmCancelToken();
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
@@ -373,8 +374,12 @@ elBtnRun.addEventListener('click', async () => {
         return;
     }
 
-    // Scroll viewport to the button to bring diagnostics and console into focus
-    elBtnRun.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll viewport to the difficulty threshold label to bring diagnostics and console into focus
+    if (elDiffThreshold) {
+        elDiffThreshold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (elDiffControl) {
+        elDiffControl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     const hash = elBlockHash.value.trim();
     const threshold = elDifficulty.value;
@@ -432,12 +437,12 @@ elBtnRun.addEventListener('click', async () => {
                 } else {
                     log('System', 'Auto Mode: Attempting WebGPU primary...');
                     try {
-                        // 5s watchdog — guards against a true GPU process hang.
+                        // 30s watchdog — guards against a true GPU process hang.
                         // Cancel button handles user abort.
-                        result = await generateWorkGpuWithTimeout(hash, threshold, 5000);
+                        result = await generateWorkGpuWithTimeout(hash, threshold, 30000);
                     } catch (err) {
                         if (err.isGpuTimeout) {
-                            log('System', `WARNING: WebGPU watchdog fired after 5s (GPU process may be hung). Falling back to background CPU Worker...`);
+                            log('System', `WARNING: WebGPU watchdog fired after 30s (GPU process may be hung). Falling back to background CPU Worker...`);
                             result = await generateWorkCpuWorker(hash, threshold);
                         } else {
                             // User-initiated cancel or real error — do not fall through

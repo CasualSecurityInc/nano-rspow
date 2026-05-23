@@ -24,7 +24,6 @@ validateWork(hash, work, WorkType.Send); // → true
 | `Send`      | Send and change blocks         |
 | `Receive`   | Open and receive blocks        |
 | `Epoch1`    | Epoch upgrade blocks           |
-| `Dev`       | Low-threshold development/test |
 
 ## CLI
 

@@ -21,15 +21,16 @@ const elConsoleLog = document.getElementById('console-log');
 
 // Difficulty Selector bindings & logic
 const elDiffControl = document.getElementById('difficulty-control');
+const elDiffThreshold = document.getElementById('difficulty-threshold');
 const elDiffPrev = document.getElementById('diff-prev');
 const elDiffNext = document.getElementById('diff-next');
 const elDiffLabel = document.getElementById('diff-active-label');
 const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
-    { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive/Open/Epoch Threshold<br>(0xfffffe0000000000)' },
-    { value: 'fffffff800000000', label: 'Send/Change Threshold<br>(0xfffffff800000000)' }
+    { value: 'ffff000000000000', label: 'Dev / Smoketest<br>(0xffff000000000000)' },
+    { value: 'fffffe0000000000', label: 'Block subtype: Receive / Open / Epoch<br>(0xfffffe0000000000)' },
+    { value: 'fffffff800000000', label: 'Block subtype: Send / Change<br>(0xfffffff800000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -117,7 +118,7 @@ async function checkWebGpuComputeWorks() {
         // Full Blake2b PoW shader — identical to the real shader used during generation.
         const powShaderEl = document.getElementById('pow-wgsl-source');
         if (!powShaderEl) throw new Error('pow-wgsl-source element not found');
-        const wgsl = powShaderEl.textContent.replace("WGS_PLACEHOLDER", "64");
+        const wgsl = powShaderEl.textContent.replace("WGS_PLACEHOLDER", "256");
 
         const module = device.createShaderModule({ code: wgsl });
         const pipeline = await device.createComputePipelineAsync({
@@ -257,7 +258,12 @@ elBtnRun.addEventListener('click', async () => {
         return;
     }
 
-    elBtnRun.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll viewport to the difficulty threshold label to bring diagnostics and console into focus
+    if (elDiffThreshold) {
+        elDiffThreshold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (elDiffControl) {
+        elDiffControl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     const hash = elBlockHash.value.trim();
     const threshold = elDifficulty.value;
@@ -305,7 +311,7 @@ elBtnRun.addEventListener('click', async () => {
             globalThis.localStorage.removeItem('NanoPowCache');
         }
         
-        let apiTarget = 'cpu';
+        let apiTarget = 'wasm';
         if (mode === 'auto') {
             log('System', 'Checking WebGPU capability...');
             const webgpuOk = await checkWebGpuSupport();
@@ -313,22 +319,22 @@ elBtnRun.addEventListener('click', async () => {
                 log('System', 'Running GPU compute smoke test...');
                 const computeOk = await checkWebGpuComputeWorks();
                 if (!computeOk) {
-                    log('System', 'WARNING: WebGPU compute smoke test failed. Auto falling back to WASM/CPU...');
-                    apiTarget = 'cpu';
+                    log('System', 'WARNING: WebGPU compute smoke test failed. Auto falling back to WebGL...');
+                    apiTarget = 'webgl';
                 } else {
                     log('System', 'Auto Mode: WebGPU support verified. Using WebGPU.');
                     apiTarget = 'webgpu';
                 }
             } else {
-                log('System', 'Auto Mode: WebGPU not available or timed out. Using CPU.');
-                apiTarget = 'cpu';
+                log('System', 'Auto Mode: WebGPU not available or timed out. Falling back to WebGL...');
+                apiTarget = 'webgl';
             }
         } else if (mode === 'webgpu') {
             log('WebGPU', 'Forcing WebGPU mode...');
             apiTarget = 'webgpu';
         } else {
-            log('CPU', 'Forcing CPU mode...');
-            apiTarget = 'cpu';
+            log('CPU', 'Forcing WASM CPU mode...');
+            apiTarget = 'wasm';
         }
 
         log('System', `Dispatching to nano-pow.work_generate(hash, { api: "${apiTarget}", difficulty: BigInt("0x${threshold}") })...`);
@@ -357,8 +363,8 @@ elBtnRun.addEventListener('click', async () => {
         // Nonce & Details
         const nonce = genResult.work; // 'work' field contains the nonce in competitor API
         const solvedDifficulty = genResult.difficulty;
-        const isGpu = apiTarget === 'webgpu';
-        const backendName = isGpu ? 'WebGPU (nano-pow)' : 'CPU (nano-pow)';
+        const isGpu = apiTarget === 'webgpu' || apiTarget === 'webgl';
+        const backendName = apiTarget === 'webgpu' ? 'WebGPU (nano-pow)' : (apiTarget === 'webgl' ? 'WebGL (nano-pow)' : 'WASM CPU (nano-pow)');
         
         log('Success', `PoW exploration finished! Valid Nonce found: ${nonce}`);
         log('Success', `Backend utilized: ${backendName}`);
@@ -366,7 +372,7 @@ elBtnRun.addEventListener('click', async () => {
         log('Success', `Generation Time: ${durationMs.toFixed(1)} ms`);
         
         // Update Diagnostics UI
-        elStatBackend.innerText = isGpu ? 'WEBGPU (COMP)' : 'CPU (COMP)';
+        elStatBackend.innerText = apiTarget === 'webgpu' ? 'WEBGPU (COMP)' : (apiTarget === 'webgl' ? 'WEBGL (COMP)' : 'WASM (COMP)');
         elStatBackend.className = 'stat-value ' + (isGpu ? 'success' : 'warning');
         elStatDuration.innerText = `${durationMs.toFixed(1)} ms`;
         
