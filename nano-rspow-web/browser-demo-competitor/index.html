@@ -586,8 +586,8 @@
                     
                     <div class="difficulty-bars">
                         <div class="bar bar-1" data-index="0" style="height: 61.5%;" title="Dev / Smoketest"></div>
-                        <div class="bar bar-2" data-index="1" style="height: 88.5%;" title="Receive / State-block"></div>
-                        <div class="bar bar-3" data-index="2" style="height: 100%;" title="Send / Epoch-block"></div>
+                        <div class="bar bar-2" data-index="1" style="height: 88.5%;" title="Receive/Open/Epoch"></div>
+                        <div class="bar bar-3" data-index="2" style="height: 100%;" title="Send/Change"></div>
                     </div>
                     
                     <button type="button" id="diff-next" class="diff-btn" aria-label="Increase difficulty">
@@ -686,6 +686,9 @@
 //
 // If a valid nonce is found, it is written to result[0] (low) and result[1] (high),
 // and result[2] is set to 1u as a found flag.
+//
+// Blake2b rounds are fully unrolled (no dynamic indexing into SIGMA) to ensure
+// compatibility with Safari's Metal shader compiler.
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Uniforms
@@ -711,7 +714,6 @@ struct Uniforms {
 
 fn u64_add(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
     let lo = a.x + b.x;
-    // carry = 1 if addition overflowed
     let carry = select(0u, 1u, lo < a.x);
     return vec2<u32>(lo, a.y + b.y + carry);
 }
@@ -720,21 +722,20 @@ fn u64_xor(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
     return vec2<u32>(a.x ^ b.x, a.y ^ b.y);
 }
 
-// Right rotation of a 64-bit value by n bits (0 < n < 64)
-fn u64_rotr(v: vec2<u32>, n: u32) -> vec2<u32> {
-    if n == 32u {
-        return vec2<u32>(v.y, v.x);
-    }
-    if n < 32u {
-        let lo = (v.x >> n) | (v.y << (32u - n));
-        let hi = (v.y >> n) | (v.x << (32u - n));
-        return vec2<u32>(lo, hi);
-    }
-    // n > 32
-    let m = n - 32u;
-    let lo = (v.y >> m) | (v.x << (32u - m));
-    let hi = (v.x >> m) | (v.y << (32u - m));
-    return vec2<u32>(lo, hi);
+// Right rotation of a 64-bit value by n bits (n must be a compile-time constant
+// or small literal — no dynamic n to avoid Metal compiler issues)
+fn rotr32(v: vec2<u32>) -> vec2<u32> {
+    return vec2<u32>(v.y, v.x);
+}
+fn rotr24(v: vec2<u32>) -> vec2<u32> {
+    return vec2<u32>((v.x >> 24u) | (v.y << 8u), (v.y >> 24u) | (v.x << 8u));
+}
+fn rotr16(v: vec2<u32>) -> vec2<u32> {
+    return vec2<u32>((v.x >> 16u) | (v.y << 16u), (v.y >> 16u) | (v.x << 16u));
+}
+fn rotr63(v: vec2<u32>) -> vec2<u32> {
+    // rotr63 = rotl1
+    return vec2<u32>((v.x << 1u) | (v.y >> 31u), (v.y << 1u) | (v.x >> 31u));
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -742,114 +743,847 @@ fn u64_rotr(v: vec2<u32>, n: u32) -> vec2<u32> {
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Initialization vector (same as SHA-512 IV)
-const IV: array<vec2<u32>, 8> = array<vec2<u32>, 8>(
-    vec2<u32>(0xf3bcc908u, 0x6a09e667u),
-    vec2<u32>(0x84caa73bu, 0xbb67ae85u),
-    vec2<u32>(0xfe94f82bu, 0x3c6ef372u),
-    vec2<u32>(0x5f1d36f1u, 0xa54ff53au),
-    vec2<u32>(0xade682d1u, 0x510e527fu),
-    vec2<u32>(0x2b3e6c1fu, 0x9b05688cu),
-    vec2<u32>(0xfb41bd6bu, 0x1f83d9abu),
-    vec2<u32>(0x137e2179u, 0x5be0cd19u),
-);
-
-// Sigma permutation table (12 rounds × 16 entries)
-const SIGMA: array<array<u32, 16>, 12> = array<array<u32, 16>, 12>(
-    array<u32, 16>(0u,  1u,  2u,  3u,  4u,  5u,  6u,  7u,  8u,  9u, 10u, 11u, 12u, 13u, 14u, 15u),
-    array<u32, 16>(14u, 10u, 4u,  8u,  9u,  15u, 13u, 6u,  1u,  12u, 0u,  2u,  11u, 7u,  5u,  3u),
-    array<u32, 16>(11u, 8u,  12u, 0u,  5u,  2u,  15u, 13u, 10u, 14u, 3u,  6u,  7u,  1u,  9u,  4u),
-    array<u32, 16>(7u,  9u,  3u,  1u,  13u, 12u, 11u, 14u, 2u,  6u,  5u,  10u, 4u,  0u,  15u, 8u),
-    array<u32, 16>(9u,  0u,  5u,  7u,  2u,  4u,  10u, 15u, 14u, 1u,  11u, 12u, 6u,  8u,  3u,  13u),
-    array<u32, 16>(2u,  12u, 6u,  10u, 0u,  11u, 8u,  3u,  4u,  13u, 7u,  5u,  15u, 14u, 1u,  9u),
-    array<u32, 16>(12u, 5u,  1u,  15u, 14u, 13u, 4u,  10u, 0u,  7u,  6u,  3u,  9u,  2u,  8u,  11u),
-    array<u32, 16>(13u, 11u, 7u,  14u, 12u, 1u,  3u,  9u,  5u,  0u,  15u, 4u,  8u,  6u,  2u,  10u),
-    array<u32, 16>(6u,  15u, 14u, 9u,  11u, 3u,  0u,  8u,  12u, 2u,  13u, 7u,  1u,  4u,  10u, 5u),
-    array<u32, 16>(10u, 2u,  8u,  4u,  7u,  6u,  1u,  5u,  15u, 11u, 9u,  14u, 3u,  12u, 13u, 0u),
-    array<u32, 16>(0u,  1u,  2u,  3u,  4u,  5u,  6u,  7u,  8u,  9u, 10u, 11u, 12u, 13u, 14u, 15u), // round 10 = round 0
-    array<u32, 16>(14u, 10u, 4u,  8u,  9u,  15u, 13u, 6u,  1u,  12u, 0u,  2u,  11u, 7u,  5u,  3u), // round 11 = round 1
-);
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Blake2b G mixing function
-// ──────────────────────────────────────────────────────────────────────────────
-
-struct State8 {
-    v: array<vec2<u32>, 16>,
-}
-
-fn blake2b_G(v: ptr<function, array<vec2<u32>, 16>>, a: u32, b: u32, c: u32, d: u32, x: vec2<u32>, y: vec2<u32>) {
-    (*v)[a] = u64_add(u64_add((*v)[a], (*v)[b]), x);
-    (*v)[d] = u64_rotr(u64_xor((*v)[d], (*v)[a]), 32u);
-    (*v)[c] = u64_add((*v)[c], (*v)[d]);
-    (*v)[b] = u64_rotr(u64_xor((*v)[b], (*v)[c]), 24u);
-    (*v)[a] = u64_add(u64_add((*v)[a], (*v)[b]), y);
-    (*v)[d] = u64_rotr(u64_xor((*v)[d], (*v)[a]), 16u);
-    (*v)[c] = u64_add((*v)[c], (*v)[d]);
-    (*v)[b] = u64_rotr(u64_xor((*v)[b], (*v)[c]), 63u);
-}
+const IV0 = vec2<u32>(0xf3bcc908u, 0x6a09e667u);
+const IV1 = vec2<u32>(0x84caa73bu, 0xbb67ae85u);
+const IV2 = vec2<u32>(0xfe94f82bu, 0x3c6ef372u);
+const IV3 = vec2<u32>(0x5f1d36f1u, 0xa54ff53au);
+const IV4 = vec2<u32>(0xade682d1u, 0x510e527fu);
+const IV5 = vec2<u32>(0x2b3e6c1fu, 0x9b05688cu);
+const IV6 = vec2<u32>(0xfb41bd6bu, 0x1f83d9abu);
+const IV7 = vec2<u32>(0x137e2179u, 0x5be0cd19u);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Blake2b-8 (output length 8 bytes) for a 40-byte input (nonce_le || hash)
+// Fully optimized using 16 thread-local state registers and static zero propagation.
 // ──────────────────────────────────────────────────────────────────────────────
 
 fn blake2b_8(nonce_lo: u32, nonce_hi: u32, h0: vec4<u32>, h1: vec4<u32>) -> vec2<u32> {
-    // Build the 16-word message block m[0..15].
+    // Build individual message words.
     // Input layout: nonce(8 bytes) || hash(32 bytes) = 40 bytes, zero-padded to 128 bytes.
-    var m: array<vec2<u32>, 16>;
-    // nonce in little-endian bytes → first two u32 words
-    m[0] = vec2<u32>(nonce_lo, nonce_hi);
-    // hash as 8 x u32 LE (via two vec4)
-    m[1] = vec2<u32>(h0.x, h0.y);
-    m[2] = vec2<u32>(h0.z, h0.w);
-    m[3] = vec2<u32>(h1.x, h1.y);
-    m[4] = vec2<u32>(h1.z, h1.w);
-    // m[5..15] = 0 (padding)
-    for (var i = 5u; i < 16u; i++) {
-        m[i] = vec2<u32>(0u, 0u);
-    }
+    let m0  = vec2<u32>(nonce_lo, nonce_hi);
+    let m1  = vec2<u32>(h0.x, h0.y);
+    let m2  = vec2<u32>(h0.z, h0.w);
+    let m3  = vec2<u32>(h1.x, h1.y);
+    let m4  = vec2<u32>(h1.z, h1.w);
+    const ZERO = vec2<u32>(0u, 0u);
 
-    // Initialize working vector v[0..15]
-    var v: array<vec2<u32>, 16>;
+    // Initialize 16 individual state variables directly mapping to GPU registers.
     // h = IV with parameter block XOR for output length 8
-    // Parameter block: digest_length=8, fanout=1, depth=1, rest=0
-    // IV[0] ^= 0x01010008 (output_len=8, fanout=1, depth=1, leaf_length=0 → 0x01010008)
-    v[0] = u64_xor(IV[0], vec2<u32>(0x01010008u, 0u));
-    v[1] = IV[1];
-    v[2] = IV[2];
-    v[3] = IV[3];
-    v[4] = IV[4];
-    v[5] = IV[5];
-    v[6] = IV[6];
-    v[7] = IV[7];
-    // v[8..11] = IV constants
-    v[8]  = IV[0];
-    v[9]  = IV[1];
-    v[10] = IV[2];
-    v[11] = IV[3];
-    // v[12] = IV[4] ^ counter_lo (40 bytes input = 0x28)
-    v[12] = u64_xor(IV[4], vec2<u32>(40u, 0u));
-    // v[13] = IV[5] ^ counter_hi (0 for single block)
-    v[13] = IV[5];
-    // v[14] = IV[6] ^ finalization flag (0xFFFFFFFFFFFFFFFF = last block)
-    v[14] = u64_xor(IV[6], vec2<u32>(0xFFFFFFFFu, 0xFFFFFFFFu));
-    v[15] = IV[7];
+    // Parameter block: digest_length=8, fanout=1, depth=1, rest=0 → 0x01010008
+    var v0  = u64_xor(IV0, vec2<u32>(0x01010008u, 0u));
+    var v1  = IV1;
+    var v2  = IV2;
+    var v3  = IV3;
+    var v4  = IV4;
+    var v5  = IV5;
+    var v6  = IV6;
+    var v7  = IV7;
+    var v8  = IV0;
+    var v9  = IV1;
+    var v10 = IV2;
+    var v11 = IV3;
+    // v[12] = IV4 ^ counter (40 bytes input = 0x28)
+    var v12 = u64_xor(IV4, vec2<u32>(40u, 0u));
+    var v13 = IV5;
+    // v[14] = IV6 ^ finalization flag (0xFFFFFFFFFFFFFFFF)
+    var v14 = u64_xor(IV6, vec2<u32>(0xFFFFFFFFu, 0xFFFFFFFFu));
+    var v15 = IV7;
 
-    // 12 rounds of mixing
-    for (var round = 0u; round < 12u; round++) {
-        let s = SIGMA[round];
-        blake2b_G(&v, 0u, 4u,  8u, 12u, m[s[0]],  m[s[1]]);
-        blake2b_G(&v, 1u, 5u,  9u, 13u, m[s[2]],  m[s[3]]);
-        blake2b_G(&v, 2u, 6u, 10u, 14u, m[s[4]],  m[s[5]]);
-        blake2b_G(&v, 3u, 7u, 11u, 15u, m[s[6]],  m[s[7]]);
-        blake2b_G(&v, 0u, 5u, 10u, 15u, m[s[8]],  m[s[9]]);
-        blake2b_G(&v, 1u, 6u, 11u, 12u, m[s[10]], m[s[11]]);
-        blake2b_G(&v, 2u, 7u,  8u, 13u, m[s[12]], m[s[13]]);
-        blake2b_G(&v, 3u, 4u,  9u, 14u, m[s[14]], m[s[15]]);
-    }
+    // Round 0
+    v0 = u64_add(u64_add(v0, v4), m0);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(u64_add(v0, v4), m1);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m2);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(u64_add(v1, v5), m3);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(u64_add(v2, v6), m4);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 1
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m4);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(u64_add(v0, v5), m1);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(u64_add(v1, v6), m0);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(u64_add(v1, v6), m2);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(u64_add(v3, v4), m3);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 2
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(u64_add(v1, v5), m0);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(u64_add(v2, v6), m2);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(u64_add(v1, v6), m3);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(u64_add(v2, v7), m1);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(u64_add(v3, v4), m4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 3
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m3);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(u64_add(v1, v5), m1);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(u64_add(v0, v5), m2);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(u64_add(v2, v7), m4);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(u64_add(v2, v7), m0);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 4
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(u64_add(v0, v4), m0);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(u64_add(v2, v6), m2);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(u64_add(v2, v6), m4);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(u64_add(v0, v5), m1);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(u64_add(v3, v4), m3);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 5
+    v0 = u64_add(u64_add(v0, v4), m2);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(u64_add(v2, v6), m0);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(u64_add(v3, v7), m3);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(u64_add(v0, v5), m4);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(u64_add(v3, v4), m1);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 6
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m1);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(u64_add(v3, v7), m4);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(u64_add(v0, v5), m0);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(u64_add(v1, v6), m3);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(u64_add(v2, v7), m2);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 7
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(u64_add(v2, v6), m1);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(u64_add(v3, v7), m3);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(u64_add(v0, v5), m0);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(u64_add(v1, v6), m4);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(u64_add(v3, v4), m2);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 8
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(u64_add(v2, v6), m3);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(u64_add(v3, v7), m0);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(u64_add(v0, v5), m2);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(u64_add(v2, v7), m1);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(u64_add(v2, v7), m4);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 9
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(u64_add(v0, v4), m2);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(v1, v5);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(u64_add(v1, v5), m4);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(u64_add(v3, v7), m1);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(u64_add(v2, v7), m3);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(u64_add(v3, v4), m0);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 10
+    v0 = u64_add(u64_add(v0, v4), m0);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(u64_add(v0, v4), m1);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m2);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(u64_add(v1, v5), m3);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(u64_add(v2, v6), m4);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(v0, v5);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(v1, v6);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(v1, v6);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(v3, v4);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
+    // Round 11
+    v0 = u64_add(v0, v4);
+    v12 = rotr32(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr24(u64_xor(v4, v8));
+    v0 = u64_add(v0, v4);
+    v12 = rotr16(u64_xor(v12, v0));
+    v8 = u64_add(v8, v12);
+    v4 = rotr63(u64_xor(v4, v8));
+    v1 = u64_add(u64_add(v1, v5), m4);
+    v13 = rotr32(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr24(u64_xor(v5, v9));
+    v1 = u64_add(v1, v5);
+    v13 = rotr16(u64_xor(v13, v1));
+    v9 = u64_add(v9, v13);
+    v5 = rotr63(u64_xor(v5, v9));
+    v2 = u64_add(v2, v6);
+    v14 = rotr32(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr24(u64_xor(v6, v10));
+    v2 = u64_add(v2, v6);
+    v14 = rotr16(u64_xor(v14, v2));
+    v10 = u64_add(v10, v14);
+    v6 = rotr63(u64_xor(v6, v10));
+    v3 = u64_add(v3, v7);
+    v15 = rotr32(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr24(u64_xor(v7, v11));
+    v3 = u64_add(v3, v7);
+    v15 = rotr16(u64_xor(v15, v3));
+    v11 = u64_add(v11, v15);
+    v7 = rotr63(u64_xor(v7, v11));
+    v0 = u64_add(u64_add(v0, v5), m1);
+    v15 = rotr32(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr24(u64_xor(v5, v10));
+    v0 = u64_add(v0, v5);
+    v15 = rotr16(u64_xor(v15, v0));
+    v10 = u64_add(v10, v15);
+    v5 = rotr63(u64_xor(v5, v10));
+    v1 = u64_add(u64_add(v1, v6), m0);
+    v12 = rotr32(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr24(u64_xor(v6, v11));
+    v1 = u64_add(u64_add(v1, v6), m2);
+    v12 = rotr16(u64_xor(v12, v1));
+    v11 = u64_add(v11, v12);
+    v6 = rotr63(u64_xor(v6, v11));
+    v2 = u64_add(v2, v7);
+    v13 = rotr32(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr24(u64_xor(v7, v8));
+    v2 = u64_add(v2, v7);
+    v13 = rotr16(u64_xor(v13, v2));
+    v8 = u64_add(v8, v13);
+    v7 = rotr63(u64_xor(v7, v8));
+    v3 = u64_add(v3, v4);
+    v14 = rotr32(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr24(u64_xor(v4, v9));
+    v3 = u64_add(u64_add(v3, v4), m3);
+    v14 = rotr16(u64_xor(v14, v3));
+    v9 = u64_add(v9, v14);
+    v4 = rotr63(u64_xor(v4, v9));
+
 
     // Finalize: h[0] ^= v[0] ^ v[8]
-    // The output is only 8 bytes (first word of h), little-endian.
-    let hash_word_0 = u64_xor(u64_xor(v[0], v[8]), u64_xor(IV[0], vec2<u32>(0x01010008u, 0u)));
+    let hash_word_0 = u64_xor(u64_xor(v0, v8), u64_xor(IV0, vec2<u32>(0x01010008u, 0u)));
     return hash_word_0; // lo = difficulty_lo, hi = difficulty_hi
 }
 
@@ -865,7 +1599,7 @@ fn u64_gte(a: vec2<u32>, b: vec2<u32>) -> bool {
 // Compute kernel — one invocation per nonce candidate
 // ──────────────────────────────────────────────────────────────────────────────
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(WGS_PLACEHOLDER)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // If already found, skip
     if atomicLoad(&result[2]) != 0u { return; }
@@ -878,12 +1612,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let threshold = vec2<u32>(u.threshold_lo, u.threshold_hi);
 
     if u64_gte(diff, threshold) {
-        // Try to claim the result (first writer wins via flag check)
-        let claim = atomicCompareExchangeWeak(&result[2], 0u, 1u);
-        if claim.exchanged {
-            atomicStore(&result[0], nonce.x);
-            atomicStore(&result[1], nonce.y);
-        }
+        atomicStore(&result[0], nonce.x);
+        atomicStore(&result[1], nonce.y);
+        atomicStore(&result[2], 1u);
     }
 }
 
@@ -1124,6 +1855,18 @@ var Cache = class {
   static clear() {
     this.#removeItem("NanoPowCache");
   }
+  static delete(hash) {
+    const bigintHash = bigintFrom(hash, "hex");
+    const item = this.#getItem("NanoPowCache");
+    if (item == null) return;
+    const cache = JSON.parse(item);
+    for (let i = 0; i < cache.length; i++) {
+      if (bigintFrom(cache[i].hash, "hex") === bigintHash) {
+        cache.splice(i, 1);
+      }
+    }
+    this.#setItem("NanoPowCache", JSON.stringify(cache));
+  }
   static search(hash, difficulty) {
     const bigintHash = bigintFrom(hash, "hex");
     const item = this.#getItem("NanoPowCache");
@@ -1288,6 +2031,130 @@ function stats(times) {
     truncatedHarmonic: truncatedCount / truncatedReciprocals
   };
 }
+
+// src/lib/config/index.ts
+//! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
+//! SPDX-License-Identifier: GPL-3.0-or-later
+var NanoPowConfigConstructor = class {
+  static #isInternal = false;
+  static get isInternal() {
+    return this.#isInternal;
+  }
+  api;
+  debug;
+  difficulty;
+  effort;
+  toJSON() {
+    return {
+      api: this.api,
+      debug: this.debug,
+      difficulty: bigintToHex(this.difficulty, 16),
+      effort: this.effort
+    };
+  }
+  constructor(api, debug, difficulty, effort) {
+    if (!this.constructor.isInternal) {
+      throw new TypeError(`NanoPowConfig cannot be constructed with 'new'.`);
+    }
+    this.api = api;
+    this.debug = debug;
+    this.difficulty = difficulty;
+    this.effort = effort;
+  }
+  static async create(options) {
+    const input = options;
+    const api = await this.#getValidApi(input);
+    const debug = this.#getValidDebug(input);
+    const difficulty = this.#getValidDifficulty(input);
+    const effort = this.#getValidEffort(input);
+    this.#isInternal = true;
+    const config = new this(api, debug, difficulty, effort);
+    this.#isInternal = false;
+    return config;
+  }
+  // Check platform support for default API setting
+  static async #getDefaultApi() {
+    if (await ApiSupport.webgpu.isSupported) return "webgpu";
+    if (await ApiSupport.webgl.isSupported) return "webgl";
+    if (await ApiSupport.wasm.isSupported) return "wasm";
+    return "cpu";
+  }
+  // Assign API if valid value passed
+  static async #getValidApi(input) {
+    if (input != null && input.api != null) {
+      if (typeof input.api === "string") {
+        try {
+          input.api = input.api.toLowerCase();
+        } catch {
+          input.api = null;
+        }
+      }
+      if (input.api !== "cpu" && input.api !== "wasm" && input.api !== "webgl" && input.api !== "webgpu") {
+        throw new Error(`Invalid API ${input.api}`);
+      }
+      if (!ApiSupport[input.api].isSupported) {
+        throw new Error(`${input.api} is not supported`);
+      }
+      return input.api;
+    }
+    return this.#getDefaultApi();
+  }
+  // Assign debug if valid value passed
+  static #getValidDebug(input) {
+    if (input != null && input.debug != null) {
+      if (typeof input.debug === "bigint" || typeof input.debug === "number") {
+        input.debug = input.debug.toString();
+      }
+      if (typeof input.debug === "string") {
+        input.debug = ["1", "true", "y", "yes"].includes(input.debug.toLowerCase());
+      }
+      if (typeof input.debug !== "boolean") {
+        throw new Error(`Invalid debug ${input.debug}`);
+      }
+      return input.debug;
+    }
+    return false;
+  }
+  // Assign difficulty if valid value passed
+  static #getValidDifficulty(input) {
+    if (input != null && input.difficulty != null) {
+      if (typeof input.difficulty === "string") {
+        try {
+          input.difficulty = bigintFrom(input.difficulty, "hex");
+        } catch {
+        }
+      }
+      if (typeof input.difficulty !== "bigint") {
+        throw new Error(`Invalid difficulty (${typeof input.difficulty})${input.difficulty}`);
+      }
+      if (input.difficulty < 0x0n || input.difficulty > SEND) {
+        throw new Error(`Invalid difficulty ${bigintToHex(input.difficulty, 16)}`);
+      }
+      return input.difficulty;
+    }
+    return SEND;
+  }
+  // Assign effort if valid value passed
+  static #getValidEffort(input) {
+    if (input != null && input.effort != null) {
+      if (typeof input.effort !== "number") {
+        throw new Error(`Invalid effort (${typeof input.effort})${input.effort}`);
+      }
+      if (input.effort < 1 || input.effort > 32) {
+        throw new Error(`Invalid effort ${input.effort}`);
+      }
+      return input.effort;
+    }
+    return 4;
+  }
+};
+var NanoPowConfig = (options) => {
+  try {
+    return NanoPowConfigConstructor.create(options);
+  } catch (err) {
+    throw new Error("Error constructing NanoPowConfig", { cause: err });
+  }
+};
 
 // src/lib/validate/index.ts
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
@@ -1733,10 +2600,10 @@ function createCanvas(size) {
   gl = context;
   const MAX_VIEWPORT_DIMS = gl.getParameter(gl.MAX_VIEWPORT_DIMS) ?? [4096, 4096];
   size = Math.min(size, ...MAX_VIEWPORT_DIMS);
-  size = Math.floor(size / 256) * 256;
+  size = size >>> 8 << 8;
   canvas.height = canvas.width = size;
   if (canvas.height !== gl.drawingBufferHeight || canvas.width !== gl.drawingBufferWidth) {
-    size = Math.floor(Math.min(gl.drawingBufferHeight, gl.drawingBufferWidth) / 256) * 256;
+    size = (gl.drawingBufferHeight < gl.drawingBufferWidth ? gl.drawingBufferHeight : gl.drawingBufferWidth) >>> 8 << 8;
     canvas.height = canvas.width = size;
   }
 }
@@ -1835,7 +2702,7 @@ function setup2(effort) {
   try {
     reset2();
     drawEffort = effort;
-    createCanvas(drawEffort * 256);
+    createCanvas(drawEffort << 8);
     compile();
   } catch (err) {
     reset2();
@@ -2278,130 +3145,6 @@ async function generate4(hash, difficulty, effort, debug) {
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
 //! SPDX-License-Identifier: GPL-3.0-or-later
 
-// src/lib/config/index.ts
-//! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
-//! SPDX-License-Identifier: GPL-3.0-or-later
-var NanoPowConfigConstructor = class {
-  static #isInternal = false;
-  static get isInternal() {
-    return this.#isInternal;
-  }
-  api;
-  debug;
-  difficulty;
-  effort;
-  toJSON() {
-    return {
-      api: this.api,
-      debug: this.debug,
-      difficulty: bigintToHex(this.difficulty, 16),
-      effort: this.effort
-    };
-  }
-  constructor(api, debug, difficulty, effort) {
-    if (!this.constructor.isInternal) {
-      throw new TypeError(`NanoPowConfig cannot be constructed with 'new'.`);
-    }
-    this.api = api;
-    this.debug = debug;
-    this.difficulty = difficulty;
-    this.effort = effort;
-  }
-  static async create(options) {
-    const input = options;
-    const api = await this.#getValidApi(input);
-    const debug = this.#getValidDebug(input);
-    const difficulty = this.#getValidDifficulty(input);
-    const effort = this.#getValidEffort(input);
-    this.#isInternal = true;
-    const config = new this(api, debug, difficulty, effort);
-    this.#isInternal = false;
-    return config;
-  }
-  // Check platform support for default API setting
-  static async #getDefaultApi() {
-    if (await ApiSupport.webgpu.isSupported) return "webgpu";
-    if (await ApiSupport.webgl.isSupported) return "webgl";
-    if (await ApiSupport.wasm.isSupported) return "wasm";
-    return "cpu";
-  }
-  // Assign API if valid value passed
-  static async #getValidApi(input) {
-    if (input != null && input.api != null) {
-      if (typeof input.api === "string") {
-        try {
-          input.api = input.api.toLowerCase();
-        } catch {
-          input.api = null;
-        }
-      }
-      if (input.api !== "cpu" && input.api !== "wasm" && input.api !== "webgl" && input.api !== "webgpu") {
-        throw new Error(`Invalid API ${input.api}`);
-      }
-      if (!ApiSupport[input.api].isSupported) {
-        throw new Error(`${input.api} is not supported`);
-      }
-      return input.api;
-    }
-    return this.#getDefaultApi();
-  }
-  // Assign debug if valid value passed
-  static #getValidDebug(input) {
-    if (input != null && input.debug != null) {
-      if (typeof input.debug === "bigint" || typeof input.debug === "number") {
-        input.debug = input.debug.toString();
-      }
-      if (typeof input.debug === "string") {
-        input.debug = ["1", "true", "y", "yes"].includes(input.debug.toLowerCase());
-      }
-      if (typeof input.debug !== "boolean") {
-        throw new Error(`Invalid debug ${input.debug}`);
-      }
-      return input.debug;
-    }
-    return false;
-  }
-  // Assign difficulty if valid value passed
-  static #getValidDifficulty(input) {
-    if (input != null && input.difficulty != null) {
-      if (typeof input.difficulty === "string") {
-        try {
-          input.difficulty = bigintFrom(input.difficulty, "hex");
-        } catch {
-        }
-      }
-      if (typeof input.difficulty !== "bigint") {
-        throw new Error(`Invalid difficulty (${typeof input.difficulty})${input.difficulty}`);
-      }
-      if (input.difficulty < 0x0n || input.difficulty > SEND) {
-        throw new Error(`Invalid difficulty ${bigintToHex(input.difficulty, 16)}`);
-      }
-      return input.difficulty;
-    }
-    return SEND;
-  }
-  // Assign effort if valid value passed
-  static #getValidEffort(input) {
-    if (input != null && input.effort != null) {
-      if (typeof input.effort !== "number") {
-        throw new Error(`Invalid effort (${typeof input.effort})${input.effort}`);
-      }
-      if (input.effort < 1 || input.effort > 32) {
-        throw new Error(`Invalid effort ${input.effort}`);
-      }
-      return input.effort;
-    }
-    return 4;
-  }
-};
-var NanoPowConfig = (options) => {
-  try {
-    return NanoPowConfigConstructor.create(options);
-  } catch (err) {
-    throw new Error("Error constructing NanoPowConfig", { cause: err });
-  }
-};
-
 // src/lib/index.ts
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
 //! SPDX-License-Identifier: GPL-3.0-or-later
@@ -2413,7 +3156,15 @@ async function work_generate(hash, options) {
       const { api, debug, difficulty, effort } = await NanoPowConfig(options);
       const cached = Cache.search(hash, difficulty);
       if (cached) {
-        return cached;
+        const { valid } = validate(bigintFrom(cached.work, "hex"), bigintFrom(cached.hash, "hex"), bigintFrom(cached.difficulty, "hex"), debug);
+        if (valid === "1") {
+          return cached;
+        } else {
+          try {
+            Cache.delete(hash);
+          } catch (err) {
+          }
+        }
       }
       switch (api) {
         case "webgpu": {
@@ -2534,8 +3285,8 @@ const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
     { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold<br>(0xfffffe0000000000)' },
-    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold<br>(0xffffffc000000000)' }
+    { value: 'fffffe0000000000', label: 'Receive/Open/Epoch Threshold<br>(0xfffffe0000000000)' },
+    { value: 'fffffff800000000', label: 'Send/Change Threshold<br>(0xfffffff800000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest
@@ -2683,7 +3434,7 @@ async function checkWebGpuComputeWorks() {
         pass.dispatchWorkgroups(1);
         pass.end();
         enc.copyBufferToBuffer(resultBuf, 0, readBuf, 0, 12);
-         device.queue.submit([enc.finish()]);
+        device.queue.submit([enc.finish()]);
 
         await device.queue.onSubmittedWorkDone();
         await readBuf.mapAsync(GPUMapMode.READ);

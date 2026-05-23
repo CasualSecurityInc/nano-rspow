@@ -28,8 +28,8 @@ const elBars = document.querySelectorAll('.difficulty-bars .bar');
 
 const difficultyLevels = [
     { value: 'ffff000000000000', label: 'Dev / Smoketest Threshold<br>(0xffff000000000000)' },
-    { value: 'fffffe0000000000', label: 'Receive / State-block Threshold<br>(0xfffffe0000000000)' },
-    { value: 'ffffffc000000000', label: 'Send / Epoch-block Threshold<br>(0xffffffc000000000)' }
+    { value: 'fffffe0000000000', label: 'Receive/Open/Epoch Threshold<br>(0xfffffe0000000000)' },
+    { value: 'fffffff800000000', label: 'Send/Change Threshold<br>(0xfffffff800000000)' }
 ];
 
 let currentDiffIndex = 0; // Default: Dev / Smoketest

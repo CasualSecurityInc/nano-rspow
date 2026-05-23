@@ -231,6 +231,18 @@ var Cache = class {
   static clear() {
     this.#removeItem("NanoPowCache");
   }
+  static delete(hash) {
+    const bigintHash = bigintFrom(hash, "hex");
+    const item = this.#getItem("NanoPowCache");
+    if (item == null) return;
+    const cache = JSON.parse(item);
+    for (let i = 0; i < cache.length; i++) {
+      if (bigintFrom(cache[i].hash, "hex") === bigintHash) {
+        cache.splice(i, 1);
+      }
+    }
+    this.#setItem("NanoPowCache", JSON.stringify(cache));
+  }
   static search(hash, difficulty) {
     const bigintHash = bigintFrom(hash, "hex");
     const item = this.#getItem("NanoPowCache");
@@ -395,6 +407,130 @@ function stats(times) {
     truncatedHarmonic: truncatedCount / truncatedReciprocals
   };
 }
+
+// src/lib/config/index.ts
+//! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
+//! SPDX-License-Identifier: GPL-3.0-or-later
+var NanoPowConfigConstructor = class {
+  static #isInternal = false;
+  static get isInternal() {
+    return this.#isInternal;
+  }
+  api;
+  debug;
+  difficulty;
+  effort;
+  toJSON() {
+    return {
+      api: this.api,
+      debug: this.debug,
+      difficulty: bigintToHex(this.difficulty, 16),
+      effort: this.effort
+    };
+  }
+  constructor(api, debug, difficulty, effort) {
+    if (!this.constructor.isInternal) {
+      throw new TypeError(`NanoPowConfig cannot be constructed with 'new'.`);
+    }
+    this.api = api;
+    this.debug = debug;
+    this.difficulty = difficulty;
+    this.effort = effort;
+  }
+  static async create(options) {
+    const input = options;
+    const api = await this.#getValidApi(input);
+    const debug = this.#getValidDebug(input);
+    const difficulty = this.#getValidDifficulty(input);
+    const effort = this.#getValidEffort(input);
+    this.#isInternal = true;
+    const config = new this(api, debug, difficulty, effort);
+    this.#isInternal = false;
+    return config;
+  }
+  // Check platform support for default API setting
+  static async #getDefaultApi() {
+    if (await ApiSupport.webgpu.isSupported) return "webgpu";
+    if (await ApiSupport.webgl.isSupported) return "webgl";
+    if (await ApiSupport.wasm.isSupported) return "wasm";
+    return "cpu";
+  }
+  // Assign API if valid value passed
+  static async #getValidApi(input) {
+    if (input != null && input.api != null) {
+      if (typeof input.api === "string") {
+        try {
+          input.api = input.api.toLowerCase();
+        } catch {
+          input.api = null;
+        }
+      }
+      if (input.api !== "cpu" && input.api !== "wasm" && input.api !== "webgl" && input.api !== "webgpu") {
+        throw new Error(`Invalid API ${input.api}`);
+      }
+      if (!ApiSupport[input.api].isSupported) {
+        throw new Error(`${input.api} is not supported`);
+      }
+      return input.api;
+    }
+    return this.#getDefaultApi();
+  }
+  // Assign debug if valid value passed
+  static #getValidDebug(input) {
+    if (input != null && input.debug != null) {
+      if (typeof input.debug === "bigint" || typeof input.debug === "number") {
+        input.debug = input.debug.toString();
+      }
+      if (typeof input.debug === "string") {
+        input.debug = ["1", "true", "y", "yes"].includes(input.debug.toLowerCase());
+      }
+      if (typeof input.debug !== "boolean") {
+        throw new Error(`Invalid debug ${input.debug}`);
+      }
+      return input.debug;
+    }
+    return false;
+  }
+  // Assign difficulty if valid value passed
+  static #getValidDifficulty(input) {
+    if (input != null && input.difficulty != null) {
+      if (typeof input.difficulty === "string") {
+        try {
+          input.difficulty = bigintFrom(input.difficulty, "hex");
+        } catch {
+        }
+      }
+      if (typeof input.difficulty !== "bigint") {
+        throw new Error(`Invalid difficulty (${typeof input.difficulty})${input.difficulty}`);
+      }
+      if (input.difficulty < 0x0n || input.difficulty > SEND) {
+        throw new Error(`Invalid difficulty ${bigintToHex(input.difficulty, 16)}`);
+      }
+      return input.difficulty;
+    }
+    return SEND;
+  }
+  // Assign effort if valid value passed
+  static #getValidEffort(input) {
+    if (input != null && input.effort != null) {
+      if (typeof input.effort !== "number") {
+        throw new Error(`Invalid effort (${typeof input.effort})${input.effort}`);
+      }
+      if (input.effort < 1 || input.effort > 32) {
+        throw new Error(`Invalid effort ${input.effort}`);
+      }
+      return input.effort;
+    }
+    return 4;
+  }
+};
+var NanoPowConfig = (options) => {
+  try {
+    return NanoPowConfigConstructor.create(options);
+  } catch (err) {
+    throw new Error("Error constructing NanoPowConfig", { cause: err });
+  }
+};
 
 // src/lib/validate/index.ts
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
@@ -840,10 +976,10 @@ function createCanvas(size) {
   gl = context;
   const MAX_VIEWPORT_DIMS = gl.getParameter(gl.MAX_VIEWPORT_DIMS) ?? [4096, 4096];
   size = Math.min(size, ...MAX_VIEWPORT_DIMS);
-  size = Math.floor(size / 256) * 256;
+  size = size >>> 8 << 8;
   canvas.height = canvas.width = size;
   if (canvas.height !== gl.drawingBufferHeight || canvas.width !== gl.drawingBufferWidth) {
-    size = Math.floor(Math.min(gl.drawingBufferHeight, gl.drawingBufferWidth) / 256) * 256;
+    size = (gl.drawingBufferHeight < gl.drawingBufferWidth ? gl.drawingBufferHeight : gl.drawingBufferWidth) >>> 8 << 8;
     canvas.height = canvas.width = size;
   }
 }
@@ -942,7 +1078,7 @@ function setup2(effort) {
   try {
     reset2();
     drawEffort = effort;
-    createCanvas(drawEffort * 256);
+    createCanvas(drawEffort << 8);
     compile();
   } catch (err) {
     reset2();
@@ -1385,130 +1521,6 @@ async function generate4(hash, difficulty, effort, debug) {
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
 //! SPDX-License-Identifier: GPL-3.0-or-later
 
-// src/lib/config/index.ts
-//! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
-//! SPDX-License-Identifier: GPL-3.0-or-later
-var NanoPowConfigConstructor = class {
-  static #isInternal = false;
-  static get isInternal() {
-    return this.#isInternal;
-  }
-  api;
-  debug;
-  difficulty;
-  effort;
-  toJSON() {
-    return {
-      api: this.api,
-      debug: this.debug,
-      difficulty: bigintToHex(this.difficulty, 16),
-      effort: this.effort
-    };
-  }
-  constructor(api, debug, difficulty, effort) {
-    if (!this.constructor.isInternal) {
-      throw new TypeError(`NanoPowConfig cannot be constructed with 'new'.`);
-    }
-    this.api = api;
-    this.debug = debug;
-    this.difficulty = difficulty;
-    this.effort = effort;
-  }
-  static async create(options) {
-    const input = options;
-    const api = await this.#getValidApi(input);
-    const debug = this.#getValidDebug(input);
-    const difficulty = this.#getValidDifficulty(input);
-    const effort = this.#getValidEffort(input);
-    this.#isInternal = true;
-    const config = new this(api, debug, difficulty, effort);
-    this.#isInternal = false;
-    return config;
-  }
-  // Check platform support for default API setting
-  static async #getDefaultApi() {
-    if (await ApiSupport.webgpu.isSupported) return "webgpu";
-    if (await ApiSupport.webgl.isSupported) return "webgl";
-    if (await ApiSupport.wasm.isSupported) return "wasm";
-    return "cpu";
-  }
-  // Assign API if valid value passed
-  static async #getValidApi(input) {
-    if (input != null && input.api != null) {
-      if (typeof input.api === "string") {
-        try {
-          input.api = input.api.toLowerCase();
-        } catch {
-          input.api = null;
-        }
-      }
-      if (input.api !== "cpu" && input.api !== "wasm" && input.api !== "webgl" && input.api !== "webgpu") {
-        throw new Error(`Invalid API ${input.api}`);
-      }
-      if (!ApiSupport[input.api].isSupported) {
-        throw new Error(`${input.api} is not supported`);
-      }
-      return input.api;
-    }
-    return this.#getDefaultApi();
-  }
-  // Assign debug if valid value passed
-  static #getValidDebug(input) {
-    if (input != null && input.debug != null) {
-      if (typeof input.debug === "bigint" || typeof input.debug === "number") {
-        input.debug = input.debug.toString();
-      }
-      if (typeof input.debug === "string") {
-        input.debug = ["1", "true", "y", "yes"].includes(input.debug.toLowerCase());
-      }
-      if (typeof input.debug !== "boolean") {
-        throw new Error(`Invalid debug ${input.debug}`);
-      }
-      return input.debug;
-    }
-    return false;
-  }
-  // Assign difficulty if valid value passed
-  static #getValidDifficulty(input) {
-    if (input != null && input.difficulty != null) {
-      if (typeof input.difficulty === "string") {
-        try {
-          input.difficulty = bigintFrom(input.difficulty, "hex");
-        } catch {
-        }
-      }
-      if (typeof input.difficulty !== "bigint") {
-        throw new Error(`Invalid difficulty (${typeof input.difficulty})${input.difficulty}`);
-      }
-      if (input.difficulty < 0x0n || input.difficulty > SEND) {
-        throw new Error(`Invalid difficulty ${bigintToHex(input.difficulty, 16)}`);
-      }
-      return input.difficulty;
-    }
-    return SEND;
-  }
-  // Assign effort if valid value passed
-  static #getValidEffort(input) {
-    if (input != null && input.effort != null) {
-      if (typeof input.effort !== "number") {
-        throw new Error(`Invalid effort (${typeof input.effort})${input.effort}`);
-      }
-      if (input.effort < 1 || input.effort > 32) {
-        throw new Error(`Invalid effort ${input.effort}`);
-      }
-      return input.effort;
-    }
-    return 4;
-  }
-};
-var NanoPowConfig = (options) => {
-  try {
-    return NanoPowConfigConstructor.create(options);
-  } catch (err) {
-    throw new Error("Error constructing NanoPowConfig", { cause: err });
-  }
-};
-
 // src/lib/index.ts
 //! SPDX-FileCopyrightText: 2025 Chris Duncan <chris@codecow.com>
 //! SPDX-License-Identifier: GPL-3.0-or-later
@@ -1520,7 +1532,15 @@ async function work_generate(hash, options) {
       const { api, debug, difficulty, effort } = await NanoPowConfig(options);
       const cached = Cache.search(hash, difficulty);
       if (cached) {
-        return cached;
+        const { valid } = validate(bigintFrom(cached.work, "hex"), bigintFrom(cached.hash, "hex"), bigintFrom(cached.difficulty, "hex"), debug);
+        if (valid === "1") {
+          return cached;
+        } else {
+          try {
+            Cache.delete(hash);
+          } catch (err) {
+          }
+        }
       }
       switch (api) {
         case "webgpu": {
