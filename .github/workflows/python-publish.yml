@@ -110,7 +110,7 @@ jobs:
           working-directory: nano-rspow-python
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v5
         with:
           name: wheel-${{ matrix.target }}
           path: nano-rspow-python/dist/*.whl
@@ -134,7 +134,7 @@ jobs:
           working-directory: nano-rspow-python
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: nano-rspow-python/dist/*.tar.gz
@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v5
         with:
           path: nano-rspow-python/dist
           merge-multiple: true
