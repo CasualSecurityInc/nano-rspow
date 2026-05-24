@@ -5,15 +5,23 @@ on:
     branches:
       - main
 
+# Native deployments require specific OIDC token and pages permissions
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+# Prevent concurrent deployments from clobbering each other
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Build and deploy browser demo
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -31,9 +39,13 @@ jobs:
       - name: Build demo
         run: python3 nano-rspow-web/browser-demo/build-demo.py
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      # Step 1: Package the compiled output directory into a temporary Pages artifact
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: nano-rspow-web/browser-demo
-          publish_branch: gh-pages
+          path: 'nano-rspow-web/browser-demo'
+
+      # Step 2: Push the packaged asset directly to the native Pages infrastructure
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
