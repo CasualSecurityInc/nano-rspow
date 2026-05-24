@@ -51,7 +51,7 @@ Below is the directory mapping for each target, along with their primary release
 | **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 | **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
-| **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](nano-rspow-web/browser-demo/index.html) |
+| **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
 | **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 
 ---
