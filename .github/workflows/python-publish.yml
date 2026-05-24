@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 defaults:
   run:
     working-directory: nano-rspow-python
@@ -23,7 +20,7 @@ jobs:
     outputs:
       should_publish: ${{ steps.check-pypi.outputs.should_publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Compare major.minor versions
         working-directory: .
         run: |
@@ -88,12 +85,12 @@ jobs:
             qemu: false
 
           # Windows x86_64
-          - os: windows-latest
+          - os: windows-2025
             target: x86_64-pc-windows-msvc
             qemu: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Register QEMU binfmt handlers so the arm64 manylinux container can run
       # its own binaries (including Python) on the x86_64 GitHub runner.
@@ -113,7 +110,7 @@ jobs:
           working-directory: nano-rspow-python
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.target }}
           path: nano-rspow-python/dist/*.whl
@@ -127,7 +124,7 @@ jobs:
     if: needs.version-check.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -137,7 +134,7 @@ jobs:
           working-directory: nano-rspow-python
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: nano-rspow-python/dist/*.tar.gz
@@ -158,7 +155,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: nano-rspow-python/dist
           merge-multiple: true
