@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "2", default-features = false, features = ["napi4", "async"] }
 napi-derive = "2"
-nano-rspow = { path = "../nano-rspow", features = ["wgpu-backend", "opencl"] }
+nano-rspow = { path = "../nano-rspow", features = ["wgpu-backend"] }
 hex = "0.4"
 tokio = { version = "1", features = ["sync", "rt"] }
 
