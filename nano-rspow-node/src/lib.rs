@@ -97,3 +97,12 @@ pub fn get_backend_name() -> String {
     get_generator().backend_name().to_string()
 }
 
+#[napi]
+pub fn recommend_local_pow() -> bool {
+    nano_rspow::recommend_local_pow()
+}
+
+#[napi]
+pub fn clear_pow_tuning_cache() -> bool {
+    nano_rspow::clear_pow_tuning_cache()
+}

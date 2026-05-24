@@ -182,6 +182,68 @@ pub fn work_validate(hash: &[u8; 32], nonce: u64, threshold: u64) -> WorkResult 
     }
 }
 
+/// Runs a short diagnostic smoke test to decide if the current machine
+/// is capable of performing local PoW fast enough.
+/// It uses a cached result if available in the temp directory.
+pub fn recommend_local_pow() -> bool {
+    let cache_dir = std::env::temp_dir().join("nano-rspow");
+    let cache_file = cache_dir.join("pow-tuning.json");
+    if let Ok(content) = std::fs::read_to_string(&cache_file) {
+        if content.contains("\"is_local_pow_recommended\":true") {
+            return true;
+        } else if content.contains("\"is_local_pow_recommended\":false") {
+            return false;
+        }
+    }
+
+    let generator = WorkGenerator::auto();
+    let is_recommended = if generator.backend_name() != "cpu" {
+        true
+    } else {
+        let start = std::time::Instant::now();
+        let hash = [0u8; 32];
+        let mut hashes: u64 = 0;
+        let budget = std::time::Duration::from_millis(10);
+        while start.elapsed() < budget {
+            for _ in 0..1000 {
+                let _ = difficulty::compute(&hash, hashes);
+                hashes += 1;
+            }
+        }
+        
+        let elapsed_secs = start.elapsed().as_secs_f64();
+        let hashes_per_sec = hashes as f64 / elapsed_secs;
+        
+        #[cfg(not(target_arch = "wasm32"))]
+        let core_count = rayon::current_num_threads() as f64;
+        #[cfg(target_arch = "wasm32")]
+        let core_count = 1.0;
+
+        let estimated_total_hps = hashes_per_sec * core_count;
+        
+        // Target: ~15 MH/s minimum for reasonable EPOCH2_SEND speed
+        estimated_total_hps >= 15_000_000.0
+    };
+
+    if std::fs::create_dir_all(&cache_dir).is_ok() {
+        let json = format!(r#"{{"is_local_pow_recommended":{}}}"#, is_recommended);
+        let _ = std::fs::write(&cache_file, json);
+    }
+
+    is_recommended
+}
+
+/// Clears the persistent performance tuning cache.
+/// Returns true if the cache directory was found and deleted.
+pub fn clear_pow_tuning_cache() -> bool {
+    let path = std::env::temp_dir().join("nano-rspow");
+    if path.exists() {
+        std::fs::remove_dir_all(path).is_ok()
+    } else {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
