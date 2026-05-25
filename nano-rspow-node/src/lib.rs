@@ -106,3 +106,8 @@ pub fn recommend_local_pow() -> bool {
 pub fn clear_pow_tuning_cache() -> bool {
     nano_rspow::clear_pow_tuning_cache()
 }
+
+#[napi]
+pub fn work_type_to_hex(work_type: WorkType) -> String {
+    format!("{:016x}", work_type.threshold())
+}
