@@ -1,6 +1,6 @@
 # nano-rspow
 
-nano-rspow is a fast, zero-configuration hybrid CPU/GPU proof-of-work generator and block signing library for [Nano](https://www.nano.org).
+nano-rspow is a fast, zero-configuration hybrid CPU/GPU proof-of-work generator for [Nano](https://www.nano.org).
 
 Developed for high-throughput node operations, client-side web integrations, and native app developers, this repository packages an optimized Blake2b hashing engine under a transparent, auto-detecting **hybrid race architecture**. It seamlessly runs multi-threaded CPU solvers (powered by `rayon` and Web Workers) or GPU pipelines (`wgpu`, `OpenCL`, and WebGPU) depending on target hardware availability. No boilerplate, no device selection headaches—just instant, maximum-performance PoW generation everywhere.
 
@@ -8,7 +8,7 @@ Developed for high-throughput node operations, client-side web integrations, and
 
 ## 🎯 Who is this for?
 
-* **Exchange & Wallet Integrators** wanting low-latency, high-volume block generation and local signing.
+* **Exchange & Wallet Integrators** wanting low-latency, high-volume block generation in-process / without the complexity of adding a another external service.
 * **Server-side Developers** using Node.js or Python who need native bindings running at C-level execution speed.
 * **Frontend Web Developers** building sleek wallets or dApps requiring non-blocking WASM and hardware-accelerated WebGPU directly in user browsers.
 * **Power Users & Node Operators** looking for an ultra-fast benchmarking tool to tune threshold multipliers.
