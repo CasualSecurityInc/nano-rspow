@@ -2,4 +2,4 @@
 rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
 
 [alias]
-benchmark-web = ["run", "--package", "nano-rspow-web", "--example", "benchmark_web"]
+benchmark-web = ["run", "--release", "--package", "nano-rspow-web", "--example", "benchmark_web"]
