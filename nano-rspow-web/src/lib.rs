@@ -32,6 +32,28 @@ impl Default for WasmCancelToken {
     }
 }
 
+/// Try up to max_nonces nonces in a single synchronous batch.
+/// Returns the nonce as a hex string if found, or `null` if the batch
+/// was exhausted. RNG state persists across calls.
+#[wasm_bindgen]
+pub fn generate_work_cpu_batch(
+    hash_hex: &str,
+    threshold_hex: &str,
+    max_nonces: u32,
+) -> Result<JsValue, JsValue> {
+    let hash_bytes = hex::decode(hash_hex)
+        .map_err(|e| JsValue::from_str(&format!("Invalid hash hex: {}", e)))?;
+    let hash: [u8; 32] = hash_bytes
+        .try_into()
+        .map_err(|_| JsValue::from_str("Hash must be exactly 32 bytes"))?;
+    let threshold = u64::from_str_radix(threshold_hex, 16)
+        .map_err(|e| JsValue::from_str(&format!("Invalid threshold hex: {}", e)))?;
+    match cpu::generate_cpu_batch(&hash, threshold, max_nonces) {
+        Some(nonce) => Ok(JsValue::from_str(&format!("{:016x}", nonce))),
+        None => Ok(JsValue::NULL),
+    }
+}
+
 #[wasm_bindgen]
 pub struct GenerateResult {
     nonce: u64,

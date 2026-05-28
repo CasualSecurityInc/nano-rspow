@@ -114,6 +114,7 @@ globalThis.GenerateResult = GenerateResult;
 globalThis.WasmCancelToken = WasmCancelToken;
 globalThis.generate_work = generate_work;
 globalThis.generate_work_cpu = generate_work_cpu;
+globalThis.generate_work_cpu_batch = generate_work_cpu_batch;
 globalThis.generate_work_gpu = generate_work_gpu;
 globalThis.validate_work = validate_work;
 globalThis.init = __wbg_init;

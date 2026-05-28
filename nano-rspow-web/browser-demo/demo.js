@@ -209,10 +209,11 @@ async function checkWebGpuComputeWorks() {
 // Web Worker template and variables
 let activeWorkers = [];
 let activeWorkerReject = null;
+let allWorkers = new Set(); // Track all workers across calls for Safari cleanup
 
 // Worker count: use available logical cores, with a defensive fallback.
 // Overridable via URL param: ?workers=1
-const CPU_WORKER_COUNT = parseInt(new URLSearchParams(window.location.search).get('workers'), 10) || navigator.hardwareConcurrency || 2;
+const CPU_WORKER_COUNT = parseInt(new URLSearchParams(window.location.search).get('workers'), 10) || Math.max(1, navigator.hardwareConcurrency - 1) || 2;
 
 // Worker creation helper
 function getWorkerCode() {
@@ -229,33 +230,52 @@ function getWorkerCode() {
             try {
                 await globalThis.init();
                 const tInit = performance.now();
-                const result = globalThis.generate_work_cpu(hash, threshold);
-                const tDone = performance.now();
-                self.postMessage({
-                    type: 'success',
-                    result: {
-                        nonce: result.nonce,
-                        is_gpu: result.is_gpu
-                    },
-                    timing: {
-                        initMs: tInit - t0,
-                        searchMs: tDone - tInit,
-                        totalMs: tDone - t0
+
+                let cancelled = false;
+                self.addEventListener('message', function(msg) {
+                    if (msg.data && msg.data.type === 'stop') {
+                        cancelled = true;
                     }
                 });
+
+                const BATCH_NONCES = 100000;
+                while (!cancelled) {
+                    const result = globalThis.generate_work_cpu_batch(hash, threshold, BATCH_NONCES);
+                    if (result !== null && result !== undefined) {
+                        const tDone = performance.now();
+                        self.postMessage({
+                            type: 'success',
+                            result: { nonce: String(result), is_gpu: false },
+                            timing: {
+                                initMs: tInit - t0,
+                                searchMs: tDone - tInit,
+                                totalMs: tDone - t0
+                            }
+                        });
+                        self.close();
+                        return;
+                    }
+                    // Yield the event loop so Safari can deliver cancel/stop messages
+                    await new Promise(function(resolve) { setTimeout(resolve, 0); });
+                }
+                self.close();
             } catch (err) {
                 self.postMessage({
                     type: 'error',
                     error: err.toString()
                 });
+                self.close();
             }
         };
     `;
 }
 
 function terminateAllWorkers() {
-    for (const w of activeWorkers) w.terminate();
-    activeWorkers = [];
+    for (const w of allWorkers) {
+        try { w.terminate(); } catch(e) {}
+    }
+    allWorkers.clear();
+    activeWorkers.length = 0;
 }
 
 // Background parallel Web Worker CPU runner.
@@ -263,6 +283,8 @@ function terminateAllWorkers() {
 // The first worker to find a valid nonce wins; all others are terminated.
 function generateWorkCpuWorker(hash, threshold, workerCount = CPU_WORKER_COUNT) {
     return new Promise((resolve, reject) => {
+        // Clean up any stale workers from a previous call
+        terminateAllWorkers();
         activeWorkerReject = reject;
         try {
             const code = getWorkerCode();
@@ -272,39 +294,36 @@ function generateWorkCpuWorker(hash, threshold, workerCount = CPU_WORKER_COUNT) 
             let completed = false;
             let pending = workerCount;
 
-            function cleanup() {
-                if (!completed) return;
-                terminateAllWorkers();
-                URL.revokeObjectURL(workerUrl);
-                activeWorkerReject = null;
-            }
-
             for (let i = 0; i < workerCount; i++) {
                 const worker = new Worker(workerUrl);
+                allWorkers.add(worker);
                 activeWorkers.push(worker);
 
                 worker.onmessage = function(e) {
                     if (completed) {
+                        worker.postMessage({ type: 'stop' });
                         worker.terminate();
                         return;
                     }
                     const { type, result, error, timing } = e.data;
                     if (type === 'success') {
                         completed = true;
-                        // Terminate sibling workers; keep the winner alive until resolve
-                        for (const w of activeWorkers) {
-                            if (w !== worker) w.terminate();
+                        // Signal all workers to stop via message (works when they yield the event loop)
+                        for (const w of allWorkers) {
+                            try { w.postMessage({ type: 'stop' }); } catch(_) {}
                         }
-                        activeWorkers = [worker];
+                        terminateAllWorkers();
                         console.log(`[Worker ${i}] init=${timing.initMs.toFixed(1)}ms search=${timing.searchMs.toFixed(1)}ms total=${timing.totalMs.toFixed(1)}ms`);
-                        cleanup();
+                        URL.revokeObjectURL(workerUrl);
+                        activeWorkerReject = null;
                         resolve(result);
                     } else {
                         pending--;
-                        worker.terminate();
                         if (pending === 0) {
                             completed = true;
-                            cleanup();
+                            terminateAllWorkers();
+                            URL.revokeObjectURL(workerUrl);
+                            activeWorkerReject = null;
                             reject(new Error(error || "All workers failed"));
                         }
                     }
@@ -313,10 +332,11 @@ function generateWorkCpuWorker(hash, threshold, workerCount = CPU_WORKER_COUNT) 
                 worker.onerror = function(e) {
                     if (completed) return;
                     pending--;
-                    worker.terminate();
                     if (pending === 0) {
                         completed = true;
-                        cleanup();
+                        terminateAllWorkers();
+                        URL.revokeObjectURL(workerUrl);
+                        activeWorkerReject = null;
                         reject(new Error("Web Worker error: " + e.message));
                     }
                 };
