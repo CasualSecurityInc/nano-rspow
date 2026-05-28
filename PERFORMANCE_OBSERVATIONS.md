@@ -221,3 +221,92 @@ The gap to browser (median ~261 ms at ep2_send) is now explained primarily by:
 3. **Shader compile-time register allocation**: The inlining removes the last known software-induced bottleneck; remaining difference is driver-level.
 
 **Current best**: Attempt 4 (inlined rounds + zero-propagation, dispatch_x = 65535).
+
+---
+
+## CPU Backend: Pre-spun Thread Pool (Jan 2026)
+
+Replaced rayon's `into_par_iter()` with pre-spun native threads using per-thread `mpsc` command channels. Eliminates the ~100-200ms per-call task-distribution overhead that dominated easy/medium tiers.
+
+### CLI results (warm, `?workers` n/a — native threads)
+
+| Tier | Rayon (old) | Pre-spun (new) | Improvement |
+|------|-------------|----------------|-------------|
+| dev | 0.1 ms | 0.0 ms | overhead eliminated |
+| ep2_recv | 1,051 ms | 84-354 ms | **3-13× faster** |
+| epoch1 | 1,989 ms | 314-878 ms | **2-6× faster** |
+| ep2_send | 1,923 ms† | 10-15 s | washed out by compute |
+
+† The old 1,923 ms was from deterministic seeds (`thread_idx ^ 0xdeadbeef`) happening to hit a lucky nonce for the test-vector hash. True expected time on M1 for ep2_send is 10-30 s regardless of backend.
+
+### Key design decisions
+
+- `done` flag: `AtomicBool` with `AcqRel` on the winner's swap, `Relaxed` on all polls. Race-free — a thread either sees `true` or `false`; once set, all converge.
+- Result collection: fresh `(tx, rx)` per `generate()` call; `drop(tx)` disconnects when all workers finish.
+- RNG: `XorShift1024Star::new(rand::rng().random())` — one system-entropy seed per OS thread at spawn time.
+
+---
+
+## WASM CPU: Parallel Web Workers + Batched Execution (May 2026)
+
+Ported the pre-spun thread pool model to the browser: `coreCount - 1` Web Workers, each with its own WASM instance and independent RNG. Replaced the single blocking `generate_work_cpu()` call with batched execution to work around Safari's worker termination bug.
+
+### Web benchmark results (M1 MacBook Air, unthrottled first runs)
+
+| Tier | Chrome 8w | Safari 8w | Safari WebGPU |
+|------|-----------|-----------|---------------|
+| dev | <50 ms | 34-116 ms | 25-133 ms |
+| ep2_recv | ~90 ms | **545 ms** | 59-174 ms |
+| ep2_send | **603 ms** median | **54,554 ms** | 199-4,310 ms |
+
+### Browser engine WASM throughput gap
+
+| Engine | ep2_send 8w | Per-thread hashrate |
+|--------|-------------|---------------------|
+| Chrome V8 | ~600 ms | ~85 M nonces/sec |
+| Safari JSC | ~55 s | ~1.2 M nonces/sec |
+
+Safari's JSC is **~70× slower** than V8 for WASM Blake2b per-thread. This is an engine-level gap — not fixable from application code. AUTO mode defaults to WebGPU, which completes ep2_send in 0.2-4.3 s on Safari regardless.
+
+### Safari worker termination bug
+
+`worker.terminate()` does **not** interrupt a worker executing synchronous WASM code in Safari/WebKit. Workers continue running the WASM call to completion before termination takes effect.
+
+**Fix**: break the computation into short batches with an event-loop yield between them.
+
+```js
+const BATCH = 100_000; // ~5-50 ms per batch
+while (!cancelled) {
+  const result = globalThis.generate_work_cpu_batch(hash, threshold, BATCH);
+  if (result !== null) { /* found nonce */ break; }
+  await new Promise(r => setTimeout(r, 0)); // yield event loop
+}
+self.close();
+```
+
+During the `await setTimeout(0)` yield, Safari CAN deliver the `{ type: 'stop' }` message and process `terminate()`. Confirmed by Safari Performance recording: worker count drops from 7 → 1 → 0 within one 500 ms sampling interval.
+
+### Design rules for WASM worker cleanup
+
+| Rule | Why |
+|------|-----|
+| `self.close()` in worker's `finally` block | Most reliable — worker closes itself from inside its own context |
+| `{ type: 'stop' }` message to all workers on win | Delivered during batch yields; sets `cancelled = true` |
+| `terminateAllWorkers()` at start of each call | Kills stale workers from previous calls |
+| `terminateAllWorkers()` after win | Best-effort; works in Chrome, backup in Safari |
+| Track all workers in a `Set` | `terminate()` reaches workers removed from the active list |
+| `coreCount - 1` default (e.g., 7 on M1) | Leaves one core for main thread; reduces thermal throttling |
+
+### Thermal throttling (fanless M1 Air)
+
+Sustained 8-worker CPU load triggers thermal throttling after ~60 s. Observed degradation on sequential ep2_send runs: 54 s → 139 s → 101 s → cancelled at 317 s. Using `coreCount - 1 = 7` workers and defaulting to WebGPU via AUTO mode mitigates this. The first run is the most representative "cold" performance number.
+
+### RNG uniqueness across all backends
+
+| Backend | Seed source | Per what |
+|---------|-------------|----------|
+| Native CPU | `rand::rng().random()` | One per OS thread at spawn |
+| WASM CPU | `rand::random()` (`crypto.getRandomValues()`) | One per `thread_local!` lazy init in each Web Worker |
+| GPU (wgpu/WebGPU/OpenCL) | `rand::random()` base_nonce | One per `generate()` call; shader strides `base_nonce + gid` |
+
+No deterministic seeding paths. No two threads/workers share a nonce sequence. The only fixed seeds in the codebase are in `#[cfg(test)]` for RNG determinism tests.
