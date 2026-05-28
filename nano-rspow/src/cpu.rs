@@ -1,20 +1,29 @@
 //! CPU backend: multi-threaded Blake2b PoW generation.
 //!
-//! Uses rayon for parallelism. Each worker thread independently searches
-//! random nonces using XorShift1024* (same RNG as rsnano-node).
+//! Uses pre-spun native threads with per-thread mpsc command channels.
+//! Each worker thread independently searches random nonces using
+//! XorShift1024* — the same algorithm as the reference Nano node.
 
 use std::sync::{Arc, atomic::Ordering};
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicBool;
 
 #[cfg(not(target_arch = "wasm32"))]
-use rayon::prelude::*;
+use std::sync::mpsc::{self, RecvTimeoutError};
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::thread::{self, JoinHandle};
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Duration;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rand::Rng;
 
 use crate::{Backend, CancelToken, GeneratorDiagnostics, difficulty};
 
-/// XorShift1024* PRNG — same algorithm as rsnano-node's `XorShift1024Star`.
-/// Fast, non-cryptographic, good for PoW nonce exploration.
+/// XorShift1024* PRNG — same algorithm as the reference Nano node's `XorShift1024Star`.
 struct XorShift1024Star {
     state: [u64; 16],
     p: usize,
@@ -35,6 +44,11 @@ impl XorShift1024Star {
         Self { state, p: 0 }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn new_from_system() -> Self {
+        Self::new(rand::rng().random())
+    }
+
     #[inline]
     fn next(&mut self) -> u64 {
         let s0 = self.state[self.p];
@@ -46,11 +60,94 @@ impl XorShift1024Star {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+enum WorkCommand {
+    Search {
+        hash: [u8; 32],
+        threshold: u64,
+        done: Arc<AtomicBool>,
+        cancel: Arc<AtomicBool>,
+        result_tx: mpsc::Sender<u64>,
+    },
+    Stop,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) struct CpuBackend {
+    threads: Vec<JoinHandle<()>>,
+    senders: Vec<mpsc::Sender<WorkCommand>>,
+}
+
+#[cfg(target_arch = "wasm32")]
 pub(crate) struct CpuBackend;
 
 impl CpuBackend {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new() -> Self {
+        let thread_count = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+
+        let mut threads = Vec::new();
+        let mut senders = Vec::new();
+
+        for _ in 0..thread_count {
+            let (cmd_tx, cmd_rx) = mpsc::channel::<WorkCommand>();
+            senders.push(cmd_tx);
+
+            threads.push(thread::spawn(move || {
+                let mut rng = XorShift1024Star::new_from_system();
+
+                loop {
+                    let cmd = match cmd_rx.recv() {
+                        Ok(cmd) => cmd,
+                        Err(_) => return,
+                    };
+
+                    match cmd {
+                        WorkCommand::Stop => return,
+                        WorkCommand::Search { hash, threshold, done, cancel, result_tx } => {
+                            const BATCH: usize = 256;
+
+                            loop {
+                                if done.load(Ordering::Relaxed) || cancel.load(Ordering::Relaxed) {
+                                    break;
+                                }
+
+                                for _ in 0..BATCH {
+                                    let nonce = rng.next();
+                                    if difficulty::compute(&hash, nonce) >= threshold {
+                                        if !done.swap(true, Ordering::AcqRel) {
+                                            let _ = result_tx.send(nonce);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }));
+        }
+
+        Self { threads, senders }
+    }
+
+    #[cfg(target_arch = "wasm32")]
     pub fn new() -> Self {
         Self
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Drop for CpuBackend {
+    fn drop(&mut self) {
+        for sender in &self.senders {
+            let _ = sender.send(WorkCommand::Stop);
+        }
+        for thread in self.threads.drain(..) {
+            let _ = thread.join();
+        }
     }
 }
 
@@ -59,64 +156,53 @@ impl Backend for CpuBackend {
         "cpu"
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
+        let done = Arc::new(AtomicBool::new(false));
+        let (result_tx, result_rx) = mpsc::channel();
+
+        for sender in &self.senders {
+            let _ = sender.send(WorkCommand::Search {
+                hash: *hash,
+                threshold,
+                done: Arc::clone(&done),
+                cancel: Arc::clone(&cancel.flag),
+                result_tx: result_tx.clone(),
+            });
+        }
+        drop(result_tx);
+
+        loop {
+            match result_rx.recv_timeout(Duration::from_millis(10)) {
+                Ok(nonce) => return Some(nonce),
+                Err(RecvTimeoutError::Timeout) => {
+                    if cancel.is_cancelled() {
+                        done.store(true, Ordering::Relaxed);
+                        return None;
+                    }
+                }
+                Err(RecvTimeoutError::Disconnected) => return None,
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
     fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
         let cancelled = Arc::clone(&cancel.flag);
         let hash = *hash;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let found = Arc::new(AtomicBool::new(false));
-            let result = Arc::new(AtomicU64::new(0));
+        let mut rng = XorShift1024Star::new(rand::random());
+        const BATCH: usize = 256;
 
-            // Use rayon's thread pool — one worker per available CPU core.
-            // Each worker starts from a different random seed and searches in batches.
-            let thread_count = rayon::current_num_threads();
-
-            (0..thread_count).into_par_iter().for_each(|thread_idx| {
-                let mut rng = XorShift1024Star::new(
-                    // Distinct seed per thread using splitmix on thread index
-                    thread_idx as u64 ^ 0xdeadbeef_cafebabe,
-                );
-
-                const BATCH: usize = 256;
-
-                while !cancelled.load(Ordering::Relaxed) && !found.load(Ordering::Relaxed) {
-                    for _ in 0..BATCH {
-                        let nonce = rng.next();
-                        if difficulty::compute(&hash, nonce) >= threshold {
-                            // Atomically claim the result
-                            if !found.swap(true, Ordering::AcqRel) {
-                                result.store(nonce, Ordering::Release);
-                            }
-                            return;
-                        }
-                    }
-                }
-            });
-
-            if found.load(Ordering::Acquire) {
-                Some(result.load(Ordering::Acquire))
-            } else {
-                None
-            }
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            // WASM single-threaded fallback uses a random seed
-            let mut rng = XorShift1024Star::new(rand::random());
-            const BATCH: usize = 256;
-
-            while !cancelled.load(Ordering::Relaxed) {
-                for _ in 0..BATCH {
-                    let nonce = rng.next();
-                    if difficulty::compute(&hash, nonce) >= threshold {
-                        return Some(nonce);
-                    }
+        while !cancelled.load(Ordering::Relaxed) {
+            for _ in 0..BATCH {
+                let nonce = rng.next();
+                if difficulty::compute(&hash, nonce) >= threshold {
+                    return Some(nonce);
                 }
             }
-            None
         }
+        None
     }
 
     fn diagnostics(&self) -> GeneratorDiagnostics {

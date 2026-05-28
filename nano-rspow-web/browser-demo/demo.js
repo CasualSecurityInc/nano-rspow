@@ -207,8 +207,12 @@ async function checkWebGpuComputeWorks() {
 }
 
 // Web Worker template and variables
-let activeWorker = null;
+let activeWorkers = [];
 let activeWorkerReject = null;
+
+// Worker count: use available logical cores, with a defensive fallback.
+// Overridable via URL param: ?workers=1
+const CPU_WORKER_COUNT = parseInt(new URLSearchParams(window.location.search).get('workers'), 10) || navigator.hardwareConcurrency || 2;
 
 // Worker creation helper
 function getWorkerCode() {
@@ -220,20 +224,23 @@ function getWorkerCode() {
     
     return glueCode + `
         self.onmessage = async function(e) {
-            const { hash, threshold } = e.data;
+            const { hash, threshold, workerId } = e.data;
+            const t0 = performance.now();
             try {
-                // Initialize WASM module inside worker
                 await globalThis.init();
-                
-                // Call synchronous CPU generator
+                const tInit = performance.now();
                 const result = globalThis.generate_work_cpu(hash, threshold);
-                
-                // Post result back
+                const tDone = performance.now();
                 self.postMessage({
                     type: 'success',
                     result: {
                         nonce: result.nonce,
                         is_gpu: result.is_gpu
+                    },
+                    timing: {
+                        initMs: tInit - t0,
+                        searchMs: tDone - tInit,
+                        totalMs: tDone - t0
                     }
                 });
             } catch (err) {
@@ -246,43 +253,78 @@ function getWorkerCode() {
     `;
 }
 
-// Background Worker CPU Runner
-function generateWorkCpuWorker(hash, threshold) {
+function terminateAllWorkers() {
+    for (const w of activeWorkers) w.terminate();
+    activeWorkers = [];
+}
+
+// Background parallel Web Worker CPU runner.
+// Spawns CPU_WORKER_COUNT workers, each with its own WASM instance and RNG.
+// The first worker to find a valid nonce wins; all others are terminated.
+function generateWorkCpuWorker(hash, threshold, workerCount = CPU_WORKER_COUNT) {
     return new Promise((resolve, reject) => {
+        activeWorkerReject = reject;
         try {
             const code = getWorkerCode();
             const blob = new Blob([code], { type: 'application/javascript' });
             const workerUrl = URL.createObjectURL(blob);
-            
-            activeWorker = new Worker(workerUrl);
-            activeWorkerReject = reject;
-            
-            activeWorker.onmessage = function(e) {
-                const { type, result, error } = e.data;
-                activeWorker.terminate();
-                activeWorker = null;
-                activeWorkerReject = null;
+
+            let completed = false;
+            let pending = workerCount;
+
+            function cleanup() {
+                if (!completed) return;
+                terminateAllWorkers();
                 URL.revokeObjectURL(workerUrl);
-                
-                if (type === 'success') {
-                    resolve(result);
-                } else {
-                    reject(new Error(error));
-                }
-            };
-            
-            activeWorker.onerror = function(e) {
-                if (activeWorker) {
-                    activeWorker.terminate();
-                    activeWorker = null;
-                }
                 activeWorkerReject = null;
-                URL.revokeObjectURL(workerUrl);
-                reject(new Error("Web Worker error: " + e.message));
-            };
-            
-            activeWorker.postMessage({ hash, threshold });
+            }
+
+            for (let i = 0; i < workerCount; i++) {
+                const worker = new Worker(workerUrl);
+                activeWorkers.push(worker);
+
+                worker.onmessage = function(e) {
+                    if (completed) {
+                        worker.terminate();
+                        return;
+                    }
+                    const { type, result, error, timing } = e.data;
+                    if (type === 'success') {
+                        completed = true;
+                        // Terminate sibling workers; keep the winner alive until resolve
+                        for (const w of activeWorkers) {
+                            if (w !== worker) w.terminate();
+                        }
+                        activeWorkers = [worker];
+                        console.log(`[Worker ${i}] init=${timing.initMs.toFixed(1)}ms search=${timing.searchMs.toFixed(1)}ms total=${timing.totalMs.toFixed(1)}ms`);
+                        cleanup();
+                        resolve(result);
+                    } else {
+                        pending--;
+                        worker.terminate();
+                        if (pending === 0) {
+                            completed = true;
+                            cleanup();
+                            reject(new Error(error || "All workers failed"));
+                        }
+                    }
+                };
+
+                worker.onerror = function(e) {
+                    if (completed) return;
+                    pending--;
+                    worker.terminate();
+                    if (pending === 0) {
+                        completed = true;
+                        cleanup();
+                        reject(new Error("Web Worker error: " + e.message));
+                    }
+                };
+
+                worker.postMessage({ hash, threshold, workerId: i });
+            }
         } catch (err) {
+            terminateAllWorkers();
             activeWorkerReject = null;
             reject(err);
         }
@@ -357,19 +399,16 @@ if (elBtnCopy) {
 // Click Handler
 elBtnRun.addEventListener('click', async () => {
     // If work is in progress, cancel it
-    if (activeGpuCancelToken || activeWorker) {
+    if (activeGpuCancelToken || activeWorkers.length > 0) {
         log('System', 'Cancellation requested by user.');
         if (activeGpuCancelToken) activeGpuCancelToken.cancel();
-        if (activeWorker) {
-            activeWorker.terminate();
-            activeWorker = null;
-            if (activeWorkerReject) {
-                const rej = activeWorkerReject;
-                activeWorkerReject = null;
-                const err = new Error('Work generation cancelled');
-                err.isCancelled = true;
-                rej(err);
-            }
+        terminateAllWorkers();
+        if (activeWorkerReject) {
+            const rej = activeWorkerReject;
+            activeWorkerReject = null;
+            const err = new Error('Work generation cancelled');
+            err.isCancelled = true;
+            rej(err);
         }
         return;
     }
@@ -475,7 +514,7 @@ elBtnRun.addEventListener('click', async () => {
                 activeGpuCancelToken = null;
             }
         } else {
-            log('CPU', 'Forcing WASM CPU. Spawning background Web Worker...');
+            log('CPU', `Forcing WASM CPU. Spawning ${CPU_WORKER_COUNT} parallel Web Workers...`);
             result = await generateWorkCpuWorker(hash, threshold);
         }
         
@@ -541,9 +580,7 @@ elBtnRun.addEventListener('click', async () => {
         elBtnRun.textContent = 'Generate Work';
         elBtnRun.classList.remove('btn-cancel');
         activeGpuCancelToken = null;
-        if (activeWorker) {
-            activeWorker.terminate();
-            activeWorker = null;
-        }
+        terminateAllWorkers();
+        activeWorkerReject = null;
     }
 });
