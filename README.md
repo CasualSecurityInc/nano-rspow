@@ -18,21 +18,24 @@ Developed for high-throughput node operations, client-side web integrations, and
 ## ⚡ Quick Start
 
 ### 1. Standalone CLI
-Compile and run the native generator directly on your machine:
+Install from crates.io (requires a Rust toolchain):
 ```bash
-# Build binary in release mode (output at target/release/nano-rspow-cli)
+cargo install nano-rspow-cli
+nano-rspow-cli benchmark --count 10
+```
+Alternatively, build from this repository:
+```bash
 cargo build -p nano-rspow-cli --release
-
-# Run the compiled binary
 ./target/release/nano-rspow-cli benchmark --count 10
 ```
-Alternatively, you can use `cargo run -p nano-rspow-cli -- <args>` to automatically build and execute in one step.
+Or use `cargo run -p nano-rspow-cli -- <args>` to build and execute in one step.
 
-### 2. Node.js & CLI (Zero-Install)
-Execute the high-performance CLI instantly using precompiled native binaries:
+### 2. Node.js (Programmatic API)
+Use the native bindings for in-process PoW generation:
 ```bash
-npx -p nano-rspow-node nano-rspow generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2 --backend cpu
+npm install nano-rspow-node
 ```
+See [nano-rspow-node/README.md](nano-rspow-node/README.md) for API usage.
 
 ### 3. Interactive Web Dashboard
 Build and open the self-contained HTML5 benchmarking tool with real-time performance stats, non-blocking Web Worker fallback, WebGPU execution, and customizable cellular-signal difficulty thresholds:
@@ -52,7 +55,7 @@ Below is the directory mapping for each target, along with their primary release
 | **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
-| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 
 ---
 

@@ -16,7 +16,7 @@ use serde::Serialize;
 
 #[derive(Parser)]
 #[command(
-    name = "nano-rspow",
+    name = "nano-rspow-cli",
     version,
     about = "Hybrid CPU/GPU Nano (XNO) Proof of Work — nano-rspow",
     long_about = None

@@ -102,6 +102,18 @@ bumpPackageJson('nano-rspow-node', 'nano-rspow-node (Node Wrapper)');
 // 3. Update nano-rspow-web package.json
 bumpPackageJson('nano-rspow-web', 'nano-rspow-web (Web WASM)');
 
+// 4. Update inter-crate dependency versions (nano-rspow-cli depends on nano-rspow)
+const cliCargoPath = path.join(rootDir, 'nano-rspow-cli', 'Cargo.toml');
+if (fs.existsSync(cliCargoPath)) {
+  let content = fs.readFileSync(cliCargoPath, 'utf8');
+  const depRegex = /(nano-rspow\s*=\s*\{[^}]*version\s*=\s*")[^"]+(")/;
+  if (depRegex.test(content)) {
+    content = content.replace(depRegex, `$1${newVersion}$2`);
+    fs.writeFileSync(cliCargoPath, content, 'utf8');
+    console.log(`✅ nano-rspow-cli dependency on nano-rspow bumped to ${newVersion}`);
+  }
+}
+
 console.log('\n🎉 Version sync complete! All source manifests aligned.');
 console.log('To update lockfiles and verify consistency, you can run:');
 console.log('  cargo check --all-targets');

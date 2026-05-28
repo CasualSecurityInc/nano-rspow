@@ -25,28 +25,6 @@ validateWork(hash, work, WorkType.Send); // → true
 | `Receive`   | Open and receive blocks        |
 | `Epoch1`    | Epoch upgrade blocks           |
 
-## CLI
-
-You can run the high-performance native CLI directly through the Node package.
-
-### Zero-Install (Run instantly via npm)
-Use `npx -p nano-rspow-node nano-rspow` to run the executable without installing it:
-```bash
-npx -p nano-rspow-node nano-rspow --help
-```
-
-### When Installed Locally
-If installed inside a project:
-```bash
-npx nano-rspow --help
-```
-
-### When Installed Globally
-If installed globally (`npm install -g nano-rspow-node`):
-```bash
-nano-rspow --help
-```
-
 ## See Also
 
 - **[nano-rspow-web](https://www.npmjs.com/package/nano-rspow-web)**: WebGPU-accelerated browser WebAssembly PoW package.
