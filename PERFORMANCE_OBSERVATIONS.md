@@ -32,8 +32,7 @@ Browser used: Chrome (Force WebGPU radio button selected via JS `.click()`).
 | mean   | 343.6     |
 | median | 261.6     |
 
-Browser `DISPATCH_X` = **65535** (hardcoded in `nano-rspow-web/src/webgpu.rs`)
-Nonces per batch = 65535 × 64 = **~4.19M**
+Batch size and dispatch parameters are listed in the [Tuning Parameter Reference](#tuning-parameter-reference).
 
 ---
 
@@ -109,8 +108,7 @@ Command: `./target/release/nano-rspow benchmark --count 1 --format json 2>/tmp/b
 - `probe_dispatch`: 1 sample/candidate → up to 3 samples, use min elapsed (best-of-N)
 - `TUNE_CACHE_VERSION`: "v1" → "v2" (invalidates old cached dispatch_x)
 
-**Result**: tuner now selects `dispatch_x = 65535` (was previously a smaller value)
-- Nonces/batch: 4,194,240 (same as browser hardcoded value)
+**Result**: tuner now selects `dispatch_x = 65535` (was previously a smaller value, matching the browser hardcoded batch size).
 - Tuning source: Cache (after first probe run)
 
 **ep2_send wgpu — n=20, Attempt 1**
@@ -130,14 +128,7 @@ Command: `./target/release/nano-rspow benchmark --count 1 --format json 2>/tmp/b
 | mean (ms)   | 3,035        | 1,999          | **−34%** | 2,380        | 1,918          | **−19%** |
 | min (ms)    | 144.7        | 36.4           | **−75%** | 307.7        | 133.5          | **−57%** |
 
-**vs Browser WebGPU (25-sample, median 261.6 ms, mean 343.6 ms)**
-- Native warm median: 1,144 ms vs browser 261.6 ms → still **4.4× slower** (was 5.8×)
-- Meaningful improvement but gap remains large
-
-**Analysis**: Larger batch size helps substantially. Remaining gap likely due to:
-1. Metal/wgpu overhead per `poll(wait_indefinitely)` call on the CPU-side sync path
-2. Browser GPU scheduler may pipeline more aggressively
-3. High variance (max 6124 ms) suggests per-work probabilistic distribution is dominating — this is fundamental (some PoW computations require many more batches by chance)
+**Analysis**: Larger batch size reduced the browser gap from 5.8× to 4.4×. For the remaining gap and root-cause analysis, see Attempt 4 below.
 
 ### Attempt 2 — Multiple compute passes per encoder submit (REVERTED — made things worse)
 
@@ -167,8 +158,6 @@ calls within a thread — they're data-independent but the GPU executes them ser
 a single invocation. A different approach (e.g. increasing workgroup_size so more threads
 run in parallel) would be needed. But `WORKGROUP_SIZE = 64` is already capped by the
 dispatch dimension — the real knob is `dispatch_x`, not threads-per-invocation.
-
-**Current best**: Attempt 1 (dispatch_x = 65535, warm median 1144 ms). Reverting to that baseline.
 
 ### Attempt 4 — Fully inline `blake2b_G` rounds + static zero-propagation in WGSL (CURRENT BEST)
 
@@ -237,13 +226,12 @@ Replaced rayon's `into_par_iter()` with pre-spun native threads using per-thread
 | epoch1 | 1,989 ms | 314-878 ms | **2-6× faster** |
 | ep2_send | 1,923 ms† | 10-15 s | washed out by compute |
 
-† The old 1,923 ms was from deterministic seeds (`thread_idx ^ 0xdeadbeef`) happening to hit a lucky nonce for the test-vector hash. True expected time on M1 for ep2_send is 10-30 s regardless of backend.
+† The old 1,923 ms was from deterministic seeds (`thread_idx ^ 0xdeadbeef`) happening to hit a lucky nonce for the test-vector hash. True expected time on M1 for ep2_send is 10-30 s on CPU backends.
 
 ### Key design decisions
 
 - `done` flag: `AtomicBool` with `AcqRel` on the winner's swap, `Relaxed` on all polls. Race-free — a thread either sees `true` or `false`; once set, all converge.
 - Result collection: fresh `(tx, rx)` per `generate()` call; `drop(tx)` disconnects when all workers finish.
-- RNG: `XorShift1024Star::new(rand::rng().random())` — one system-entropy seed per OS thread at spawn time.
 
 ---
 
@@ -253,11 +241,13 @@ Ported the pre-spun thread pool model to the browser: `coreCount - 1` Web Worker
 
 ### Web benchmark results (M1 MacBook Air, unthrottled first runs)
 
-| Tier | Chrome 8w | Safari 8w | Safari WebGPU |
-|------|-----------|-----------|---------------|
-| dev | <50 ms | 34-116 ms | 25-133 ms |
-| ep2_recv | ~90 ms | **545 ms** | 59-174 ms |
-| ep2_send | **603 ms** median | **54,554 ms** | 199-4,310 ms |
+| Tier | Chrome 8w | Brave 7w | Safari 8w | Safari WebGPU |
+|------|-----------|----------|-----------|---------------|
+| dev | <50 ms | ~61 ms | 34-116 ms | 25-133 ms |
+| ep2_recv | ~90 ms | ~68 ms | 545-1,389 ms | 59-174 ms |
+| ep2_send | **603 ms** median | 469-4,711 ms | 7,167-54,554 ms | 199-4,310 ms |
+
+Brave (Chromium-based) yields V8-level performance consistent with Chrome. Safari WASM CPU ep2_send range widened from a single 54.5 s sample to 7–55 s based on additional samples — still dominated by JSC's ~70× slower Blake2b throughput. Safari WebGPU remains the viable path on that engine.
 
 ### Browser engine WASM throughput gap
 
@@ -272,19 +262,7 @@ Safari's JSC is **~70× slower** than V8 for WASM Blake2b per-thread. This is an
 
 `worker.terminate()` does **not** interrupt a worker executing synchronous WASM code in Safari/WebKit. Workers continue running the WASM call to completion before termination takes effect.
 
-**Fix**: break the computation into short batches with an event-loop yield between them.
-
-```js
-const BATCH = 100_000; // ~5-50 ms per batch
-while (!cancelled) {
-  const result = globalThis.generate_work_cpu_batch(hash, threshold, BATCH);
-  if (result !== null) { /* found nonce */ break; }
-  await new Promise(r => setTimeout(r, 0)); // yield event loop
-}
-self.close();
-```
-
-During the `await setTimeout(0)` yield, Safari CAN deliver the `{ type: 'stop' }` message and process `terminate()`. Confirmed by Safari Performance recording: worker count drops from 7 → 1 → 0 within one 500 ms sampling interval.
+**Fix**: break the computation into short batches with an event-loop yield between them (see Design rules for WASM worker cleanup below). During `await setTimeout(0)` yields, Safari CAN deliver the `{ type: 'stop' }` message and process `terminate()`. Confirmed by Safari Performance recording: worker count drops from 7 → 1 → 0 within one 500 ms sampling interval.
 
 ### Design rules for WASM worker cleanup
 

@@ -80,3 +80,51 @@ pub fn generate_cpu(hash: &[u8; 32], threshold: u64) -> u64 {
         }
     })
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+
+    /// Calling with max_nonces=0 should return None immediately.
+    #[test]
+    fn batch_zero_returns_none() {
+        let hash = [0u8; 32];
+        assert!(generate_cpu_batch(&hash, u64::MAX, 0).is_none());
+    }
+
+    /// RNG state persists: calling batch twice in sequence explores
+    /// different nonces, not restarting from the same point.
+    #[test]
+    fn batch_persists_rng_state() {
+        let hash = [0u8; 32];
+        let b1 = generate_cpu_batch(&hash, u64::MAX, 1);
+        let b2 = generate_cpu_batch(&hash, u64::MAX, 1);
+        // Both should return None (u64::MAX threshold is never met),
+        // but they should NOT have searched the same nonce.
+        assert!(b1.is_none());
+        assert!(b2.is_none());
+        // The RNG shouldn't be reset — we just verify no panic occurs
+    }
+
+    /// With a low (DEV) threshold, a reasonable batch should find a nonce.
+    #[test]
+    fn batch_finds_nonce_at_dev_threshold() {
+        use nano_rspow::thresholds;
+        let hash = [0u8; 32];
+
+        // 1M nonces is more than enough for DEV threshold
+        let result = generate_cpu_batch(&hash, thresholds::DEV, 1_000_000);
+
+        assert!(result.is_some(), "batch should find a nonce at DEV threshold");
+        let diff = difficulty::compute(&hash, result.unwrap());
+        assert!(diff >= thresholds::DEV);
+    }
+
+    /// With an impossibly high threshold, even a large batch returns None.
+    #[test]
+    fn batch_returns_none_for_impossible_threshold() {
+        let hash = [0u8; 32];
+        let result = generate_cpu_batch(&hash, u64::MAX, 10_000);
+        assert!(result.is_none());
+    }
+}

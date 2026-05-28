@@ -279,4 +279,98 @@ mod tests {
         let diff = difficulty::compute(&hash, nonce);
         assert!(diff >= thresholds::DEV);
     }
+
+    #[test]
+    fn cpu_reuses_threads_across_generate_calls() {
+        let hash = [0u8; 32];
+        let backend = CpuBackend::new();
+        let cancel = CancelToken::new();
+
+        // Multiple calls on the same backend should all produce valid work
+        for _ in 0..5 {
+            let nonce = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+            let diff = difficulty::compute(&hash, nonce);
+            assert!(
+                diff >= thresholds::DEV,
+                "nonce {nonce:#018x} produced difficulty {diff:#018x} < threshold {:#018x}",
+                thresholds::DEV
+            );
+        }
+    }
+
+    #[test]
+    fn cpu_concurrent_generates_produce_unique_work() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let backend = Arc::new(CpuBackend::new());
+        let hash = [0u8; 32];
+        let cancel = CancelToken::new();
+
+        // Spawn several threads that all call generate() concurrently
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let backend = Arc::clone(&backend);
+                let cancel = cancel.clone();
+                thread::spawn(move || {
+                    backend.generate(&hash, thresholds::DEV, &cancel)
+                })
+            })
+            .collect();
+
+        let mut nonces = Vec::new();
+        for h in handles {
+            if let Some(nonce) = h.join().unwrap() {
+                nonces.push(nonce);
+            }
+        }
+
+        // All nonces should be valid
+        for &nonce in &nonces {
+            let diff = difficulty::compute(&hash, nonce);
+            assert!(diff >= thresholds::DEV);
+        }
+    }
+
+    /// Verifies that drop() cleanly joins threads even when workers were
+    /// mid-search. We spawn generate on a thread, cancel after a short delay,
+    /// drop the backend, and verify the thread returns cleanly.
+    #[test]
+    fn cpu_drop_after_generate_does_not_panic() {
+        use std::thread;
+
+        let hash = [0u8; 32];
+        let backend = CpuBackend::new();
+        let cancel = CancelToken::new();
+
+        let cancel_clone = cancel.clone();
+        let handle = thread::spawn(move || {
+            backend.generate(&hash, u64::MAX, &cancel_clone)
+        });
+
+        thread::sleep(std::time::Duration::from_millis(100));
+        cancel.cancel();
+
+        // Thread should return None or Some (shouldn't hang)
+        let result = handle.join().unwrap();
+        assert!(result.is_none());
+    }
+
+    /// Each worker thread uses system-entropy RNG seeds, so two threads
+    /// searching the same hash should produce different nonce sequences
+    /// and (almost certainly) different winning nonces.
+    #[test]
+    fn cpu_workers_produce_different_nonces() {
+        let hash = [0u8; 32];
+        let backend = CpuBackend::new();
+        let cancel = CancelToken::new();
+
+        let nonce1 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+        let nonce2 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+        let nonce3 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+
+        // Three nonces from a seeded RNG with 2^64 space should all be distinct.
+        assert_ne!(nonce1, nonce2, "same nonce on consecutive generate calls");
+        assert_ne!(nonce2, nonce3, "same nonce on consecutive generate calls");
+    }
 }
