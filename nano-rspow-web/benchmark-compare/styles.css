@@ -35,7 +35,7 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .button-rspow { --button-color: #2563eb; background: #2563eb; }
 .button-nanopow { --button-color: #16a34a; background: #16a34a; }
 .button-nanocurrency { --button-color: #d97706; background: #d97706; }
-.button-nanopowNpm { --button-color: #9333ea; background: #9333ea; }
+.button-webglPow { --button-color: #9333ea; background: #9333ea; }
 .battle-inclusion { display: inline-flex; align-items: center; justify-content: flex-start; width: fit-content; cursor: pointer; }
 .battle-inclusion input { width: 13px; height: 13px; margin: 0; accent-color: #475569; cursor: inherit; }
 .battle-inclusion:has(input:disabled) { cursor: not-allowed; opacity: 0.5; }
@@ -86,7 +86,7 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .sample-badge.rspow { background: #2563eb; }
 .sample-badge.nanopow { background: #16a34a; }
 .sample-badge.nanocurrency { background: #d97706; }
-.sample-badge.nanopowNpm { background: #9333ea; }
+.sample-badge.webglPow { background: #9333ea; }
 
 @media (max-width: 640px) {
   .page-shell { padding: 42px 16px 64px; }

@@ -13,11 +13,9 @@ import {
   YAxis,
 } from 'recharts';
 import initNanoRspow, { generate_work as generateNanoRspow } from './nano_rspow_web.js';
-// Keep the competitor fixture local so this page remains reproducible and does
-// not change when the npm "latest" tag moves.
-import { NanoPow } from './nano-pow-bundle.js';
-import * as NanoPowNpmModule from 'nano-pow';
 import { validateWork } from 'nanocurrency';
+import * as NanoPowModule from 'nano-pow';
+import 'nano-webgl-pow';
 
 const html = htm.bind(React.createElement);
 
@@ -26,21 +24,21 @@ const NANOPOW_OPTIONS = { difficulty: EPOCH2_SEND_THRESHOLD };
 const BATTLE_TURNS = 42;
 const BATTLE_COOLDOWN_MS = 200;
 const NANOCURRENCY_PROGRESS_INTERVAL_MS = 15_000;
-const NANOCURRENCY_WORKER_COUNT = Math.max(1, globalThis.navigator?.hardwareConcurrency ?? 1);
+const NANOCURRENCY_WORKER_COUNT = Math.min(255, Math.max(1, globalThis.navigator?.hardwareConcurrency ?? 1));
 const COLORS = {
   rspow: '#2563eb',
-  nanopow: '#16a34a',
   nanocurrency: '#d97706',
-  nanopowNpm: '#9333ea',
+  nanopow: '#16a34a',
+  webglPow: '#9333ea',
 };
 const PROVIDERS = [
   { key: 'rspow', label: 'nano-rspow-web', version: '0.10.0', color: COLORS.rspow, thresholdKey: 'threshold' },
-  { key: 'nanopow', label: 'NanoPow', version: '5.1.13', color: COLORS.nanopow, thresholdKey: 'difficulty' },
+  { key: 'nanopow', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopow, thresholdKey: 'difficulty' },
   { key: 'nanocurrency', label: 'nanocurrency', version: '2.5.0', color: COLORS.nanocurrency, thresholdKey: 'workThreshold' },
-  { key: 'nanopowNpm', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopowNpm, thresholdKey: 'difficulty' },
+  { key: 'webglPow', label: 'nano-webgl-pow', version: '1.1.1', color: COLORS.webglPow, thresholdKey: 'threshold' },
 ];
 const providerByKey = Object.fromEntries(PROVIDERS.map((provider) => [provider.key, provider]));
-const NanoPowNpm = NanoPowNpmModule.NanoPow ?? NanoPowNpmModule.default;
+const NanoPow = NanoPowModule.NanoPow ?? NanoPowModule.default;
 
 function randomRoot() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -56,6 +54,21 @@ function battleRootFromNonce(nonce) {
 
 function sleep(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function computeNanoWebglPow(workRoot) {
+  return new Promise((resolve, reject) => {
+    try {
+      globalThis.NanoWebglPow(
+        workRoot,
+        (work, frames) => resolve({ work, frames }),
+        () => false,
+        '0xFFFFFFF8',
+      );
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 function formatDuration(milliseconds) {
@@ -134,10 +147,7 @@ function BenchmarkApp() {
       rejectWorkersReady = reject;
     });
 
-    const replaceNanocurrencyWorker = (workerIndex) => {
-      const previous = nanocurrencyWorkersRef.current[workerIndex];
-      if (previous) previous.terminate();
-
+    const createNanocurrencyWorker = (workerIndex) => {
       const worker = new Worker('./nanocurrency-worker.js', { type: 'module' });
       nanocurrencyWorkersRef.current[workerIndex] = worker;
       worker.onmessage = ({ data }) => {
@@ -152,24 +162,23 @@ function BenchmarkApp() {
 
           if (data.type === 'error') {
             request.errors += 1;
-            if (request.errors < NANOCURRENCY_WORKER_COUNT) return;
-            request.settled = true;
-            nanocurrencyRequestsRef.current.delete(data.id);
-            window.clearInterval(request.progressTimer);
-            request.reject(new Error(data.message));
-            return;
+            request.lastError = data.message;
+          } else {
+            const isValid = validateWork({ blockHash: request.root, work: data.nonce, threshold: EPOCH2_SEND_THRESHOLD });
+            console.assert(isValid, `nanocurrency partition ${workerIndex} returned invalid Epoch 2 work`, {
+              workRoot: request.root, nonce: data.nonce, workerIndex,
+            });
+            if (isValid && !request.firstNonce) request.firstNonce = data.nonce;
+            if (!isValid) request.errors += 1;
           }
 
+          request.completed += 1;
+          if (request.completed < NANOCURRENCY_WORKER_COUNT) return;
           request.settled = true;
           nanocurrencyRequestsRef.current.delete(data.id);
           window.clearInterval(request.progressTimer);
-          request.resolve(data.nonce);
-
-          // computeWork has no cancellation hook. Replacing losing workers is
-          // the only way to release their CPU partitions for the next round.
-          for (let index = 0; index < NANOCURRENCY_WORKER_COUNT; index += 1) {
-            if (index !== workerIndex) replaceNanocurrencyWorker(index);
-          }
+          if (request.firstNonce) request.resolve(request.firstNonce);
+          else request.reject(new Error(request.lastError ?? 'nanocurrency returned no valid work value'));
         }
       };
       worker.onerror = (event) => {
@@ -177,23 +186,33 @@ function BenchmarkApp() {
         rejectWorkersReady(error);
         const request = [...nanocurrencyRequestsRef.current.values()][0];
         if (!request || request.settled) return;
+        request.completed += 1;
         request.errors += 1;
-        replaceNanocurrencyWorker(workerIndex);
-        if (request.errors < NANOCURRENCY_WORKER_COUNT) return;
+        request.lastError = error.message;
+        if (request.completed < NANOCURRENCY_WORKER_COUNT) return;
         request.settled = true;
-        nanocurrencyRequestsRef.current.clear();
+        nanocurrencyRequestsRef.current.delete(request.id);
         window.clearInterval(request.progressTimer);
         request.reject(error);
       };
       worker.onmessageerror = () => {
         const error = new Error('nanocurrency worker returned an unreadable response');
         rejectWorkersReady(error);
-        rejectPendingNanocurrencyRequests(error);
+        const request = [...nanocurrencyRequestsRef.current.values()][0];
+        if (!request || request.settled) return;
+        request.completed += 1;
+        request.errors += 1;
+        request.lastError = error.message;
+        if (request.completed < NANOCURRENCY_WORKER_COUNT) return;
+        request.settled = true;
+        nanocurrencyRequestsRef.current.delete(request.id);
+        window.clearInterval(request.progressTimer);
+        request.reject(error);
       };
     };
 
     for (let workerIndex = 0; workerIndex < NANOCURRENCY_WORKER_COUNT; workerIndex += 1) {
-      replaceNanocurrencyWorker(workerIndex);
+      createNanocurrencyWorker(workerIndex);
     }
 
     Promise.all([initNanoRspow(), workerReady])
@@ -244,9 +263,12 @@ function BenchmarkApp() {
     const progressTimer = window.setInterval(() => {
       const elapsedSeconds = Math.floor((performance.now() - startedAt) / 1000);
       console.info(`[PoW] nanocurrency still searching after ${elapsedSeconds}s`, { root: workRoot });
-      setMessage(`nanocurrency is still searching (${elapsedSeconds}s) across ${NANOCURRENCY_WORKER_COUNT} CPU partitions.`);
+      setMessage(`nanocurrency is still searching (${elapsedSeconds}s) across ${NANOCURRENCY_WORKER_COUNT} CPU partitions; waiting for all to finish.`);
     }, NANOCURRENCY_PROGRESS_INTERVAL_MS);
-    nanocurrencyRequestsRef.current.set(id, { resolve, reject, progressTimer, settled: false, errors: 0 });
+    nanocurrencyRequestsRef.current.set(id, {
+      id, root: workRoot, resolve, reject, progressTimer, settled: false,
+      completed: 0, errors: 0, firstNonce: null, lastError: null,
+    });
     workers.forEach((worker, workerIndex) => {
       worker.postMessage({
         type: 'compute',
@@ -297,9 +319,9 @@ function BenchmarkApp() {
         nonce = await computeNanocurrencyWork(workRoot);
         backend = `nanocurrency WASM worker pool (${NANOCURRENCY_WORKER_COUNT})`;
       } else {
-        const result = await NanoPowNpm.work_generate(workRoot, NANOPOW_OPTIONS);
+        const result = await computeNanoWebglPow(workRoot);
         nonce = result.work;
-        backend = result.api ?? 'nano-pow npm automatic API selection';
+        backend = `WebGL2 (${result.frames.toLocaleString()} frames)`;
       }
 
       const isValid = validateWork({
@@ -446,7 +468,7 @@ function BenchmarkApp() {
     <section className="page-shell">
       <header className="hero">
         <p className="eyebrow">Browser benchmark · Epoch 2 send</p>
-        <h1>One work root. Four local PoW engines.</h1>
+        <h1>One work root and four PoW engines.</h1>
         <p className="lede">
           Each round uses the same random root and records elapsed wall-clock time.
           Runs are intentionally serialized: GPU and CPU pressure should belong to one solver at a time.
@@ -489,7 +511,7 @@ function BenchmarkApp() {
           <span className="button-label button-text" key=${battle.running ? battle.stopRequested ? 'stopping' : 'stop' : 'start'}>
             ${battle.running
               ? battle.stopRequested ? 'Stopping…' : 'Stop!'
-              : 'Start ping-pong battle'}
+              : 'Start battle'}
           </span>
         </button>
         <p className="battle-note">
