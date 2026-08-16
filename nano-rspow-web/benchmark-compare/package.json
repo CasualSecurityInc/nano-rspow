@@ -1,0 +1,26 @@
+{
+  "name": "benchmark-compare",
+  "version": "1.0.0",
+  "description": "This page compares Epoch 2 send-work searches from four browser providers for the same randomly generated work roots: nano-rspow-web v0.10.0, the vendored NanoPow v5.1.13 bundle, nanocurrency v2.5.0's WASM-backed `computeWork`, and the published nano-pow v5.2.2 package.",
+  "main": "app.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "python3 -m http.server 8080 --directory dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "htm": "3.1.1",
+    "nano-pow": "5.2.2",
+    "nanocurrency": "2.5.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "2.15.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  },
+  "private": "true"
+}

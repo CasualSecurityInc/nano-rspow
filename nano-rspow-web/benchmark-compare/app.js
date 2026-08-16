@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'https://esm.sh/react@19.1.0';
-import { createRoot } from 'https://esm.sh/react-dom@19.1.0/client';
-import htm from 'https://esm.sh/htm@3.1.1';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import htm from 'htm';
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -11,22 +11,36 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'https://esm.sh/recharts@2.15.1?deps=react@19.1.0,react-dom@19.1.0';
+} from 'recharts';
 import initNanoRspow, { generate_work as generateNanoRspow } from './nano_rspow_web.js';
 // Keep the competitor fixture local so this page remains reproducible and does
 // not change when the npm "latest" tag moves.
 import { NanoPow } from './nano-pow-bundle.js';
+import * as NanoPowNpmModule from 'nano-pow';
+import { validateWork } from 'nanocurrency';
 
 const html = htm.bind(React.createElement);
 
 const EPOCH2_SEND_THRESHOLD = 'fffffff800000000';
 const NANOPOW_OPTIONS = { difficulty: EPOCH2_SEND_THRESHOLD };
 const BATTLE_TURNS = 42;
-const BATTLE_COOLDOWN_MS = 100;
+const BATTLE_COOLDOWN_MS = 200;
+const NANOCURRENCY_PROGRESS_INTERVAL_MS = 15_000;
+const NANOCURRENCY_WORKER_COUNT = Math.max(1, globalThis.navigator?.hardwareConcurrency ?? 1);
 const COLORS = {
   rspow: '#2563eb',
   nanopow: '#16a34a',
+  nanocurrency: '#d97706',
+  nanopowNpm: '#9333ea',
 };
+const PROVIDERS = [
+  { key: 'rspow', label: 'nano-rspow-web', version: '0.10.0', color: COLORS.rspow, thresholdKey: 'threshold' },
+  { key: 'nanopow', label: 'NanoPow', version: '5.1.13', color: COLORS.nanopow, thresholdKey: 'difficulty' },
+  { key: 'nanocurrency', label: 'nanocurrency', version: '2.5.0', color: COLORS.nanocurrency, thresholdKey: 'workThreshold' },
+  { key: 'nanopowNpm', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopowNpm, thresholdKey: 'difficulty' },
+];
+const providerByKey = Object.fromEntries(PROVIDERS.map((provider) => [provider.key, provider]));
+const NanoPowNpm = NanoPowNpmModule.NanoPow ?? NanoPowNpmModule.default;
 
 function randomRoot() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -93,81 +107,229 @@ function BenchmarkApp() {
   const [completedInRound, setCompletedInRound] = useState(new Set());
   const [samples, setSamples] = useState([]);
   const [message, setMessage] = useState('Loading nano-rspow WebAssembly…');
+  const [battleProviders, setBattleProviders] = useState(() => new Set(
+    PROVIDERS.filter((provider) => provider.key !== 'nanocurrency').map((provider) => provider.key),
+  ));
   const [battle, setBattle] = useState({ running: false, stopRequested: false, completed: 0, current: null });
   const [battleRootState, setBattleRootState] = useState(null);
   const battleStopRef = useRef(false);
+  const nanocurrencyWorkersRef = useRef([]);
+  const nanocurrencyRequestsRef = useRef(new Map());
+  const nanocurrencyRequestIdRef = useRef(0);
 
   useEffect(() => {
-    initNanoRspow()
+    const rejectPendingNanocurrencyRequests = (error) => {
+      for (const request of nanocurrencyRequestsRef.current.values()) {
+        window.clearInterval(request.progressTimer);
+        request.reject(error);
+      }
+      nanocurrencyRequestsRef.current.clear();
+    };
+
+    let readyWorkers = 0;
+    let resolveWorkersReady;
+    let rejectWorkersReady;
+    const workerReady = new Promise((resolve, reject) => {
+      resolveWorkersReady = resolve;
+      rejectWorkersReady = reject;
+    });
+
+    const replaceNanocurrencyWorker = (workerIndex) => {
+      const previous = nanocurrencyWorkersRef.current[workerIndex];
+      if (previous) previous.terminate();
+
+      const worker = new Worker('./nanocurrency-worker.js', { type: 'module' });
+      nanocurrencyWorkersRef.current[workerIndex] = worker;
+      worker.onmessage = ({ data }) => {
+        if (data.type === 'ready') {
+          readyWorkers += 1;
+          if (readyWorkers === NANOCURRENCY_WORKER_COUNT) resolveWorkersReady();
+          return;
+        }
+        if (data.type === 'result' || data.type === 'error') {
+          const request = nanocurrencyRequestsRef.current.get(data.id);
+          if (!request || request.settled) return;
+
+          if (data.type === 'error') {
+            request.errors += 1;
+            if (request.errors < NANOCURRENCY_WORKER_COUNT) return;
+            request.settled = true;
+            nanocurrencyRequestsRef.current.delete(data.id);
+            window.clearInterval(request.progressTimer);
+            request.reject(new Error(data.message));
+            return;
+          }
+
+          request.settled = true;
+          nanocurrencyRequestsRef.current.delete(data.id);
+          window.clearInterval(request.progressTimer);
+          request.resolve(data.nonce);
+
+          // computeWork has no cancellation hook. Replacing losing workers is
+          // the only way to release their CPU partitions for the next round.
+          for (let index = 0; index < NANOCURRENCY_WORKER_COUNT; index += 1) {
+            if (index !== workerIndex) replaceNanocurrencyWorker(index);
+          }
+        }
+      };
+      worker.onerror = (event) => {
+        const error = event.error ?? new Error(event.message || 'nanocurrency worker crashed');
+        rejectWorkersReady(error);
+        const request = [...nanocurrencyRequestsRef.current.values()][0];
+        if (!request || request.settled) return;
+        request.errors += 1;
+        replaceNanocurrencyWorker(workerIndex);
+        if (request.errors < NANOCURRENCY_WORKER_COUNT) return;
+        request.settled = true;
+        nanocurrencyRequestsRef.current.clear();
+        window.clearInterval(request.progressTimer);
+        request.reject(error);
+      };
+      worker.onmessageerror = () => {
+        const error = new Error('nanocurrency worker returned an unreadable response');
+        rejectWorkersReady(error);
+        rejectPendingNanocurrencyRequests(error);
+      };
+    };
+
+    for (let workerIndex = 0; workerIndex < NANOCURRENCY_WORKER_COUNT; workerIndex += 1) {
+      replaceNanocurrencyWorker(workerIndex);
+    }
+
+    Promise.all([initNanoRspow(), workerReady])
       .then(() => {
         setReady(true);
-        setMessage('Ready. Run both solvers against round 1’s work root.');
+        setMessage('Ready. Run the solvers against round 1’s work root.');
       })
       .catch((error) => {
         setInitializationError(error instanceof Error ? error.message : String(error));
-        setMessage('nano-rspow could not initialize.');
+        setMessage('A local PoW provider could not initialize.');
       });
+
+    return () => {
+      for (const worker of nanocurrencyWorkersRef.current) worker.terminate();
+      nanocurrencyWorkersRef.current = [];
+      rejectPendingNanocurrencyRequests(new Error('nanocurrency worker terminated'));
+    };
   }, []);
 
-  const series = useMemo(() => ({
-    rspow: samples
-      .filter((sample) => sample.implementation === 'rspow')
-      .map((sample, index) => ({ ...sample, providerX: 1 + (((index * 37) % 11) - 5) / 100 })),
-    nanopow: samples
-      .filter((sample) => sample.implementation === 'nanopow')
-      .map((sample, index) => ({ ...sample, providerX: 2 + (((index * 53) % 11) - 5) / 100 })),
-  }), [samples]);
+  const series = useMemo(() => Object.fromEntries(PROVIDERS.map((provider, providerIndex) => [
+    provider.key,
+    samples
+      .filter((sample) => sample.implementation === provider.key)
+      .map((sample, index) => ({ ...sample, providerX: 1 + (((index * (37 + providerIndex * 16)) % 11) - 5) / 100 })),
+  ])), [samples]);
 
-  const stats = useMemo(() => ({
-    rspow: distributionStats(series.rspow),
-    nanopow: distributionStats(series.nanopow),
-  }), [series]);
+  const stats = useMemo(() => Object.fromEntries(PROVIDERS.map((provider) => [
+    provider.key,
+    distributionStats(series[provider.key]),
+  ])), [series]);
+
+  const sharedYDomain = useMemo(() => {
+    const values = samples.map((sample) => sample.elapsedMs).filter((value) => value > 0);
+    if (values.length === 0) return ['auto', 'auto'];
+    const minimum = Math.min(...values);
+    const maximum = Math.max(...values);
+    return [Math.max(1, minimum / 1.35), maximum * 1.35];
+  }, [samples]);
+
+  const computeNanocurrencyWork = (workRoot) => new Promise((resolve, reject) => {
+    const workers = nanocurrencyWorkersRef.current;
+    if (workers.length !== NANOCURRENCY_WORKER_COUNT) {
+      reject(new Error('nanocurrency worker pool is unavailable'));
+      return;
+    }
+    const id = ++nanocurrencyRequestIdRef.current;
+    const startedAt = performance.now();
+    const progressTimer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((performance.now() - startedAt) / 1000);
+      console.info(`[PoW] nanocurrency still searching after ${elapsedSeconds}s`, { root: workRoot });
+      setMessage(`nanocurrency is still searching (${elapsedSeconds}s) across ${NANOCURRENCY_WORKER_COUNT} CPU partitions.`);
+    }, NANOCURRENCY_PROGRESS_INTERVAL_MS);
+    nanocurrencyRequestsRef.current.set(id, { resolve, reject, progressTimer, settled: false, errors: 0 });
+    workers.forEach((worker, workerIndex) => {
+      worker.postMessage({
+        type: 'compute',
+        id,
+        root: workRoot,
+        threshold: EPOCH2_SEND_THRESHOLD,
+        workerIndex,
+        workerCount: NANOCURRENCY_WORKER_COUNT,
+      });
+    });
+  });
 
   const finishRoundIfComplete = (implementation) => {
     setCompletedInRound((previous) => {
       const next = new Set(previous);
       next.add(implementation);
-      if (next.size === 2) {
+      if (next.size === PROVIDERS.length) {
         setRound((value) => value + 1);
         setRoot(randomRoot());
         setMessage(`Round ${round} complete. A new shared work root is ready.`);
         return new Set();
       }
-      setMessage(`Recorded ${implementation === 'rspow' ? 'nano-rspow' : 'NanoPow'}. Run the other solver with this same root.`);
+      setMessage(`Recorded ${providerByKey[implementation].label}. Run another solver with this same root.`);
       return next;
     });
   };
 
   const solve = async (implementation, workRoot) => {
+    const provider = providerByKey[implementation];
+    const timer = `[PoW] ${provider.label} ${performance.now().toFixed(1)}ms`;
     const startedAt = performance.now();
     let nonce;
     let backend;
 
-    if (implementation === 'rspow') {
-      const result = await generateNanoRspow(workRoot, EPOCH2_SEND_THRESHOLD);
-      nonce = result.nonce;
-      backend = result.is_gpu ? 'WebGPU' : 'CPU WASM fallback';
-    } else {
-      const result = await NanoPow.work_generate(workRoot, NANOPOW_OPTIONS);
-      nonce = result.work;
-      backend = result.api ?? 'automatic API selection';
-    }
+    console.groupCollapsed(`${timer} start`);
+    console.info('root', workRoot, 'threshold', EPOCH2_SEND_THRESHOLD);
+    console.time(timer);
+    try {
+      if (implementation === 'rspow') {
+        const result = await generateNanoRspow(workRoot, EPOCH2_SEND_THRESHOLD);
+        nonce = result.nonce;
+        backend = result.is_gpu ? 'WebGPU' : 'CPU WASM fallback';
+      } else if (implementation === 'nanopow') {
+        const result = await NanoPow.work_generate(workRoot, NANOPOW_OPTIONS);
+        nonce = result.work;
+        backend = result.api ?? 'automatic API selection';
+      } else if (implementation === 'nanocurrency') {
+        nonce = await computeNanocurrencyWork(workRoot);
+        backend = `nanocurrency WASM worker pool (${NANOCURRENCY_WORKER_COUNT})`;
+      } else {
+        const result = await NanoPowNpm.work_generate(workRoot, NANOPOW_OPTIONS);
+        nonce = result.work;
+        backend = result.api ?? 'nano-pow npm automatic API selection';
+      }
 
-    return {
-      elapsedMs: performance.now() - startedAt,
-      nonce,
-      backend,
-    };
+      const isValid = validateWork({
+        blockHash: workRoot,
+        work: nonce,
+        threshold: EPOCH2_SEND_THRESHOLD,
+      });
+      console.assert(isValid, `${provider.label} returned invalid Epoch 2 work`, { workRoot, nonce });
+      if (!isValid) throw new Error(`${provider.label} returned work below the Epoch 2 send threshold`);
+
+      const elapsedMs = performance.now() - startedAt;
+      console.info('finished and validated', { nonce, backend, elapsedMs });
+      return { elapsedMs, nonce, backend };
+    } catch (error) {
+      console.error('failed', error);
+      throw error;
+    } finally {
+      console.timeEnd(timer);
+      console.groupEnd();
+    }
   };
 
   const runBenchmark = async (implementation) => {
     if (!ready || active || completedInRound.has(implementation)) return;
 
     setActive(implementation);
-    setMessage(`Running ${implementation === 'rspow' ? 'nano-rspow' : 'NanoPow'} at the Epoch 2 send threshold…`);
+    setMessage(`Running ${providerByKey[implementation].label} at the Epoch 2 send threshold…`);
     try {
       const { elapsedMs, nonce, backend } = await solve(implementation, root);
-      const label = implementation === 'rspow' ? 'nano-rspow' : 'NanoPow';
+      const label = providerByKey[implementation].label;
       setSamples((previous) => [...previous, {
         id: `round-${round}-${implementation}`,
         implementation,
@@ -181,7 +343,7 @@ function BenchmarkApp() {
       finishRoundIfComplete(implementation);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      setMessage(`${implementation === 'rspow' ? 'nano-rspow' : 'NanoPow'} failed: ${detail}`);
+      setMessage(`${providerByKey[implementation].label} failed: ${detail}`);
     } finally {
       setActive(null);
     }
@@ -190,9 +352,15 @@ function BenchmarkApp() {
   const runBattle = async () => {
     if (!ready || active || battle.running) return;
 
+    const selectedProviders = PROVIDERS.filter((provider) => battleProviders.has(provider.key));
+    if (selectedProviders.length === 0) {
+      setMessage('Select at least one provider to include in the battle.');
+      return;
+    }
+
     battleStopRef.current = false;
     setActive('battle');
-    setBattle({ running: true, stopRequested: false, completed: 0, current: 'rspow' });
+    setBattle({ running: true, stopRequested: false, completed: 0, current: selectedProviders[0].key });
 
     let battleRoot = root;
     setBattleRootState(battleRoot);
@@ -201,8 +369,8 @@ function BenchmarkApp() {
       for (let turn = 1; turn <= BATTLE_TURNS; turn += 1) {
         if (battleStopRef.current) break;
 
-        const implementation = turn % 2 === 1 ? 'rspow' : 'nanopow';
-        const label = implementation === 'rspow' ? 'nano-rspow' : 'NanoPow';
+        const implementation = selectedProviders[(turn - 1) % selectedProviders.length].key;
+        const label = providerByKey[implementation].label;
         setBattle((previous) => ({ ...previous, current: implementation, completed }));
         setMessage(`Battle turn ${turn}/${BATTLE_TURNS}: running ${label}…`);
 
@@ -247,26 +415,38 @@ function BenchmarkApp() {
   const stopBattle = () => {
     battleStopRef.current = true;
     setBattle((previous) => ({ ...previous, stopRequested: true }));
-    const activeLabel = battle.current === 'nanopow' ? 'NanoPow' : 'nano-rspow';
+    const activeLabel = providerByKey[battle.current]?.label ?? 'the active provider';
     setMessage(`Stopping… ${activeLabel} is allowed to finish its current work search before the battle ends.`);
   };
 
-  const buttonState = (implementation) => {
-    if (active) return active === 'battle' ? 'Battle in progress' : 'Running…';
-    if (completedInRound.has(implementation)) return 'Recorded for this round';
-    return implementation === 'rspow' ? 'Run nano-rspow' : 'Run NanoPow';
+  const toggleBattleProvider = (implementation) => {
+    setBattleProviders((previous) => {
+      const next = new Set(previous);
+      if (next.has(implementation)) next.delete(implementation);
+      else next.add(implementation);
+      return next;
+    });
   };
 
-  const isDisabled = (implementation) => !ready || Boolean(active) || completedInRound.has(implementation);
+  const buttonState = (implementation) => {
+    if (runningImplementation === implementation) return 'Running…';
+    if (completedInRound.has(implementation)) return 'Recorded for this round';
+    return `Run ${providerByKey[implementation].label}`;
+  };
+
+  const isDisabled = (implementation) => !ready
+    || Boolean(active)
+    || !battleProviders.has(implementation)
+    || completedInRound.has(implementation);
   const runningImplementation = active === 'battle' ? battle.current : active;
-  const statusAlignment = runningImplementation === 'nanopow' ? 'status-align-right' : 'status-align-left';
+  const runningThresholdKey = providerByKey[runningImplementation]?.thresholdKey ?? 'threshold';
   const displayedRoot = battle.running && battleRootState ? battleRootState : root;
 
   return html`
     <section className="page-shell">
       <header className="hero">
         <p className="eyebrow">Browser benchmark · Epoch 2 send</p>
-        <h1>One work root. Two local PoW engines.</h1>
+        <h1>One work root. Four local PoW engines.</h1>
         <p className="lede">
           Each round uses the same random root and records elapsed wall-clock time.
           Runs are intentionally serialized: GPU and CPU pressure should belong to one solver at a time.
@@ -277,117 +457,95 @@ function BenchmarkApp() {
         <div className="round-meta">
           <span className="round-label">${battle.running ? `Battle turn ${Math.min(battle.completed + 1, BATTLE_TURNS)}/${BATTLE_TURNS}` : `Round ${round}`}</span>
           <code title=${displayedRoot}>${displayedRoot}</code>
-          <span className="threshold">threshold ${EPOCH2_SEND_THRESHOLD}</span>
+          <span className="threshold">Epoch 2 ${runningThresholdKey} ${EPOCH2_SEND_THRESHOLD}</span>
         </div>
         <div className="button-row">
-          <button
-            className="benchmark-button button-rspow"
-            disabled=${isDisabled('rspow')}
-            onClick=${() => runBenchmark('rspow')}
-          >
-            <span className="button-dot"></span>${buttonState('rspow')}
-          </button>
-          <button
-            className="benchmark-button button-nanopow"
-            disabled=${isDisabled('nanopow')}
-            onClick=${() => runBenchmark('nanopow')}
-          >
-            <span className="button-dot"></span>${buttonState('nanopow')}
-          </button>
+          ${PROVIDERS.map((provider) => html`
+            <div className="provider-control" key=${provider.key}>
+              <button
+                className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''}`}
+                disabled=${isDisabled(provider.key)}
+                onClick=${() => runBenchmark(provider.key)}
+              >
+                <span className="button-dot"></span><span className="button-text" key=${buttonState(provider.key)}>${buttonState(provider.key)}</span>
+              </button>
+              <label className="battle-inclusion" title="Include in battle">
+                <input
+                  type="checkbox"
+                  aria-label=${`Include ${provider.label} in battle`}
+                  checked=${battleProviders.has(provider.key)}
+                  disabled=${Boolean(active)}
+                  onChange=${() => toggleBattleProvider(provider.key)}
+                />
+              </label>
+            </div>
+          `)}
         </div>
         <button
           className=${`battle-button ${battle.running ? 'is-running' : ''} ${battle.stopRequested ? 'is-stopping' : ''}`}
-          disabled=${!ready || Boolean(active && !battle.running) || battle.stopRequested}
+          disabled=${!ready || battleProviders.size === 0 || Boolean(active && !battle.running) || battle.stopRequested}
           onClick=${battle.running ? stopBattle : runBattle}
         >
-          <span className="button-label">
+          <span className="button-label button-text" key=${battle.running ? battle.stopRequested ? 'stopping' : 'stop' : 'start'}>
             ${battle.running
               ? battle.stopRequested ? 'Stopping…' : 'Stop!'
               : 'Start ping-pong battle'}
           </span>
         </button>
         <p className="battle-note">
-          ${BATTLE_TURNS} alternating turns (${BATTLE_COOLDOWN_MS} ms between turns), beginning with nano-rspow.
+          ${BATTLE_TURNS} turns (${BATTLE_COOLDOWN_MS} ms between turns), cycling through the selected providers.
           Each result becomes the next work root.
         </p>
-        <p className=${`${initializationError ? 'status status-error' : 'status'} ${statusAlignment}`} aria-live="polite">
+        <p className=${initializationError ? 'status status-error' : 'status'} aria-live="polite">
           ${message}
         </p>
       </section>
 
-      <section className="chart-card" aria-label="Benchmark result scatter chart">
-        <div className="chart-heading">
-          <div>
-            <p className="eyebrow">Results</p>
-            <h2>Run-time distribution</h2>
-            <p className="chart-note">Each dot is one run. The shaded band is p25–p75; the line is the median.</p>
-          </div>
-          <div className="legend" aria-label="Chart legend">
-            <span><i className="legend-dot legend-rspow"></i>nano-rspow</span>
-            <span><i className="legend-dot legend-nanopow"></i>NanoPow</span>
-          </div>
-        </div>
-        <div className="chart-frame">
-          ${samples.length === 0
-            ? html`<p className="empty-chart">Results appear here after a successful run.</p>`
-            : html`
-              <${ResponsiveContainer} width="100%" height="100%">
-                <${ScatterChart} margin=${{ top: 18, right: 18, bottom: 14, left: 8 }}>
-                  <${CartesianGrid} strokeDasharray="3 3" vertical=${false} stroke="#e2e8f0" />
-                  <${ReferenceArea} x1=${0.65} x2=${1.35} y1=${stats.rspow.p25 || undefined} y2=${stats.rspow.p75 || undefined} fill=${COLORS.rspow} fillOpacity=${0.1} />
-                  <${ReferenceArea} x1=${1.65} x2=${2.35} y1=${stats.nanopow.p25 || undefined} y2=${stats.nanopow.p75 || undefined} fill=${COLORS.nanopow} fillOpacity=${0.1} />
-                  <${ReferenceLine} x=${1} stroke="#2563eb" strokeOpacity=${0.18} />
-                  <${ReferenceLine} x=${2} stroke="#16a34a" strokeOpacity=${0.18} />
-                  ${stats.rspow.count > 0 && html`<${ReferenceLine} y=${stats.rspow.median} stroke=${COLORS.rspow} strokeDasharray="4 4" label=${{ value: `median ${formatDuration(stats.rspow.median)}`, fill: COLORS.rspow, fontSize: 11, position: 'insideTopLeft' }} />`}
-                  ${stats.nanopow.count > 0 && html`<${ReferenceLine} y=${stats.nanopow.median} stroke=${COLORS.nanopow} strokeDasharray="4 4" label=${{ value: `median ${formatDuration(stats.nanopow.median)}`, fill: COLORS.nanopow, fontSize: 11, position: 'insideTopRight' }} />`}
-                  <${XAxis}
-                    dataKey="providerX"
-                    name="Provider"
-                    type="number"
-                    domain=${[0.5, 2.5]}
-                    ticks=${[1, 2]}
-                    tickFormatter=${(value) => value === 1 ? 'nano-rspow' : 'NanoPow'}
-                    tickLine=${false}
-                    axisLine=${false}
-                    tick=${{ fill: '#64748b', fontSize: 12 }}
-                  />
-                  <${YAxis}
-                    dataKey="elapsedMs"
-                    name="Elapsed"
-                    scale="log"
-                    domain=${['auto', 'auto']}
-                    tickLine=${false}
-                    axisLine=${false}
-                    tick=${{ fill: '#64748b', fontSize: 12 }}
-                    width=${70}
-                    tickFormatter=${formatDuration}
-                    label=${{ value: 'Elapsed time · log scale', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 12 }}
-                  />
-                  <${Tooltip} cursor=${{ strokeDasharray: '3 3', stroke: '#94a3b8' }} content=${html`<${ScatterTooltip} />`} />
-                  <${Scatter} name="nano-rspow" data=${series.rspow} fill=${COLORS.rspow} />
-                  <${Scatter} name="NanoPow" data=${series.nanopow} fill=${COLORS.nanopow} />
-                </${ScatterChart}>
-              </${ResponsiveContainer}>
-            `}
-        </div>
-      </section>
-
-      <section className="stats-grid" aria-label="Distribution summary">
-        ${[
-          ['rspow', 'nano-rspow', COLORS.rspow, stats.rspow],
-          ['nanopow', 'NanoPow', COLORS.nanopow, stats.nanopow],
-        ].map(([key, label, color, summary]) => html`
-          <article className="stats-card" key=${key}>
-            <div className="stats-title"><i style=${{ backgroundColor: color }}></i>${label}</div>
-            <strong>${summary.count ? formatDuration(summary.median) : '—'}</strong>
-            <span>median</span>
-            <dl>
-              <div><dt>p25–p75</dt><dd>${summary.count ? `${formatDuration(summary.p25)} – ${formatDuration(summary.p75)}` : '—'}</dd></div>
-              <div><dt>range</dt><dd>${summary.count ? `${formatDuration(summary.min)} – ${formatDuration(summary.max)}` : '—'}</dd></div>
-              <div><dt>runs</dt><dd>${summary.count}</dd></div>
-            </dl>
-          </article>
-        `)}
+      <section className="plots-grid" aria-label="Provider runtime distribution plots">
+        ${PROVIDERS.map((provider) => {
+          const summary = stats[provider.key];
+          return html`
+            <article className="chart-card provider-chart" key=${provider.key}>
+              <div className="chart-heading">
+                <div>
+                  <p className="eyebrow">Results</p>
+                  <h2>${provider.label}</h2>
+                  <p className="chart-note">p25–p75 band · median line</p>
+                </div>
+              </div>
+              <div className="chart-frame">
+                ${summary.count === 0
+                  ? html`<p className="empty-chart">No runs yet.</p>`
+                  : html`
+                    <${ResponsiveContainer} width="100%" height="100%">
+                      <${ScatterChart} margin=${{ top: 18, right: 12, bottom: 10, left: 0 }}>
+                        <${CartesianGrid} strokeDasharray="3 3" vertical=${false} stroke="#e2e8f0" />
+                        <${ReferenceArea} x1=${0.65} x2=${1.35} y1=${summary.p25} y2=${summary.p75} fill=${provider.color} fillOpacity=${0.1} />
+                        <${ReferenceLine} x=${1} stroke=${provider.color} strokeOpacity=${0.18} />
+                        <${ReferenceLine} y=${summary.median} stroke=${provider.color} strokeDasharray="4 4" label=${{ value: formatDuration(summary.median), fill: provider.color, fontSize: 11, position: 'insideTopLeft' }} />
+                        <${XAxis} hide dataKey="providerX" type="number" domain=${[0.5, 1.5]} />
+                        <${YAxis} dataKey="elapsedMs" scale="log" domain=${sharedYDomain} tickLine=${false} axisLine=${false} tick=${{ fill: '#64748b', fontSize: 11 }} width=${58} tickFormatter=${formatDuration} />
+                        <${Tooltip} cursor=${{ strokeDasharray: '3 3', stroke: '#94a3b8' }} content=${html`<${ScatterTooltip} />`} />
+                        <${Scatter} name=${provider.label} data=${series[provider.key]} fill=${provider.color} />
+                      </${ScatterChart}>
+                    </${ResponsiveContainer}>
+                  `}
+              </div>
+              <div className="chart-stats">
+                <div className="chart-stat-primary">
+                  <span>median</span>
+                  <strong>${summary.count ? formatDuration(summary.median) : '—'}</strong>
+                </div>
+                <dl>
+                  <div><dt>version</dt><dd>v${provider.version}</dd></div>
+                  <div><dt>p25–p75</dt><dd>${summary.count ? `${formatDuration(summary.p25)} – ${formatDuration(summary.p75)}` : '—'}</dd></div>
+                  <div><dt>range</dt><dd>${summary.count ? `${formatDuration(summary.min)} – ${formatDuration(summary.max)}` : '—'}</dd></div>
+                  <div><dt>runs</dt><dd>${summary.count}</dd></div>
+                </dl>
+              </div>
+            </article>
+          `;
+        })}
       </section>
 
       <section className="samples-card" aria-label="Recorded benchmark samples">
