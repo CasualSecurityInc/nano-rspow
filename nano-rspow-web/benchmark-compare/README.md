@@ -1,22 +1,22 @@
 # Browser PoW comparison
 
-This page compares Epoch 2 send-work searches from four browser providers for
-the same randomly generated work roots: nano-rspow-web v0.10.0,
-nanocurrency v2.5.0's WASM-backed `computeWork`, nano-pow v5.2.2, and
-nano-webgl-pow v1.1.1.
+This temporary page compares Epoch 2 send-work searches from four providers
+for the same randomly generated work roots: browser-local nano-rspow-web
+v0.10.0 and nano-pow v5.2.2, plus a localhost bridge to the native
+`nano-rspow` CLI and the local `nano-rspow-node` addon.
 
 Provider package names and pinned versions:
 
 | UI provider | Exact NPM package | Version | How it is supplied |
 | --- | --- | --- | --- |
 | nano-rspow-web | `nano-rspow-web` | `0.10.0` | Local package files in this repository |
-| nanocurrency | `nanocurrency` | `2.5.0` | Pinned local NPM dependency |
 | nano-pow | `nano-pow` | `5.2.2` | Pinned local NPM dependency |
-| nano-webgl-pow | `nano-webgl-pow` | `1.1.1` | Pinned local NPM dependency |
+| nano-rspow CLI | local `target/release/nano-rspow` | local | Persistent `generate --stream --backend gpu` child process |
+| nano-rspow-node | local `nano-rspow-node/index.js` | local | Native addon loaded by the bridge once |
 
-`nano-webgl-pow` is a legacy WebGL2 browser implementation. It is included as
-a distinct GPU baseline for now and can be replaced without changing the
-benchmark's provider interface if a better-maintained competitor is selected.
+`nanocurrency` remains a pinned local dependency only for browser-side work
+validation. Neither its compute worker nor `nano-webgl-pow` is used at runtime
+by this temporary experiment.
 
 Build the fully local static site once while dependencies are available:
 
@@ -26,12 +26,21 @@ cd benchmark-compare
 make
 ```
 
-`make` rebuilds only when its local source files or pinned dependencies changed,
-then serves `dist/` at `http://localhost:8080/`. Press Ctrl-C to stop it.
+Build the native CLI first:
 
-`dist/` contains the page, all JavaScript dependencies, the nanocurrency
-worker, and the nano-rspow WebAssembly binary. After `npm run build`, serving
-that directory does not request esm.sh, npm, or any other external resource.
+```bash
+cargo build -p nano-rspow-cli --release
+```
+
+Then `make` rebuilds only when its local source files or pinned dependencies
+changed, starts the bridge, and serves `dist/` at `http://localhost:8080/`.
+Set `NANO_RSPOW_CLI` to override the default CLI path. Press Ctrl-C to stop it.
+
+`dist/` contains the page, all browser JavaScript dependencies, and the
+nano-rspow WebAssembly binary. The bridge also exposes `/api/health`,
+`/api/pow/cli`, and `/api/pow/node`; it loads the local native binding and
+serves the static files. After `npm run build`, browser assets do not request
+esm.sh, npm, or any other external resource.
 The npm project, lockfile, `node_modules/`, and `dist/` are all scoped to this
 directory; the standard `nano-rspow-web` package and its generated distribution
 files are not part of this build.
@@ -47,9 +56,8 @@ next search after the in-flight solver finishes. The benchmark deliberately does
 not cancel an in-flight provider call, keeping the lifecycle comparable across
 providers.
 
-The `nanocurrency` provider starts a persistent module-worker pool at page load.
-Each worker receives a distinct `workerIndex` partition sized from the browser's
-`navigator.hardwareConcurrency`, and all partitions finish before the call is
-released, so its CPU-bound WASM search cannot block browser painting or input.
-Every returned nonce is independently validated against the shared Epoch 2
-send threshold before it is recorded or used as the next battle root.
+The bridge returns `providerMs` measured around native work only: CLI stdin to
+its matching stdout response, or the native addon `generateWork` call. Browser
+HTTP/fetch time is excluded from the plotted duration. Every returned nonce is
+still independently validated in the browser against the shared Epoch 2 send
+threshold before it is recorded or used as the next battle root.

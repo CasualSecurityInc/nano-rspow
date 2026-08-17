@@ -1,7 +1,7 @@
 {
   "name": "benchmark-compare",
   "version": "1.0.0",
-  "description": "This page compares Epoch 2 send-work searches from four browser providers for the same randomly generated work roots: nano-rspow-web v0.10.0, nanocurrency v2.5.0's WASM-backed `computeWork`, nano-pow v5.2.2, and nano-webgl-pow v1.1.1.",
+  "description": "Temporary localhost benchmark comparing two browser PoW providers with native nano-rspow CLI and Node-addon providers.",
   "main": "app.js",
   "scripts": {
     "build": "node build.mjs",

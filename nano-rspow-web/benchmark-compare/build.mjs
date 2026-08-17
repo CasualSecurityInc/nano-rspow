@@ -11,7 +11,6 @@ await mkdir(distDirectory, { recursive: true });
 await build({
   entryPoints: [
     join(benchmarkDirectory, 'app.js'),
-    join(benchmarkDirectory, 'nanocurrency-worker.js'),
   ],
   bundle: true,
   format: 'esm',
