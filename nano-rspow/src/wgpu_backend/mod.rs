@@ -448,6 +448,10 @@ impl Backend for WgpuBackend {
         let mut base_nonce: u64 = rand::random();
         let zero_result = [0u32; 3];
 
+        // Single mpsc channel reused across all iterations (avoids a heap allocation
+        // per batch). The sender is cloned per readback; the receiver is reused.
+        let (tx, rx) = std::sync::mpsc::channel();
+
         // --- Double-buffer ping-pong ---
         // `slot` alternates 0→1→0→1…  We SUBMIT to slot `slot` and MAP the
         // *previous* slot (`slot ^ 1`).  Because GPU commands execute in
@@ -555,21 +559,25 @@ impl Backend for WgpuBackend {
             // Read back the PREVIOUS batch (slot ^ 1) — guaranteed retired.
             let prev = slot ^ 1;
             let prev_slice = session.readback_bufs[prev].slice(..);
-            let (tx, rx) = std::sync::mpsc::channel();
+            let tx_clone = tx.clone();
             prev_slice.map_async(wgpu::MapMode::Read, move |r| {
-                let _ = tx.send(r);
+                let _ = tx_clone.send(r);
             });
             let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
             rx.recv().ok()?.ok()?;
 
-            let data: Vec<u32> = {
+            // Read directly into a stack array — no per-batch heap allocation.
+            let (found, nonce) = {
                 let mapped = prev_slice.get_mapped_range();
-                bytemuck::cast_slice(&mapped).to_vec()
+                let arr: &[u32] = bytemuck::cast_slice(&mapped);
+                let is_found = arr[2] != 0;
+                let nonce = arr[0] as u64 | ((arr[1] as u64) << 32);
+                (is_found, nonce)
             };
             session.readback_bufs[prev].unmap();
 
-            if data[2] != 0 {
-                return Some(data[0] as u64 | ((data[1] as u64) << 32));
+            if found {
+                return Some(nonce);
             }
 
             base_nonce = base_nonce.wrapping_add(nonces_per_batch);
