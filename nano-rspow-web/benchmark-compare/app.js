@@ -28,13 +28,18 @@ const COLORS = {
   nanopow: '#16a34a',
   node: '#9333ea',
 };
-const PROVIDERS = [
+const CORE_PROVIDERS = [
   { key: 'rspow', label: 'nano-rspow-web', version: '0.10.0', color: COLORS.rspow, thresholdKey: 'threshold' },
-  { key: 'nanopow', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopow, thresholdKey: 'difficulty' },
-  { key: 'cli', label: 'nano-rspow CLI', version: 'local', color: COLORS.cli, thresholdKey: 'threshold' },
   { key: 'node', label: 'nano-rspow-node', version: 'local', color: COLORS.node, thresholdKey: 'threshold' },
+  { key: 'cli', label: 'nano-rspow CLI', version: 'local', color: COLORS.cli, thresholdKey: 'threshold' },
 ];
-const providerByKey = Object.fromEntries(PROVIDERS.map((provider) => [provider.key, provider]));
+const COMPETITORS = [
+  { key: 'nanopow', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopow, thresholdKey: 'difficulty' },
+  { key: 'nanocurrency', label: 'nanocurrency', version: '2.5.0', color: '#d97706', thresholdKey: 'difficulty' },
+  { key: 'webglPow', label: 'nano-webgl-pow', version: '1.1.1', color: '#9333ea', thresholdKey: 'difficulty' },
+];
+const PROVIDERS = [...CORE_PROVIDERS, COMPETITORS[0]];
+const providerByKey = Object.fromEntries([...CORE_PROVIDERS, ...COMPETITORS].map((provider) => [provider.key, provider]));
 const NanoPow = NanoPowModule.NanoPow ?? NanoPowModule.default;
 
 function randomRoot() {
@@ -102,12 +107,16 @@ function BenchmarkApp() {
   const [completedInRound, setCompletedInRound] = useState(new Set());
   const [samples, setSamples] = useState([]);
   const [message, setMessage] = useState('Loading nano-rspow WebAssembly and native bridge…');
-  const [battleProviders, setBattleProviders] = useState(() => new Set(
-    PROVIDERS.map((provider) => provider.key),
-  ));
+  const [competitorIndex, setCompetitorIndex] = useState(0);
   const [battle, setBattle] = useState({ running: false, stopRequested: false, completed: 0, current: null });
   const [battleRootState, setBattleRootState] = useState(null);
   const battleStopRef = useRef(false);
+  const currentProviders = useMemo(() => [...CORE_PROVIDERS, COMPETITORS[competitorIndex]], [competitorIndex]);
+  const providerByKey = useMemo(() => Object.fromEntries(currentProviders.map((p) => [p.key, p])), [currentProviders]);
+  const [battleProviders, setBattleProviders] = useState(() => new Set(
+    currentProviders.map((provider) => provider.key),
+  ));
+
   useEffect(() => {
     Promise.all([
       initNanoRspow(),
@@ -129,17 +138,17 @@ function BenchmarkApp() {
 
   }, []);
 
-  const series = useMemo(() => Object.fromEntries(PROVIDERS.map((provider, providerIndex) => [
+  const series = useMemo(() => Object.fromEntries(currentProviders.map((provider, providerIndex) => [
     provider.key,
     samples
       .filter((sample) => sample.implementation === provider.key)
       .map((sample, index) => ({ ...sample, providerX: 1 + (((index * (37 + providerIndex * 16)) % 11) - 5) / 100 })),
-  ])), [samples]);
+  ])), [samples, currentProviders]);
 
-  const stats = useMemo(() => Object.fromEntries(PROVIDERS.map((provider) => [
+  const stats = useMemo(() => Object.fromEntries(currentProviders.map((provider) => [
     provider.key,
     distributionStats(series[provider.key]),
-  ])), [series]);
+  ])), [series, currentProviders]);
 
   const sharedYDomain = useMemo(() => {
     const values = samples.map((sample) => sample.elapsedMs).filter((value) => value > 0);
@@ -329,9 +338,9 @@ function BenchmarkApp() {
   };
 
   const buttonState = (implementation) => {
-    if (runningImplementation === implementation) return 'Running…';
-    if (completedInRound.has(implementation)) return 'Recorded for this round';
-    return `Run ${providerByKey[implementation].label}`;
+    if (runningImplementation === implementation) return providerByKey[implementation].label;
+    if (completedInRound.has(implementation)) return `${providerByKey[implementation].label} • recorded`;
+    return providerByKey[implementation].label;
   };
 
   const isDisabled = (implementation) => !ready
@@ -360,15 +369,29 @@ function BenchmarkApp() {
           <span className="threshold">Epoch 2 ${runningThresholdKey} ${EPOCH2_SEND_THRESHOLD}</span>
         </div>
         <div className="button-row">
-          ${PROVIDERS.map((provider) => html`
+          ${currentProviders.map((provider, idx) => html`
             <div className="provider-control" key=${provider.key}>
-              <button
-                className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''}`}
-                disabled=${isDisabled(provider.key)}
-                onClick=${() => runBenchmark(provider.key)}
-              >
-                <span className="button-dot"></span><span className="button-text" key=${buttonState(provider.key)}>${buttonState(provider.key)}</span>
-              </button>
+              ${idx === currentProviders.length - 1 && COMPETITORS.length > 1 ? html`
+                <div className="competitor-selector">
+                  <button className="competitor-arrow" onClick=${() => setCompetitorIndex((i) => (i - 1 + COMPETITORS.length) % COMPETITORS.length)} aria-label="Previous competitor">‹</button>
+                  <button
+                    className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
+                    disabled=${isDisabled(provider.key)}
+                    onClick=${() => runBenchmark(provider.key)}
+                  >
+                    <span className="status-led"></span><span className="button-text" key=${buttonState(provider.key)}>${buttonState(provider.key)}</span>
+                  </button>
+                  <button className="competitor-arrow" onClick=${() => setCompetitorIndex((i) => (i + 1) % COMPETITORS.length)} aria-label="Next competitor">›</button>
+                </div>
+              ` : html`
+                <button
+                  className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
+                  disabled=${isDisabled(provider.key)}
+                  onClick=${() => runBenchmark(provider.key)}
+                >
+                  <span className="status-led"></span><span className="button-text" key=${buttonState(provider.key)}>${buttonState(provider.key)}</span>
+                </button>
+              `}
               <label className="battle-inclusion" title="Include in battle">
                 <input
                   type="checkbox"
@@ -402,7 +425,7 @@ function BenchmarkApp() {
       </section>
 
       <section className="plots-grid" aria-label="Provider runtime distribution plots">
-        ${PROVIDERS.map((provider) => {
+        ${currentProviders.map((provider) => {
           const summary = stats[provider.key];
           return html`
             <article className="chart-card provider-chart" key=${provider.key}>

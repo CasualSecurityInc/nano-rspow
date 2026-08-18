@@ -26,16 +26,29 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .threshold { color: #64748b; font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.72rem; }
 .button-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .provider-control { display: grid; gap: 6px; }
+.competitor-selector { display: inline-flex; align-items: center; gap: 4px; width: 100%; }
+.competitor-arrow { flex: 0 0 32px; height: 46px; border: 2px solid #e2e8f0; border-radius: 8px; background: #fff; color: #475569; font-size: 1.25rem; font-weight: 700; line-height: 1; cursor: pointer; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; display: inline-flex; align-items: center; justify-content: center; }
+.competitor-arrow:hover { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+.competitor-arrow:active { transform: scale(0.98); }
+.competitor-arrow:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.competitor-arrow:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.competitor-selector .benchmark-button { flex: 1 1 auto; border-radius: 8px; }
 .benchmark-button { --button-color: #2563eb; display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; border: 2px solid transparent; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; transition: filter 150ms ease, opacity 150ms ease, transform 150ms ease; }
 .benchmark-button:not(:disabled):hover { filter: brightness(0.94); transform: translateY(-1px); }
 .benchmark-button:disabled { cursor: not-allowed; opacity: 0.45; }
 .benchmark-button.is-active { opacity: 1; background: linear-gradient(var(--button-color), var(--button-color)) padding-box, conic-gradient(from var(--rainbow-angle), #f43f5e, #f59e0b, #facc15, #22c55e, #38bdf8, #8b5cf6, #f43f5e) border-box; animation: rainbow-border 1.4s linear infinite; }
+.benchmark-button.is-disabled { opacity: 0.5; }
 .button-text { animation: button-state-fade 180ms ease both; }
 .button-label { display: block; width: 100%; text-align: center; }
 .button-rspow { --button-color: #2563eb; background: #2563eb; }
+.button-node { --button-color: #9333ea; background: #9333ea; }
+.button-cli { --button-color: #d97706; background: #d97706; }
 .button-nanopow { --button-color: #16a34a; background: #16a34a; }
 .button-nanocurrency { --button-color: #d97706; background: #d97706; }
 .button-webglPow { --button-color: #9333ea; background: #9333ea; }
+.status-led { width: 10px; height: 10px; border-radius: 50%; background: #eab308; box-shadow: 0 0 8px #eab308, 0 0 16px #eab308; transition: background 150ms ease, box-shadow 150ms ease; flex-shrink: 0; }
+.benchmark-button.is-active .status-led { background: #ef4444; box-shadow: 0 0 8px #ef4444, 0 0 16px #ef4444; }
+.benchmark-button.is-disabled .status-led { background: #22c55e; box-shadow: 0 0 8px #22c55e, 0 0 16px #22c55e; }
 .battle-inclusion { display: inline-flex; align-items: center; justify-content: flex-start; width: fit-content; cursor: pointer; }
 .battle-inclusion input { width: 13px; height: 13px; margin: 0; accent-color: #475569; cursor: inherit; }
 .battle-inclusion:has(input:disabled) { cursor: not-allowed; opacity: 0.5; }
@@ -49,7 +62,6 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .battle-button.is-stopping { border-color: #64748b; background: #64748b; animation: none; }
 .battle-note { margin: 9px 0 0; color: #64748b; font-size: 0.75rem; line-height: 1.45; }
 @keyframes battle-pulse { 50% { background: #ea580c; } }
-.button-dot, .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px rgb(255 255 255 / 0.16); }
 .status { min-height: 1.25rem; margin: 16px 0 0; color: #475569; font-size: 0.875rem; text-align: left; }
 .status-error { color: #b91c1c; }
 
@@ -84,9 +96,9 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .sample-list strong { color: #0f172a; font-size: 0.82rem; }
 .sample-badge { width: fit-content; padding: 4px 7px; border-radius: 999px; color: #fff; font-family: Inter, ui-sans-serif, sans-serif; font-size: 0.7rem; font-weight: 700; }
 .sample-badge.rspow { background: #2563eb; }
+.sample-badge.node { background: #9333ea; }
+.sample-badge.cli { background: #d97706; }
 .sample-badge.nanopow { background: #16a34a; }
-.sample-badge.nanocurrency { background: #d97706; }
-.sample-badge.webglPow { background: #9333ea; }
 
 @media (max-width: 640px) {
   .page-shell { padding: 42px 16px 64px; }

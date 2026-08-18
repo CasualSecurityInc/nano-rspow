@@ -1,0 +1,4 @@
+interface:
+  display_name: "WebGPU"
+  short_description: "Build robust WebGPU and WGSL pipelines"
+  default_prompt: "Use $webgpu to build a portable WebGPU feature with an explicit resource graph, exact WGSL layout, diagnostics, and cleanup."
