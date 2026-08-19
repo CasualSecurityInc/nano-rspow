@@ -1,8 +1,9 @@
+use std::env;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn get_bin_path() -> String {
-    env!("CARGO_BIN_EXE_nano-rspow-cli").to_string()
+    env::var("CARGO_BIN_EXE_nano-rspow-cli").expect("CARGO_BIN_EXE_nano-rspow-cli not set")
 }
 
 #[test]
