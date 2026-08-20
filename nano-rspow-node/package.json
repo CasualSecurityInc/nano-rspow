@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "repository": {
     "type": "git",
@@ -9,13 +9,9 @@
   "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
   "main": "index.js",
   "types": "index.d.ts",
-  "bin": {
-    "nano-rspow": "bin/cli.js"
-  },
   "files": [
     "index.d.ts",
     "index.js",
-    "bin/",
     "*.node"
   ],
   "napi": {
