@@ -41,8 +41,8 @@ const isValid = validate_work(hash, result.nonce, threshold); // true
 <p><strong>Browser-only benchmark:</strong> fully in-browser, benchmarking the <code>nano-rspow-web</code> package's WebGPU and CPU WebAssembly backends.</p>
 </td>
 <td>
-<img src="benchmark-compare/benchmark-screenshot.png" width="480" alt="The local four-provider nano-rspow benchmark comparison dashboard" />
-<p><strong>Local comparison:</strong> requires building and running this repository locally; it compares the browser providers with the server-side <code>nano-rspow-node</code> addon and the native Rust CLI side by side.</p>
+<img src="benchmark-compare/benchmark-charts.png" width="480" alt="Post-run charts comparing nano-rspow-web, nano-rspow-node, the nano-rspow CLI, and nano-pow" />
+<p><strong>Local comparison results:</strong> requires building and running this repository locally; these post-run charts compare in-browser providers with the server-side <code>nano-rspow-node</code> addon and native Rust CLI side by side.</p>
 </td>
 </tr>
 </table>
