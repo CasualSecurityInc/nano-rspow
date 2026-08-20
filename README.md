@@ -35,7 +35,7 @@ Use the native bindings for in-process PoW generation:
 ```bash
 npm install nano-rspow-node
 ```
-See [nano-rspow-node/README.md](nano-rspow-node/README.md) for API usage.
+See the [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) for API usage.
 
 ### 3. Interactive Web Dashboard
 Build and open the self-contained HTML5 benchmarking tool with real-time performance stats, non-blocking Web Worker fallback, WebGPU execution, and customizable cellular-signal difficulty thresholds:
@@ -52,7 +52,7 @@ Below is the directory mapping for each target, along with their primary release
 | Environment | Documentation Link | Latest Releases & Authoritative Registries |
 | :--- | :--- | :--- |
 | **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
-| **Node.js & TS** | [nano-rspow-node/README.md](nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
+| **Node.js & TS** | [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
 | **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
