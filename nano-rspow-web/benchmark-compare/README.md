@@ -1,18 +1,18 @@
 # Browser PoW comparison
 
-This temporary page compares Epoch 2 send-work searches from four providers
-for the same randomly generated work roots: browser-local nano-rspow-web
-v0.10.0 and nano-pow v5.2.2, plus a localhost bridge to the native
+This local page compares Epoch 2 send-work searches from four providers for
+the same randomly generated work roots: the checked-in nano-rspow-web WebAssembly
+snapshot, the pinned nano-pow dependency, and a localhost bridge to the native
 `nano-rspow` CLI and the local `nano-rspow-node` addon.
 
-Provider package names and pinned versions:
+Provider packages and sources:
 
-| UI provider | Exact NPM package | Version | How it is supplied |
-| --- | --- | --- | --- |
-| nano-rspow-web | `nano-rspow-web` | `0.10.0` | Local package files in this repository |
-| nano-pow | `nano-pow` | `5.2.2` | Pinned local NPM dependency |
-| nano-rspow CLI | local `target/release/nano-rspow` | local | Persistent `generate --stream --backend gpu` child process |
-| nano-rspow-node | local `nano-rspow-node/index.js` | local | Native addon loaded by the bridge once |
+| UI provider | Package or executable | How it is supplied |
+| --- | --- | --- |
+| nano-rspow-web | `nano-rspow-web` | Checked-in WebAssembly snapshot in this directory |
+| nano-pow | `nano-pow` | Pinned local NPM dependency |
+| nano-rspow CLI | local `target/release/nano-rspow` | Persistent `generate --stream --backend gpu` child process |
+| nano-rspow-node | local `nano-rspow-node/index.js` | Native addon loaded by the bridge once |
 
 `nanocurrency` remains a pinned local dependency only for browser-side work
 validation. Neither its compute worker nor `nano-webgl-pow` is used at runtime
@@ -45,7 +45,7 @@ The npm project, lockfile, `node_modules/`, and `dist/` are all scoped to this
 directory; the standard `nano-rspow-web` package and its generated distribution
 files are not part of this build.
 
-Each solver can run once per paired round. The page serializes all work and preserves each raw duration; it does not report a misleading average.
+Each solver runs once per paired round. The page serializes work and preserves each raw duration; it does not calculate an average.
 
 The **Start battle** control runs 42 individual searches, cycling
 through the selected providers with a 200 ms cool-down between searches. Each

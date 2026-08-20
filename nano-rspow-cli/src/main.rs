@@ -1,10 +1,11 @@
 //! nano-rspow CLI
 //!
 //! Commands:
-//!   generate <hash> [--threshold <hex>] [--backend <cpu|gpu>]
+//!   generate <hash> [--threshold <hex>] [--backend <cpu|gpu|opencl>] [--retune]
 //!   validate  <hash> <work>  [--threshold <hex>]
-//!   benchmark [--count <n>] [--format <table|markdown|json>]
+//!   benchmark [--count <n>] [--format <table|markdown|json>] [--mode <cold|warm|both>]
 //!   info
+//!   diag [--backend <cpu|gpu|opencl>] [--format <table|json>] [--retune]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -16,7 +17,7 @@ use serde::Serialize;
 
 #[derive(Parser)]
 #[command(
-    name = "nano-rspow-cli",
+    name = "nano-rspow",
     version,
     about = "Hybrid CPU/GPU Nano (XNO) Proof of Work — nano-rspow",
     long_about = None

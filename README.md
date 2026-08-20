@@ -1,17 +1,17 @@
 # nano-rspow
 
-nano-rspow is a fast, zero-configuration hybrid CPU/GPU proof-of-work generator for [Nano](https://www.nano.org).
+nano-rspow generates and validates [Nano](https://www.nano.org) proof of work on CPU and supported GPU backends. The workspace contains Rust, CLI, Node.js, Python, and browser WebAssembly packages.
 
-Developed for high-throughput node operations, client-side web integrations, and native app developers, this repository packages an optimized Blake2b hashing engine under a transparent, auto-detecting **hybrid race architecture**. It seamlessly runs multi-threaded CPU solvers (powered by `rayon` and Web Workers) or GPU pipelines (`wgpu`, `OpenCL`, and WebGPU) depending on target hardware availability. No boilerplate, no device selection headaches—just instant, maximum-performance PoW generation everywhere.
+The native core selects an available GPU backend when possible and otherwise uses its multi-threaded CPU backend. The browser package tries WebGPU, then falls back to single-threaded WebAssembly CPU execution.
 
 ---
 
 ## 🎯 Who is this for?
 
-* **Exchange & Wallet Integrators** wanting low-latency, high-volume block generation in-process / without the complexity of adding a another external service.
-* **Server-side Developers** using Node.js or Python who need native bindings running at C-level execution speed.
-* **Frontend Web Developers** building sleek wallets or dApps requiring non-blocking WASM and hardware-accelerated WebGPU directly in user browsers.
-* **Power Users & Node Operators** looking for an ultra-fast benchmarking tool to tune threshold multipliers.
+* **Exchange and wallet integrators** that need in-process work generation.
+* **Server-side developers** using native Node.js or Python bindings.
+* **Web developers** that need browser WebAssembly with an optional WebGPU path.
+* **Node operators** that need a CLI to generate, validate, or benchmark work.
 
 ---
 
@@ -21,12 +21,12 @@ Developed for high-throughput node operations, client-side web integrations, and
 Install from crates.io (requires a Rust toolchain):
 ```bash
 cargo install nano-rspow-cli
-nano-rspow-cli benchmark --count 10
+nano-rspow benchmark --count 10
 ```
 Alternatively, build from this repository:
 ```bash
 cargo build -p nano-rspow-cli --release
-./target/release/nano-rspow-cli benchmark --count 10
+./target/release/nano-rspow benchmark --count 10
 ```
 Or use `cargo run -p nano-rspow-cli -- <args>` to build and execute in one step.
 
@@ -38,7 +38,7 @@ npm install nano-rspow-node
 See the [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) for API usage.
 
 ### 3. Interactive Web Dashboard
-Build and open the self-contained HTML5 benchmarking tool with real-time performance stats, non-blocking Web Worker fallback, WebGPU execution, and customizable cellular-signal difficulty thresholds:
+Build and open the self-contained browser dashboard. It tests WebGPU and a Web Worker CPU fallback:
 ```bash
 cargo benchmark-web
 ```
@@ -51,11 +51,11 @@ Below is the directory mapping for each target, along with their primary release
 
 | Environment | Documentation Link | Latest Releases & Authoritative Registries |
 | :--- | :--- | :--- |
-| **Rust (Core)** | [nano-rspow/](nano-rspow/) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **Rust (Core)** | [crate API documentation](nano-rspow/src/lib.rs) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 | **Node.js & TS** | [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
-| **Python** | [nano-rspow-python/](nano-rspow-python/) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
+| **Python** | [nano-rspow-python README](nano-rspow-python/README.md) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
-| **CLI Tool** | [nano-rspow-cli/](nano-rspow-cli/) | [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **CLI Tool** | [nano-rspow-cli README](nano-rspow-cli/README.md) | [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 
 ---
 
@@ -77,4 +77,4 @@ This monorepo is organized into specialized workspaces to deliver native perform
 
 ## 🔒 License
 
-MIT License. See [LICENSE](LICENSE) for more details. Attribution is required.
+MIT License. See [LICENSE](LICENSE). Distributions must include the copyright and permission notices.

@@ -1,8 +1,8 @@
 //! `nano-rspow` — Hybrid CPU/GPU Nano (XNO) Proof of Work library.
 //!
-//! Provides `work_generate`, `work_validate`, and `work_cancel` with a
-//! multi-backend architecture: CPU (always on), wgpu/WGSL (default GPU,
-//! works on Metal/Vulkan/DX12), and optional OpenCL.
+//! Provides `work_generate`, `work_validate`, and `WorkGenerator` with a
+//! multi-backend architecture: CPU (always available), wgpu/WGSL (the default
+//! GPU backend on Metal, Vulkan, and DX12), and optional OpenCL.
 //!
 //! # Quick Start
 //!

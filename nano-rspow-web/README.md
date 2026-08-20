@@ -2,7 +2,7 @@
 
 If you are looking for the same functionality on the server side, see the [nano-rspow-node README](../nano-rspow-node/README.md).
 
-WebGPU-accelerated Nano (XNO) Proof-of-Work generation in the browser using WebAssembly. Pre-compiled for high-performance direct web browser integrations.
+Nano (XNO) proof-of-work generation for browsers using WebAssembly and WebGPU.
 
 Tries WebGPU first, then automatically falls back to single-threaded CPU WebAssembly if WebGPU is unavailable.
 
@@ -55,10 +55,15 @@ Try it out for yourself: **[https://casualsecurityinc.github.io/nano-rspow/](htt
 
 
 
-## API Reference
+## API reference
 
-### `init(module_or_path)`
-Initializes the WASM loader. Must be awaited before calling other functions.
+### `init(moduleOrPath?)`
+
+Initializes the asynchronous WASM loader. Await this default export before calling the work functions. It accepts an optional WebAssembly module, bytes, `Response`, URL, request, or promise for one of those inputs.
+
+### `initSync(module)`
+
+Initializes the module synchronously from bytes or a precompiled `WebAssembly.Module`. Use this only when the module bytes are already available.
 
 ### `generate_work(hash_hex: string, threshold_hex: string): Promise<GenerateResult>`
 Asynchronously generates Proof of Work for a 32-byte block hash. Tries WebGPU first, falling back to CPU WebAssembly.
@@ -69,6 +74,10 @@ Forces WebGPU PoW generation. Rejects if WebGPU is unavailable or if the cancell
 ### `generate_work_cpu(hash_hex: string, threshold_hex: string): GenerateResult`
 Synchronously generates PoW forcing single-threaded CPU WebAssembly.
 
+### `generate_work_cpu_batch(hash_hex: string, threshold_hex: string, max_nonces: number): string | null`
+
+Tests at most `max_nonces` nonces synchronously on the CPU. Returns a lowercase 16-character nonce when found, otherwise `null`. The CPU random-number-generator state persists between calls. Pass an unsigned 32-bit integer.
+
 ### `validate_work(hash_hex: string, nonce_hex: string, threshold_hex: string): boolean`
 Synchronously validates whether a nonce meets the difficulty threshold for the given block hash.
 
@@ -77,12 +86,20 @@ A class utilized to signal cancellation to the asynchronous GPU solver loop.
 * `new WasmCancelToken()`: Instantiates a new token.
 * `cancel()`: Aborts the ongoing GPU compute loop.
 
+### `GenerateResult`
+
+Returned by all generation functions.
+
+* `nonce: string`: Lowercase 16-character hexadecimal nonce.
+* `is_gpu: boolean`: `true` when WebGPU found the nonce.
+* `free()` or `[Symbol.dispose]()` releases the WebAssembly wrapper when manual resource cleanup is needed.
+
 
 ---
 
-## Browser Compatibility
+## Browser compatibility
 
-WebGPU works correctly in all major browsers including Chrome, Brave, Edge, and Safari.
+Use a browser with WebGPU support to use the GPU path. Browsers without WebGPU use the synchronous single-threaded WebAssembly CPU fallback.
 
 
 

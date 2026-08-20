@@ -1,6 +1,6 @@
 # nano-rspow-node
 
-Native Nano (XNO) Proof-of-Work for Node.js. Pre-compiled binaries for macOS (x64 + ARM), Linux (x64), and Windows (x64) — no Rust toolchain required.
+Native Nano (XNO) proof of work for Node.js. Pre-compiled binaries are available for macOS (x64 and ARM64), Linux (x64 and ARM64), and Windows (x64). A Rust toolchain is not required for those targets.
 
 ## Install
 
@@ -15,9 +15,36 @@ If you are looking for the same functionality in the browser, see the [nano-rspo
 ```typescript
 import { generateWork, validateWork, WorkType } from 'nano-rspow-node';
 
+const hash = '718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2';
 const work = await generateWork(hash, WorkType.Send);
 validateWork(hash, work, WorkType.Send); // → true
 ```
+
+## API reference
+
+### `generateWork(hashHex, workType): Promise<string>`
+
+Generates a valid nonce for a 32-byte block root. `hashHex` accepts 64 hexadecimal characters, with an optional `0x` prefix. The promise resolves to a 16-character lowercase hexadecimal nonce.
+
+### `validateWork(hashHex, workHex, workType): boolean`
+
+Validates `workHex` against a 32-byte block root and the threshold selected by `workType`. Invalid hexadecimal input or a root with a length other than 32 bytes throws.
+
+### `getBackendName(): string`
+
+Initializes the shared generator if necessary and returns the selected backend name, such as `cpu`, `wgpu`, or `opencl`.
+
+### `recommendLocalPow(): boolean`
+
+Runs or reads a short local performance probe and returns whether local proof-of-work generation is recommended. The probe result is cached in the system temporary directory.
+
+### `clearPowTuningCache(): boolean`
+
+Deletes nano-rspow's temporary tuning cache. Returns `true` only when a cache directory existed and was deleted.
+
+### `workTypeToHex(workType): WorkThreshold`
+
+Returns the threshold selected by `workType` as a 16-character lowercase hexadecimal string.
 
 ### Work types
 
@@ -27,6 +54,7 @@ validateWork(hash, work, WorkType.Send); // → true
 | `Receive`   | Receive, open, and epoch blocks at the current epoch-2 threshold |
 | `LegacyEpoch1` | Historical epoch-1 work only; not for current mainnet blocks |
 | `Epoch1`    | Deprecated compatibility alias for `LegacyEpoch1` |
+| `Dev`       | Low-difficulty development-network work; do not use for mainnet blocks |
 
 Current Nano mainnet uses `fffffff800000000` for send/change blocks and
 `fffffe0000000000` for receive/open/epoch blocks. `LegacyEpoch1` maps to

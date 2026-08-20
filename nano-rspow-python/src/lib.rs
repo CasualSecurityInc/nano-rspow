@@ -9,7 +9,7 @@
 //! import nano_rspow
 //! from nano_rspow import WorkType
 //!
-//! # Generate work (releases GIL, uses all CPU cores + GPU)
+//! # Generate work (releases the GIL and selects an available backend)
 //! result = nano_rspow.generate_work(
 //!     "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2",
 //!     WorkType.Send,
@@ -151,7 +151,7 @@ fn parse_hash(hash_hex: &str) -> PyResult<[u8; 32]> {
 
 /// Generate valid Proof of Work for a Nano block hash.
 ///
-/// Uses the best available backend (GPU + CPU hybrid race).
+/// Uses the best available backend, preferring a supported GPU and otherwise CPU.
 /// The GIL is released during computation, so other Python threads
 /// continue to run while the PoW search is in progress.
 ///
@@ -236,7 +236,7 @@ fn compute_difficulty(hash_hex: &str, nonce_hex: &str) -> PyResult<String> {
 
 /// Return the name of the active compute backend.
 ///
-/// Returns one of: ``"hybrid-race"``, ``"cpu"``, ``"wgpu"``, ``"opencl"``.
+/// Returns the selected backend name, such as ``"cpu"``, ``"wgpu"``, or ``"opencl"``.
 #[pyfunction]
 fn backend_name() -> &'static str {
     get_generator().backend_name()
@@ -271,7 +271,7 @@ fn register_thresholds(parent: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Hybrid CPU/GPU Nano (XNO) Proof of Work — Python bindings.
 ///
 /// This module wraps the ``nano-rspow`` Rust library, providing access to
-/// the Silicon Race hybrid CPU+GPU work generation engine.
+/// the available CPU or GPU work-generation backend.
 #[pymodule]
 fn nano_rspow(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<WorkType>()?;
