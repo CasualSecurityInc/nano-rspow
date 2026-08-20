@@ -6,21 +6,37 @@ build-backend = "maturin"
 name = "nano-rspow-python"
 dynamic = ["version"]
 description = "Hybrid CPU/GPU Nano (XNO) Proof of Work library — Python bindings."
+readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
     { name = "Conny Brunnkvist", email = "cbrunnkvist@gmail.com" },
 ]
 keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
 classifiers = [
-    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
     "Topic :: Security :: Cryptography",
 ]
 
 [project.urls]
+Homepage = "https://github.com/CasualSecurityInc/nano-rspow"
 Repository = "https://github.com/CasualSecurityInc/nano-rspow"
+Issues = "https://github.com/CasualSecurityInc/nano-rspow/issues"
+
+[dependency-groups]
+test = [
+    "maturin>=1.5",
+    "pytest>=8",
+]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]

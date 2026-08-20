@@ -46,7 +46,7 @@ class WorkResult:
 def generate_work(hash_hex: str, work_type: WorkType) -> WorkResult:
     """Generate valid Proof of Work for a Nano block hash.
 
-    Uses the best available backend (GPU + CPU hybrid race).
+    Uses the selected CPU or GPU backend.
     The GIL is released during computation, so other Python threads
     continue to run while the PoW search is in progress.
 
@@ -97,7 +97,7 @@ def compute_difficulty(hash_hex: str, nonce_hex: str) -> str:
 def backend_name() -> str:
     """Return the name of the active compute backend.
 
-    Returns one of: "hybrid-race", "cpu", "wgpu", "opencl".
+    Returns one of: "cpu", "wgpu", "opencl".
     """
     ...
 

@@ -172,4 +172,4 @@ class TestBackendName:
     def test_returns_string(self):
         name = nano_rspow.backend_name()
         assert isinstance(name, str)
-        assert name in ("hybrid-race", "cpu", "wgpu", "opencl")
+        assert name in ("cpu", "wgpu", "opencl")

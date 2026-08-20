@@ -1,0 +1,48 @@
+name: Python bindings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nano-rspow-python/**"
+      - "nano-rspow/**"
+      - "**/Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/python-tests.yml"
+  pull_request:
+    paths:
+      - "nano-rspow-python/**"
+      - "nano-rspow/**"
+      - "**/Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/python-tests.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: nano-rspow-python
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify lockfile
+        run: uv lock --check
+      - name: Install test dependencies
+        run: uv sync --locked --group test
+      - name: Build and install the release extension
+        run: uv run maturin develop --release
+      - name: Run tests
+        run: uv run pytest

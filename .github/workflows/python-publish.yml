@@ -140,11 +140,70 @@ jobs:
           path: nano-rspow-python/dist/*.tar.gz
 
   # ---------------------------------------------------------------------------
+  # Verify installable native distributions before publication
+  # ---------------------------------------------------------------------------
+  verify-distributions:
+    name: Verify native distributions
+    needs: [build, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+      - name: Download native Linux wheel
+        uses: actions/download-artifact@v6
+        with:
+          name: wheel-x86_64-unknown-linux-gnu
+          path: ${{ runner.temp }}/wheel
+      - name: Download source distribution
+        uses: actions/download-artifact@v6
+        with:
+          name: sdist
+          path: ${{ runner.temp }}/sdist
+      - name: Verify the wheel includes type stubs
+        run: |
+          WHEEL=$(find "$RUNNER_TEMP/wheel" -name '*.whl' -print -quit)
+          test -n "$WHEEL"
+          unzip -l "$WHEEL" | grep -q 'nano_rspow/__init__.pyi$'
+      - name: Install and test native Linux wheel
+        run: |
+          TEST_ENV="$RUNNER_TEMP/nano-rspow-wheel"
+          WHEEL=$(find "$RUNNER_TEMP/wheel" -name '*.whl' -print -quit)
+          uv venv "$TEST_ENV"
+          uv pip install --python "$TEST_ENV/bin/python" "$WHEEL"
+          "$TEST_ENV/bin/python" - <<'PY'
+          import nano_rspow
+
+          assert "site-packages" in nano_rspow.__file__
+          assert nano_rspow.compute_difficulty(
+              "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2",
+              "2bf29ef00786a6bc",
+          ) == "ffffffd21c3933f4"
+          PY
+      - name: Install and test source distribution
+        run: |
+          TEST_ENV="$RUNNER_TEMP/nano-rspow-sdist"
+          SDIST=$(find "$RUNNER_TEMP/sdist" -name '*.tar.gz' -print -quit)
+          uv venv "$TEST_ENV"
+          uv pip install --python "$TEST_ENV/bin/python" "$SDIST"
+          "$TEST_ENV/bin/python" - <<'PY'
+          import nano_rspow
+
+          assert "site-packages" in nano_rspow.__file__
+          assert nano_rspow.compute_difficulty(
+              "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2",
+              "2bf29ef00786a6bc",
+          ) == "ffffffd21c3933f4"
+          PY
+
+  # ---------------------------------------------------------------------------
   # Publish to PyPI (only on tag push)
   # ---------------------------------------------------------------------------
   publish:
     name: Publish to PyPI
-    needs: [version-check, build, sdist]
+    needs: [version-check, build, sdist, verify-distributions]
     if: needs.version-check.outputs.should_publish == 'true' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment:
