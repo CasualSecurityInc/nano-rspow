@@ -16,7 +16,7 @@
 //!
 //! // Validate a known-good work value (nonce) matching the above test vector
 //! let work = u64::from_str_radix("2bf29ef00786a6bc", 16).unwrap();
-//! let result = nano_rspow::work_validate(&hash, work, thresholds::EPOCH1);
+//! let result = nano_rspow::work_validate(&hash, work, thresholds::LEGACY_EPOCH1);
 //! assert!(result.is_valid());
 //! ```
 

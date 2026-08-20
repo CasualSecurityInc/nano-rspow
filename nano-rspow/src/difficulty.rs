@@ -73,8 +73,8 @@ mod tests {
             "difficulty mismatch: got {actual:#018x}, expected {expected_difficulty:#018x}"
         );
         assert!(
-            actual >= thresholds::EPOCH1,
-            "work must meet epoch1 threshold"
+            actual >= thresholds::LEGACY_EPOCH1,
+            "work must meet legacy epoch1 threshold"
         );
     }
 
@@ -87,10 +87,10 @@ mod tests {
 
         let actual = compute(&hash, work);
         assert_eq!(actual, expected_difficulty);
-        assert!(actual >= thresholds::EPOCH1);
+        assert!(actual >= thresholds::LEGACY_EPOCH1);
     }
 
-    /// Vector 3 — boundary: work exactly at epoch1 threshold should be valid.
+    /// Vector 3 — boundary: work exactly at the legacy epoch-1 threshold should be valid.
     #[test]
     fn threshold_exactly_met_is_valid() {
         // We brute-force a nonce that's right at the boundary using CPU search
@@ -104,13 +104,13 @@ mod tests {
         assert!(!is_valid(&hash, nonce, u64::MAX)); // Nothing meets max threshold
     }
 
-    /// Vector 4 — known invalid work (difficulty below epoch1 threshold).
+    /// Vector 4 — known invalid work (difficulty below the legacy epoch-1 threshold).
     #[test]
     fn known_invalid_work() {
         // work = 0 almost certainly produces difficulty below any real threshold
         let hash = hex_to_array("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2");
         let work = 0u64;
-        assert!(!is_valid(&hash, work, thresholds::EPOCH1));
+        assert!(!is_valid(&hash, work, thresholds::LEGACY_EPOCH1));
     }
 
     /// Vector 5 — determinism: same inputs always produce same output.

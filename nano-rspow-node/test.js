@@ -12,6 +12,7 @@ async function main() {
     const expected = {
         [WorkType.Send]: "fffffff800000000",
         [WorkType.Receive]: "fffffe0000000000",
+        [WorkType.LegacyEpoch1]: "ffffffc000000000",
         [WorkType.Epoch1]: "ffffffc000000000",
         [WorkType.Dev]: "fe00000000000000",
     };

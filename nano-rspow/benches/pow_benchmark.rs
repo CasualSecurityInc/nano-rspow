@@ -5,13 +5,13 @@
 //! Tiers mirror the CLI `benchmark` command:
 //!   dev        0xfe00000000000000  (very low — fast iteration)
 //!   ep2_recv   0xfffffe0000000000  (epoch-2 receive — common real-world)
-//!   epoch1     0xffffffc000000000  (legacy / open blocks)
+//!   legacy_epoch1  0xffffffc000000000  (legacy-only)
 //!   ep2_send   0xfffffff800000000  (epoch-2 send/change — hardest)
 //!
 //! CPU benchmarks run at `dev` threshold only (higher tiers take 1-2 s each,
 //! making Criterion wall-time impractical).  GPU benchmarks run at `dev` and
-//! `ep2_recv`; `epoch1` and `ep2_send` are included but marked slow so they
-//! only run when specifically requested (`cargo bench -- epoch1`).
+//! `ep2_recv`; `legacy_epoch1` and `ep2_send` are included but marked slow so
+//! they only run when specifically requested (`cargo bench -- legacy_epoch1`).
 
 use criterion::{Criterion, SamplingMode, Throughput, criterion_group, criterion_main};
 use nano_rspow::{difficulty, thresholds};
@@ -87,8 +87,8 @@ fn bench_gpu_generation(c: &mut Criterion) {
         group.sample_size(10);
         group.sampling_mode(SamplingMode::Flat);
 
-        group.bench_function("epoch1", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::EPOCH1).unwrap());
+        group.bench_function("legacy_epoch1", |b| {
+            b.iter(|| generator.generate(&BENCH_HASH, thresholds::LEGACY_EPOCH1).unwrap());
         });
 
         group.bench_function("ep2_send", |b| {

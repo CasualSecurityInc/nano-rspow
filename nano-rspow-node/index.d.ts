@@ -1,6 +1,8 @@
 export const enum WorkType {
   Send = 'Send',
   Receive = 'Receive',
+  LegacyEpoch1 = 'LegacyEpoch1',
+  /** @deprecated Use LegacyEpoch1. Not for current mainnet epoch blocks. */
   Epoch1 = 'Epoch1',
   Dev = 'Dev'
 }

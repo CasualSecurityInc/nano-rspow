@@ -55,7 +55,7 @@ enum Commands {
         #[arg(long)]
         stream: bool,
 
-        /// Difficulty threshold (hex, default: epoch2 send)
+        /// Difficulty threshold (hex, default: current send/change)
         #[arg(short, long, default_value = "fffffff800000000")]
         threshold: String,
 
@@ -76,7 +76,7 @@ enum Commands {
         /// Work value (16 hex chars)
         work: String,
 
-        /// Difficulty threshold (hex, default: epoch2 send)
+        /// Difficulty threshold (hex, default: current send/change)
         #[arg(short, long, default_value = "fffffff800000000")]
         threshold: String,
     },
@@ -112,7 +112,7 @@ enum Commands {
         #[arg(long, value_enum, default_value_t = BenchBackend::All)]
         backend: BenchBackend,
 
-        /// Tier to benchmark: dev, ep2_recv, epoch1, ep2_send, or all
+        /// Tier to benchmark: dev, ep2_recv, legacy_epoch1, ep2_send, or all
         #[arg(long, value_enum, default_value_t = BenchTier::All)]
         tier: BenchTier,
 
@@ -160,7 +160,7 @@ enum BenchBackend {
 enum BenchTier {
     Dev,
     Ep2Recv,
-    Epoch1,
+    LegacyEpoch1,
     Ep2Send,
     All,
 }
@@ -258,7 +258,7 @@ fn cmd_info() {
     println!("Thresholds:");
     println!("  epoch2 send    = {:#018x}", thresholds::EPOCH2_SEND);
     println!("  epoch2 receive = {:#018x}", thresholds::EPOCH2_RECEIVE);
-    println!("  epoch1         = {:#018x}", thresholds::EPOCH1);
+    println!("  legacy_epoch1  = {:#018x}", thresholds::LEGACY_EPOCH1);
     println!("  dev (testing)  = {:#018x}", thresholds::DEV);
 }
 
@@ -580,7 +580,7 @@ struct BackendBenchReport {
 struct BenchmarkThresholds {
     dev: u64,
     ep2_recv: u64,
-    epoch1: u64,
+    legacy_epoch1: u64,
     ep2_send: u64,
 }
 
@@ -795,7 +795,7 @@ fn cmd_benchmark(
     let all_tiers: &[(&'static str, u64)] = &[
         ("dev", thresholds::DEV),
         ("ep2_recv", thresholds::EPOCH2_RECEIVE),
-        ("epoch1", thresholds::EPOCH1),
+        ("legacy_epoch1", thresholds::LEGACY_EPOCH1),
         ("ep2_send", thresholds::EPOCH2_SEND),
     ];
 
@@ -810,9 +810,9 @@ fn cmd_benchmark(
             .filter(|&&(name, _)| name == "ep2_recv")
             .copied()
             .collect(),
-        BenchTier::Epoch1 => all_tiers
+        BenchTier::LegacyEpoch1 => all_tiers
             .iter()
-            .filter(|&&(name, _)| name == "epoch1")
+            .filter(|&&(name, _)| name == "legacy_epoch1")
             .copied()
             .collect(),
         BenchTier::Ep2Send => all_tiers
@@ -1057,7 +1057,7 @@ fn cmd_benchmark(
             thresholds: BenchmarkThresholds {
                 dev: thresholds::DEV,
                 ep2_recv: thresholds::EPOCH2_RECEIVE,
-                epoch1: thresholds::EPOCH1,
+                legacy_epoch1: thresholds::LEGACY_EPOCH1,
                 ep2_send: thresholds::EPOCH2_SEND,
             },
             backends,
@@ -1113,10 +1113,10 @@ fn print_ascii_table(rows: &[BenchRow]) {
     println!("{sep}");
     println!();
     println!(
-        "Tiers benchmarked: dev={:#018x} ep2_recv={:#018x} epoch1={:#018x} ep2_send={:#018x}",
+        "Tiers benchmarked: dev={:#018x} ep2_recv={:#018x} legacy_epoch1={:#018x} ep2_send={:#018x}",
         thresholds::DEV,
         thresholds::EPOCH2_RECEIVE,
-        thresholds::EPOCH1,
+        thresholds::LEGACY_EPOCH1,
         thresholds::EPOCH2_SEND
     );
 }
@@ -1147,5 +1147,5 @@ fn print_markdown_table(rows: &[BenchRow]) {
     }
 
     println!();
-    println!("> Tiers benchmarked: `dev`, `ep2_recv`, `epoch1`, `ep2_send`.");
+    println!("> Tiers benchmarked: `dev`, `ep2_recv`, `legacy_epoch1`, `ep2_send`.");
 }

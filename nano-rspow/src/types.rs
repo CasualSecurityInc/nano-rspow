@@ -128,7 +128,7 @@ mod tests {
         let r = WorkResult {
             nonce: 0x2bf29ef00786a6bc,
             difficulty: 0xffffffd21c3933f4,
-            threshold: 0xffffffc000000000,
+            threshold: thresholds::LEGACY_EPOCH1,
         };
         assert!(r.is_valid());
         assert_eq!(r.nonce_hex(), "2bf29ef00786a6bc");
@@ -139,7 +139,7 @@ mod tests {
         let r = WorkResult {
             nonce: 0,
             difficulty: 0,
-            threshold: 0xffffffc000000000,
+            threshold: thresholds::LEGACY_EPOCH1,
         };
         assert!(!r.is_valid());
     }

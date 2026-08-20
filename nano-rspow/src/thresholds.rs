@@ -4,18 +4,29 @@
 //! C++ nano-node `nano/lib/work.cpp`.
 
 /// Epoch 2 send/change threshold (current live network default for sends).
-/// 8x harder than EPOCH1.
+/// 8x harder than LEGACY_EPOCH1.
 pub const EPOCH2_SEND: u64 = 0xfffffff800000000;
 
 /// Epoch 2 receive threshold.
-/// 8x easier than EPOCH1.
+/// 8x easier than LEGACY_EPOCH1.
 pub const EPOCH2_RECEIVE: u64 = 0xfffffe0000000000;
 
-/// Epoch 1 threshold (legacy / open blocks).
-pub const EPOCH1: u64 = 0xffffffc000000000;
+/// Legacy epoch 1 threshold.
+///
+/// This is retained for historical block validation and compatibility only.
+/// It is not the threshold required for current mainnet epoch blocks.
+pub const LEGACY_EPOCH1: u64 = 0xffffffc000000000;
+
+/// Deprecated alias for [`LEGACY_EPOCH1`].
+#[deprecated(note = "use LEGACY_EPOCH1; this threshold is legacy-only")]
+pub const EPOCH1: u64 = LEGACY_EPOCH1;
 
 /// Beta network epoch 1 threshold (64x lower than live epoch 1).
-pub const BETA_EPOCH1: u64 = 0xfffff00000000000;
+pub const BETA_LEGACY_EPOCH1: u64 = 0xfffff00000000000;
+
+/// Deprecated alias for [`BETA_LEGACY_EPOCH1`].
+#[deprecated(note = "use BETA_LEGACY_EPOCH1; this threshold is legacy-only")]
+pub const BETA_EPOCH1: u64 = BETA_LEGACY_EPOCH1;
 
 /// Dev network threshold (very low, for testing).
 pub const DEV: u64 = 0xfe00000000000000;
@@ -45,24 +56,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn multiplier_epoch2_vs_epoch1() {
+    fn multiplier_epoch2_vs_legacy_epoch1() {
         // rsnano confirms live epoch_2 is 8x epoch_1
-        let m = to_multiplier(EPOCH2_SEND, EPOCH1);
+        let m = to_multiplier(EPOCH2_SEND, LEGACY_EPOCH1);
         assert!((m - 8.0).abs() < 0.01, "expected 8.0, got {m}");
     }
 
     #[test]
-    fn multiplier_epoch2_receive_vs_epoch1() {
+    fn multiplier_epoch2_receive_vs_legacy_epoch1() {
         // epoch_2_receive is 1/8 of epoch_1
-        let m = to_multiplier(EPOCH2_RECEIVE, EPOCH1);
+        let m = to_multiplier(EPOCH2_RECEIVE, LEGACY_EPOCH1);
         assert!((m - 0.125).abs() < 0.001, "expected 0.125, got {m}");
     }
 
     #[test]
     fn roundtrip_multiplier() {
         let m = 2.5_f64;
-        let d = from_multiplier(m, EPOCH1);
-        let m2 = to_multiplier(d, EPOCH1);
+        let d = from_multiplier(m, LEGACY_EPOCH1);
+        let m2 = to_multiplier(d, LEGACY_EPOCH1);
         assert!((m - m2).abs() < 0.001);
     }
 }

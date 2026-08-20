@@ -22,8 +22,13 @@ validateWork(hash, work, WorkType.Send); // → true
 | `WorkType`  | Use for                        |
 |-------------|--------------------------------|
 | `Send`      | Send and change blocks         |
-| `Receive`   | Open and receive blocks        |
-| `Epoch1`    | Epoch upgrade blocks           |
+| `Receive`   | Receive, open, and epoch blocks at the current epoch-2 threshold |
+| `LegacyEpoch1` | Historical epoch-1 work only; not for current mainnet blocks |
+| `Epoch1`    | Deprecated compatibility alias for `LegacyEpoch1` |
+
+Current Nano mainnet uses `fffffff800000000` for send/change blocks and
+`fffffe0000000000` for receive/open/epoch blocks. `LegacyEpoch1` maps to
+`ffffffc000000000` and exists only for historical compatibility.
 
 ## See Also
 

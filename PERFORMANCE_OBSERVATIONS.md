@@ -188,7 +188,7 @@ Inspired by the same class of improvements applied to a high-performance OpenCL 
 |------------|-----------|-----------|
 | median     | 55.5      | 113.7     |
 
-**epoch1 wgpu — n=3, Attempt 4**
+**legacy_epoch1 wgpu — n=3, Attempt 4**
 
 | Stat       | Cold (ms) | Warm (ms) |
 |------------|-----------|-----------|
@@ -223,7 +223,7 @@ Replaced rayon's `into_par_iter()` with pre-spun native threads using per-thread
 |------|-------------|----------------|-------------|
 | dev | 0.1 ms | 0.0 ms | overhead eliminated |
 | ep2_recv | 1,051 ms | 84-354 ms | **3-13× faster** |
-| epoch1 | 1,989 ms | 314-878 ms | **2-6× faster** |
+| legacy_epoch1 | 1,989 ms | 314-878 ms | **2-6× faster** |
 | ep2_send | 1,923 ms† | 10-15 s | washed out by compute |
 
 † The old 1,923 ms was from deterministic seeds (`thread_idx ^ 0xdeadbeef`) happening to hit a lucky nonce for the test-vector hash. True expected time on M1 for ep2_send is 10-30 s on CPU backends.

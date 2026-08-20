@@ -2,6 +2,10 @@
 
 High-performance CLI for Nano (XNO) Proof of Work generation and validation. Supports CPU, GPU (wgpu), and OpenCL backends with automatic hardware detection.
 
+Current Nano mainnet thresholds are `0xfffffff800000000` for send/change
+blocks and `0xfffffe0000000000` for receive/open/epoch blocks. The
+`0xffffffc000000000` threshold is legacy epoch-1 work only.
+
 ## Install
 
 ```bash
@@ -28,7 +32,7 @@ nano-rspow-cli generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C
 nano-rspow-cli generate <hash> --backend cpu
 
 # Custom threshold
-nano-rspow-cli generate <hash> --threshold 0xffffffc000000000
+nano-rspow-cli generate <hash> --threshold 0xffffffc000000000 # legacy epoch-1 only
 
 # Streaming mode (newline-delimited stdin/stdout)
 echo '<hash>' | nano-rspow-cli generate --stream

@@ -21,7 +21,7 @@
 //! valid = nano_rspow.validate_work(
 //!     "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2",
 //!     "2bf29ef00786a6bc",
-//!     WorkType.Epoch1,
+//!     WorkType.LegacyEpoch1,
 //! )
 //! ```
 
@@ -51,13 +51,15 @@ fn get_generator() -> &'static WorkGenerator {
 /// Values mirror the thresholds defined in `nano-rspow/src/thresholds.rs`:
 /// - `Send`    → epoch 2 send/change (0xfffffff800000000)
 /// - `Receive` → epoch 2 receive     (0xfffffe0000000000)
-/// - `Epoch1`  → legacy / open       (0xffffffc000000000)
+/// - `LegacyEpoch1` → legacy threshold only (0xffffffc000000000)
+/// - `Epoch1`  → deprecated compatibility alias for `LegacyEpoch1`
 #[pyclass(eq, eq_int, from_py_object)]
 #[derive(Clone, Copy, PartialEq)]
 enum WorkType {
     Send = 0,
     Receive = 1,
     Epoch1 = 2,
+    LegacyEpoch1 = 3,
 }
 
 impl WorkType {
@@ -65,7 +67,7 @@ impl WorkType {
         match self {
             WorkType::Send => thresholds::EPOCH2_SEND,
             WorkType::Receive => thresholds::EPOCH2_RECEIVE,
-            WorkType::Epoch1 => thresholds::EPOCH1,
+            WorkType::Epoch1 | WorkType::LegacyEpoch1 => thresholds::LEGACY_EPOCH1,
         }
     }
 }
@@ -252,8 +254,10 @@ fn register_thresholds(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     let sub = PyModule::new(parent.py(), "thresholds")?;
     sub.add("EPOCH2_SEND", thresholds::EPOCH2_SEND)?;
     sub.add("EPOCH2_RECEIVE", thresholds::EPOCH2_RECEIVE)?;
-    sub.add("EPOCH1", thresholds::EPOCH1)?;
-    sub.add("BETA_EPOCH1", thresholds::BETA_EPOCH1)?;
+    sub.add("LEGACY_EPOCH1", thresholds::LEGACY_EPOCH1)?;
+    sub.add("EPOCH1", thresholds::LEGACY_EPOCH1)?;
+    sub.add("BETA_LEGACY_EPOCH1", thresholds::BETA_LEGACY_EPOCH1)?;
+    sub.add("BETA_EPOCH1", thresholds::BETA_LEGACY_EPOCH1)?;
     sub.add("DEV", thresholds::DEV)?;
     sub.add("BASE", thresholds::BASE)?;
     parent.add_submodule(&sub)?;

@@ -11,12 +11,14 @@ class WorkType(IntEnum):
     Values:
         Send:    Epoch 2 send/change threshold (0xfffffff800000000)
         Receive: Epoch 2 receive threshold     (0xfffffe0000000000)
-        Epoch1:  Legacy / open threshold        (0xffffffc000000000)
+        LegacyEpoch1: Legacy threshold only     (0xffffffc000000000)
+        Epoch1: LegacyEpoch1 compatibility alias (deprecated)
     """
 
     Send = 0
     Receive = 1
     Epoch1 = 2
+    LegacyEpoch1 = 3
 
 class WorkResult:
     """The result of a PoW generation or validation.
@@ -112,11 +114,17 @@ class thresholds:
     EPOCH2_RECEIVE: int
     """Epoch 2 receive threshold."""
 
+    LEGACY_EPOCH1: int
+    """Legacy epoch 1 threshold; not for current mainnet epoch blocks."""
+
     EPOCH1: int
-    """Epoch 1 threshold (legacy / open blocks)."""
+    """Deprecated compatibility alias for LEGACY_EPOCH1."""
+
+    BETA_LEGACY_EPOCH1: int
+    """Beta network legacy epoch 1 threshold."""
 
     BETA_EPOCH1: int
-    """Beta network epoch 1 threshold."""
+    """Deprecated compatibility alias for BETA_LEGACY_EPOCH1."""
 
     DEV: int
     """Dev network threshold (very low, for testing)."""

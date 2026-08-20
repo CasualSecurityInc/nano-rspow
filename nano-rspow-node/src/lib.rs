@@ -15,6 +15,9 @@ fn get_generator() -> &'static WorkGenerator {
 pub enum WorkType {
     Send,
     Receive,
+    /// Legacy epoch-1 threshold. Not for current mainnet epoch blocks.
+    LegacyEpoch1,
+    /// Deprecated compatibility alias for `LegacyEpoch1`.
     Epoch1,
     Dev,
 }
@@ -24,7 +27,7 @@ impl WorkType {
         match self {
             WorkType::Send => thresholds::EPOCH2_SEND,
             WorkType::Receive => thresholds::EPOCH2_RECEIVE,
-            WorkType::Epoch1 => thresholds::EPOCH1,
+            WorkType::LegacyEpoch1 | WorkType::Epoch1 => thresholds::LEGACY_EPOCH1,
             WorkType::Dev => thresholds::DEV,
         }
     }

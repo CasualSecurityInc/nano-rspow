@@ -27,7 +27,7 @@ RSNANO_DIFFICULTY_INT = 18446743921403126366
 # Threshold constants from thresholds.rs
 EPOCH2_SEND = 0xfffffff800000000
 EPOCH2_RECEIVE = 0xFFFFFE0000000000
-EPOCH1 = 0xFFFFFFc000000000
+LEGACY_EPOCH1 = 0xFFFFFFc000000000
 DEV = 0xFE00000000000000
 
 
@@ -73,20 +73,20 @@ class TestComputeDifficulty:
 class TestValidateWork:
     """Tests for the validate_work function."""
 
-    def test_known_valid_epoch1(self):
-        """Known-good work from nano-work-server must validate at Epoch1."""
-        assert nano_rspow.validate_work(VECTOR_HASH, VECTOR_WORK, WorkType.Epoch1)
+    def test_known_valid_legacy_epoch1(self):
+        """Known-good work from nano-work-server validates at legacy epoch-1 difficulty."""
+        assert nano_rspow.validate_work(VECTOR_HASH, VECTOR_WORK, WorkType.LegacyEpoch1)
 
     def test_known_invalid(self):
         """Work = 0 should not meet any real threshold."""
         assert not nano_rspow.validate_work(
-            VECTOR_HASH, "0000000000000000", WorkType.Epoch1
+            VECTOR_HASH, "0000000000000000", WorkType.LegacyEpoch1
         )
 
     def test_invalid_hash_hex_raises(self):
         """Non-hex hash should raise ValueError."""
         try:
-            nano_rspow.validate_work("zzzz", VECTOR_WORK, WorkType.Epoch1)
+            nano_rspow.validate_work("zzzz", VECTOR_WORK, WorkType.LegacyEpoch1)
             assert False, "Expected ValueError"
         except ValueError:
             pass
@@ -110,11 +110,11 @@ class TestGenerateWork:
         # Round-trip validation
         assert nano_rspow.validate_work(zero_hash, result.nonce_hex, WorkType.Receive)
 
-    def test_generate_epoch1_known_hash(self):
-        """Generate work for a known hash at Epoch1 difficulty."""
-        result = nano_rspow.generate_work(VECTOR_HASH, WorkType.Epoch1)
+    def test_generate_legacy_epoch1_known_hash(self):
+        """Generate work for a known hash at legacy epoch-1 difficulty."""
+        result = nano_rspow.generate_work(VECTOR_HASH, WorkType.LegacyEpoch1)
         assert result.is_valid
-        assert nano_rspow.validate_work(VECTOR_HASH, result.nonce_hex, WorkType.Epoch1)
+        assert nano_rspow.validate_work(VECTOR_HASH, result.nonce_hex, WorkType.LegacyEpoch1)
 
     def test_str_returns_nonce(self):
         """str(result) should return the nonce hex."""
@@ -137,6 +137,7 @@ class TestWorkType:
         assert WorkType.Send == 0
         assert WorkType.Receive == 1
         assert WorkType.Epoch1 == 2
+        assert WorkType.LegacyEpoch1 == 3
 
     def test_equality(self):
         """Enum equality should work."""
@@ -154,8 +155,8 @@ class TestThresholds:
     def test_epoch2_receive(self):
         assert nano_rspow.thresholds.EPOCH2_RECEIVE == 0xFFFFFE0000000000
 
-    def test_epoch1(self):
-        assert nano_rspow.thresholds.EPOCH1 == 0xFFFFFFc000000000
+    def test_legacy_epoch1(self):
+        assert nano_rspow.thresholds.LEGACY_EPOCH1 == 0xFFFFFFc000000000
 
     def test_dev(self):
         assert nano_rspow.thresholds.DEV == 0xFE00000000000000
