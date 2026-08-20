@@ -8,6 +8,8 @@ Native Nano (XNO) Proof-of-Work for Node.js. Pre-compiled binaries for macOS (x6
 npm install nano-rspow-node
 ```
 
+If you are looking for the same functionality in the browser, see the [nano-rspow-web README](../nano-rspow-web/README.md).
+
 ## Usage
 
 ```typescript

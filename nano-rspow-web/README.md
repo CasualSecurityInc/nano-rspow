@@ -1,5 +1,7 @@
 # nano-rspow-web
 
+If you are looking for the same functionality on the server side, see the [nano-rspow-node README](../nano-rspow-node/README.md).
+
 WebGPU-accelerated Nano (XNO) Proof-of-Work generation in the browser using WebAssembly. Pre-compiled for high-performance direct web browser integrations.
 
 Tries WebGPU first, then automatically falls back to single-threaded CPU WebAssembly if WebGPU is unavailable.
