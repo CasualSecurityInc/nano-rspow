@@ -12,15 +12,15 @@ def main():
     
     print("Active backend:", nano_rspow.backend_name())
     
-    print("Generating proof of work for WorkType.Dev...")
+    print("Generating proof of work for WorkType.Send...")
     start = time.perf_counter()
-    result = nano_rspow.generate_work(hash_hex, WorkType.Dev)
+    result = nano_rspow.generate_work(hash_hex, WorkType.Send)
     duration_ms = (time.perf_counter() - start) * 1000
     
-    print(f"[Dev] Generated: {result.nonce_hex} in {duration_ms:.2f}ms")
+    print(f"[Send] Generated: {result.nonce_hex} in {duration_ms:.2f}ms")
     
-    is_valid = nano_rspow.validate_work(hash_hex, result.nonce_hex, WorkType.Dev)
-    print(f"[Dev] Valid: {is_valid}")
+    is_valid = nano_rspow.validate_work(hash_hex, result.nonce_hex, WorkType.Send)
+    print(f"[Send] Valid: {is_valid}")
     
     if not is_valid:
         print("Error: Generated work is invalid!")

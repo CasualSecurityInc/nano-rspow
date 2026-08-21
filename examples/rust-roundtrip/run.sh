@@ -19,6 +19,11 @@ VERSION=$(node -e "
 
 echo "Active version: $VERSION"
 
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "Error: cargo is not on PATH. Install Rust with rustup or add its cargo bin directory to PATH."
+  exit 127
+fi
+
 # Update Cargo.toml dependency version
 node -e "
   const fs = require('fs');

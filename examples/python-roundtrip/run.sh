@@ -23,13 +23,15 @@ echo "Setting up a clean Python virtual environment..."
 python3 -m venv .venv
 source .venv/bin/activate
 
+cleanup() {
+  deactivate 2>/dev/null || true
+  rm -rf .venv
+}
+trap cleanup EXIT
+
 echo "Installing nano-rspow-python==$VERSION..."
 pip install --upgrade pip
 pip install "nano-rspow-python==$VERSION"
 
 echo "Running Python roundtrip..."
 python main.py
-
-echo "Cleaning up virtual environment..."
-deactivate
-rm -rf .venv

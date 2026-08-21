@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-nano-rspow = "0.5.9"
+nano-rspow = "0.12.1"
 
 [workspace]

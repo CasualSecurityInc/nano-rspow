@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "nano-rspow-web": "^0.5.7"
+    "nano-rspow-web": "^0.12.1"
   }
 }
