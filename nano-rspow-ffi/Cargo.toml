@@ -1,0 +1,18 @@
+[package]
+name = "nano-rspow-ffi"
+description = "C ABI for the nano-rspow native proof-of-work engine."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[features]
+default = ["wgpu-backend"]
+wgpu-backend = ["nano-rspow/wgpu-backend"]
+opencl = ["nano-rspow/opencl"]
+
+[dependencies]
+nano-rspow = { path = "../nano-rspow", default-features = false }
