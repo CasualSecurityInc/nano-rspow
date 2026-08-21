@@ -21,6 +21,7 @@
     "recharts": "2.15.1"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "esbuild": "0.25.12"
   },
   "private": true

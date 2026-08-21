@@ -6,6 +6,7 @@
 //!   benchmark [--count <n>] [--format <table|markdown|json>] [--mode <cold|warm|both>]
 //!   info
 //!   diag [--backend <cpu|gpu|opencl>] [--format <table|json>] [--retune]
+//!   serve [--listen <address>] [--backend <auto|cpu|gpu>] [--queue-size <n>]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -14,6 +15,8 @@ use std::time::Instant;
 use clap::{Parser, Subcommand, ValueEnum};
 use nano_rspow::{GpuDiagnostics, WgpuConfig, WorkGenerator, difficulty, thresholds};
 use serde::Serialize;
+
+mod server;
 
 #[derive(Parser)]
 #[command(
@@ -135,6 +138,25 @@ enum Commands {
         #[arg(long, default_value = "table")]
         format: String,
     },
+
+    /// Run a Nano work-peer compatible HTTP server
+    Serve {
+        /// Address to bind. The default is loopback-only for safety.
+        #[arg(long, default_value = "127.0.0.1:7076")]
+        listen: String,
+
+        /// Backend: auto, cpu, or gpu
+        #[arg(long, default_value = "auto")]
+        backend: String,
+
+        /// For the GPU backend, bypass the tuning cache and probe dispatch size.
+        #[arg(long)]
+        retune: bool,
+
+        /// Maximum number of waiting work requests.
+        #[arg(long, default_value_t = 32)]
+        queue_size: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq, Serialize)]
@@ -194,6 +216,22 @@ fn main() {
             retune,
             format,
         } => cmd_diag(&backend, retune, &format),
+        Commands::Serve {
+            listen,
+            backend,
+            retune,
+            queue_size,
+        } => {
+            if let Err(error) = server::run(server::ServerConfig {
+                listen,
+                backend,
+                retune,
+                queue_size,
+            }) {
+                eprintln!("work-peer error: {error}");
+                std::process::exit(1);
+            }
+        }
         Commands::Generate {
             hash,
             stream,

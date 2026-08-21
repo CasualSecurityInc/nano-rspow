@@ -22,6 +22,9 @@ Install from crates.io (requires a Rust toolchain):
 ```bash
 cargo install nano-rspow-cli
 nano-rspow benchmark --count 10
+
+# Run a loopback Nano work peer on 127.0.0.1:7076
+nano-rspow serve
 ```
 Alternatively, build from this repository:
 ```bash

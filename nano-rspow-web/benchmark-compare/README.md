@@ -26,11 +26,13 @@ cd benchmark-compare
 make
 ```
 
-Run a Nano node with its local RPC endpoint available (the default is
-`http://127.0.0.1:7076`). Then `make` rebuilds only when its local source files
-or pinned dependencies changed, starts the bridge, and serves `dist/` at
-`http://localhost:8080/`. Set `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` to
-use another local endpoint. Press Ctrl-C to stop it.
+`make` rebuilds the browser bundle when needed, builds the Rust CLI in release
+mode, and starts both the local work peer and the proxy. The work peer listens
+on `http://127.0.0.1:7076`; the proxy serves the page at
+`http://localhost:8080/`. Set `WORK_PEER_PORT`, `WORK_PEER_BACKEND`, or `PORT`
+to change the defaults. `NANO_NODE_RPC_URL` can point the proxy at an already
+running external work peer instead. Press Ctrl-C once; the process supervisor
+stops both child processes.
 
 `dist/` contains the page, all browser JavaScript dependencies, and the
 nano-rspow WebAssembly binary. The bridge also exposes `/api/health`,

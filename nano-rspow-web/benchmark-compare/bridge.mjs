@@ -115,7 +115,7 @@ async function serveFile(request, response) {
 const server = createServer(async (request, response) => {
   if (request.method === 'GET' && request.url === '/api/health') {
     try {
-      await rpcRequest('version');
+      await rpcRequest('status');
     } catch (error) {
       return respond(response, 503, {
         error: errorMessage(error),
