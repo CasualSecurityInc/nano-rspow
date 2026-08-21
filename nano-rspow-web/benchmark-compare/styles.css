@@ -42,7 +42,7 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .button-label { display: block; width: 100%; text-align: center; }
 .button-rspow { --button-color: #2563eb; background: #2563eb; }
 .button-node { --button-color: #9333ea; background: #9333ea; }
-.button-cli { --button-color: #d97706; background: #d97706; }
+.button-rpc { --button-color: #d97706; background: #d97706; }
 .button-nanopow { --button-color: #16a34a; background: #16a34a; }
 .button-nanocurrency { --button-color: #d97706; background: #d97706; }
 .button-webglPow { --button-color: #9333ea; background: #9333ea; }
@@ -97,7 +97,7 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .sample-badge { width: fit-content; padding: 4px 7px; border-radius: 999px; color: #fff; font-family: Inter, ui-sans-serif, sans-serif; font-size: 0.7rem; font-weight: 700; }
 .sample-badge.rspow { background: #2563eb; }
 .sample-badge.node { background: #9333ea; }
-.sample-badge.cli { background: #d97706; }
+.sample-badge.rpc { background: #d97706; }
 .sample-badge.nanopow { background: #16a34a; }
 
 @media (max-width: 640px) {

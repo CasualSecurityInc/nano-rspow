@@ -2,8 +2,8 @@
 
 This local page compares Epoch 2 send-work searches from four providers for
 the same randomly generated work roots: the checked-in nano-rspow-web WebAssembly
-snapshot, the pinned nano-pow dependency, and a localhost bridge to the native
-`nano-rspow` CLI and the local `nano-rspow-node` addon.
+snapshot, the pinned nano-pow dependency, a local Nano node's JSON-RPC
+`work_generate`, and the local `nano-rspow-node` addon.
 
 Provider packages and sources:
 
@@ -11,7 +11,7 @@ Provider packages and sources:
 | --- | --- | --- |
 | nano-rspow-web | `nano-rspow-web` | Checked-in WebAssembly snapshot in this directory |
 | nano-pow | `nano-pow` | Pinned local NPM dependency |
-| nano-rspow CLI | local `target/release/nano-rspow` | Persistent `generate --stream --backend gpu` child process |
+| Nano node RPC | `work_generate` at `http://127.0.0.1:7076` | Proxied by the local bridge; override with `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` |
 | nano-rspow-node | local `nano-rspow-node/index.js` | Native addon loaded by the bridge once |
 
 `nanocurrency` remains a pinned local dependency only for browser-side work
@@ -26,19 +26,15 @@ cd benchmark-compare
 make
 ```
 
-Build the native CLI first:
-
-```bash
-cargo build -p nano-rspow-cli --release
-```
-
-Then `make` rebuilds only when its local source files or pinned dependencies
-changed, starts the bridge, and serves `dist/` at `http://localhost:8080/`.
-Set `NANO_RSPOW_CLI` to override the default CLI path. Press Ctrl-C to stop it.
+Run a Nano node with its local RPC endpoint available (the default is
+`http://127.0.0.1:7076`). Then `make` rebuilds only when its local source files
+or pinned dependencies changed, starts the bridge, and serves `dist/` at
+`http://localhost:8080/`. Set `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` to
+use another local endpoint. Press Ctrl-C to stop it.
 
 `dist/` contains the page, all browser JavaScript dependencies, and the
 nano-rspow WebAssembly binary. The bridge also exposes `/api/health`,
-`/api/pow/cli`, and `/api/pow/node`; it loads the local native binding and
+`/api/pow/rpc`, and `/api/pow/node`; it loads the local native binding and
 serves the static files. After `npm run build`, browser assets do not request
 esm.sh, npm, or any other external resource.
 The npm project, lockfile, `node_modules/`, and `dist/` are all scoped to this
@@ -56,8 +52,8 @@ next search after the in-flight solver finishes. The benchmark deliberately does
 not cancel an in-flight provider call, keeping the lifecycle comparable across
 providers.
 
-The bridge returns `providerMs` measured around native work only: CLI stdin to
-its matching stdout response, or the native addon `generateWork` call. Browser
+The bridge returns `providerMs` measured around the upstream JSON-RPC
+`work_generate` request or the native addon `generateWork` call. Browser
 HTTP/fetch time is excluded from the plotted duration. Every returned nonce is
 still independently validated in the browser against the shared Epoch 2 send
 threshold before it is recorded or used as the next battle root.

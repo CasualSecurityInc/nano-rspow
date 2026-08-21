@@ -1,7 +1,7 @@
 {
   "name": "benchmark-compare",
   "version": "1.0.0",
-  "description": "Temporary localhost benchmark comparing two browser PoW providers with native nano-rspow CLI and Node-addon providers.",
+  "description": "Temporary localhost benchmark comparing browser, Nano node RPC, and native nano-rspow PoW providers.",
   "main": "app.js",
   "scripts": {
     "build": "node build.mjs",

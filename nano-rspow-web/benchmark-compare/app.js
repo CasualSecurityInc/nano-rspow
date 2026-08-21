@@ -24,22 +24,20 @@ const BATTLE_TURNS = 42;
 const BATTLE_COOLDOWN_MS = 200;
 const COLORS = {
   rspow: '#2563eb',
-  cli: '#d97706',
+  rpc: '#d97706',
   nanopow: '#16a34a',
   node: '#9333ea',
 };
 const CORE_PROVIDERS = [
   { key: 'rspow', label: 'nano-rspow-web', version: '0.10.0', color: COLORS.rspow, thresholdKey: 'threshold' },
   { key: 'node', label: 'nano-rspow-node', version: 'local', color: COLORS.node, thresholdKey: 'threshold' },
-  { key: 'cli', label: 'nano-rspow CLI', version: 'local', color: COLORS.cli, thresholdKey: 'threshold' },
+  { key: 'rpc', label: 'Nano node RPC', version: 'local', color: COLORS.rpc, thresholdKey: 'difficulty' },
 ];
 const COMPETITORS = [
   { key: 'nanopow', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopow, thresholdKey: 'difficulty' },
   { key: 'nanocurrency', label: 'nanocurrency', version: '2.5.0', color: '#d97706', thresholdKey: 'difficulty' },
   { key: 'webglPow', label: 'nano-webgl-pow', version: '1.1.1', color: '#9333ea', thresholdKey: 'difficulty' },
 ];
-const PROVIDERS = [...CORE_PROVIDERS, COMPETITORS[0]];
-const providerByKey = Object.fromEntries([...CORE_PROVIDERS, ...COMPETITORS].map((provider) => [provider.key, provider]));
 const NanoPow = NanoPowModule.NanoPow ?? NanoPowModule.default;
 
 function randomRoot() {
@@ -106,7 +104,7 @@ function BenchmarkApp() {
   const [root, setRoot] = useState(randomRoot);
   const [completedInRound, setCompletedInRound] = useState(new Set());
   const [samples, setSamples] = useState([]);
-  const [message, setMessage] = useState('Loading nano-rspow WebAssembly and native bridge…');
+  const [message, setMessage] = useState('Loading nano-rspow WebAssembly and local providers…');
   const [competitorIndex, setCompetitorIndex] = useState(0);
   const [battle, setBattle] = useState({ running: false, stopRequested: false, completed: 0, current: null });
   const [battleRootState, setBattleRootState] = useState(null);
@@ -118,11 +116,20 @@ function BenchmarkApp() {
   ));
 
   useEffect(() => {
+    setBattleProviders((previous) => {
+      const hadVisibleCompetitor = [...previous].some((key) => COMPETITORS.some((competitor) => competitor.key === key));
+      const next = new Set([...previous].filter((key) => !COMPETITORS.some((competitor) => competitor.key === key)));
+      if (hadVisibleCompetitor) next.add(COMPETITORS[competitorIndex].key);
+      return next;
+    });
+  }, [competitorIndex]);
+
+  useEffect(() => {
     Promise.all([
       initNanoRspow(),
       fetch('/api/health').then(async (response) => {
         const health = await response.json();
-        if (!response.ok || !health.cli.ready || !health.node.ready) {
+        if (!response.ok || !health.rpc.ready || !health.node.ready) {
           throw new Error(health.error ?? 'native bridge is not ready');
         }
       }),
@@ -173,7 +180,7 @@ function BenchmarkApp() {
     setCompletedInRound((previous) => {
       const next = new Set(previous);
       next.add(implementation);
-      if (next.size === PROVIDERS.length) {
+      if (next.size === currentProviders.length) {
         setRound((value) => value + 1);
         setRoot(randomRoot());
         setMessage(`Round ${round} complete. A new shared work root is ready.`);
@@ -205,7 +212,7 @@ function BenchmarkApp() {
         nonce = result.work;
         backend = result.api ?? 'automatic API selection';
       } else {
-        const result = await solveNative(implementation === 'cli' ? '/api/pow/cli' : '/api/pow/node', workRoot);
+        const result = await solveNative(implementation === 'rpc' ? '/api/pow/rpc' : '/api/pow/node', workRoot);
         nonce = result.work;
         backend = result.backend;
         elapsedMs = result.providerMs;
@@ -261,7 +268,7 @@ function BenchmarkApp() {
   const runBattle = async () => {
     if (!ready || active || battle.running) return;
 
-    const selectedProviders = PROVIDERS.filter((provider) => battleProviders.has(provider.key));
+    const selectedProviders = currentProviders.filter((provider) => battleProviders.has(provider.key));
     if (selectedProviders.length === 0) {
       setMessage('Select at least one provider to include in the battle.');
       return;
