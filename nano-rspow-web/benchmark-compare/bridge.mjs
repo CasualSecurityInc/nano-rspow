@@ -83,9 +83,12 @@ async function generateViaRpc(root, threshold) {
   if (body?.error) throw new Error(`Nano node RPC: ${body.error}`);
   if (!workPattern.test(body?.work ?? '')) throw new Error('Nano node RPC returned malformed work');
   return {
+    ...body,
     work: body.work.toLowerCase(),
-    providerMs: performance.now() - startedAt,
-    backend: `Nano node RPC (${new URL(nanoRpcUrl).host})`,
+    _benchmark: {
+      providerMs: performance.now() - startedAt,
+      backend: `Nano node RPC (${new URL(nanoRpcUrl).host})`,
+    },
   };
 }
 

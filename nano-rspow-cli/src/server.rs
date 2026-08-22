@@ -390,6 +390,7 @@ fn rpc_generate(request: &Value, server: &WorkServer) -> (u16, String) {
                 "work": result.nonce_hex(),
                 "difficulty": result.difficulty_hex(),
                 "multiplier": format_multiplier(thresholds::to_multiplier(result.difficulty, thresholds::BASE)),
+                "hash": hex::encode(hash),
             })
             .to_string(),
         ),
@@ -543,6 +544,7 @@ mod tests {
         let response: Value = serde_json::from_str(&body).unwrap();
         assert!(response["work"].as_str().unwrap().len() == 16);
         assert!(response["difficulty"].as_str().unwrap().len() == 16);
+        assert_eq!(response["hash"], HASH.to_ascii_lowercase());
         server.shutdown();
     }
 

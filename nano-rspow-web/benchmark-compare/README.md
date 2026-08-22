@@ -54,8 +54,10 @@ next search after the in-flight solver finishes. The benchmark deliberately does
 not cancel an in-flight provider call, keeping the lifecycle comparable across
 providers.
 
-The bridge returns `providerMs` measured around the upstream JSON-RPC
-`work_generate` request or the native addon `generateWork` call. Browser
-HTTP/fetch time is excluded from the plotted duration. Every returned nonce is
-still independently validated in the browser against the shared Epoch 2 send
-threshold before it is recorded or used as the next battle root.
+The bridge preserves the upstream Nano `work_generate` response and adds
+proxy-only metadata under `_benchmark`: `providerMs` measures the upstream
+JSON-RPC request or native addon `generateWork` call, and `backend` identifies
+the selected provider. Browser HTTP/fetch time is excluded from the plotted
+duration. Every returned nonce is still independently validated in the browser
+against the shared Epoch 2 send threshold before it is recorded or used as the
+next battle root.

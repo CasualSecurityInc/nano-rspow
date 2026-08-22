@@ -103,8 +103,9 @@ responsive while work is running.
 
 The endpoint accepts the Nano work-server actions `work_generate`,
 `work_cancel`, `work_validate`, `status`, and `benchmark` as POST requests to
-`/`. Requests and responses use the same JSON field names as Nano RPC. For
-example:
+`/`. Requests and responses use the same JSON field names as Nano RPC. A
+successful `work_generate` response contains `work`, `difficulty`,
+`multiplier`, and the echoed `hash`, for example:
 
 ```bash
 curl -s http://127.0.0.1:7076 \

@@ -214,8 +214,14 @@ function BenchmarkApp() {
       } else {
         const result = await solveNative(implementation === 'rpc' ? '/api/pow/rpc' : '/api/pow/node', workRoot);
         nonce = result.work;
-        backend = result.backend;
-        elapsedMs = result.providerMs;
+        if (implementation === 'rpc') {
+          if (!result._benchmark) throw new Error('Nano RPC proxy response omitted _benchmark metadata');
+          backend = result._benchmark.backend;
+          elapsedMs = result._benchmark.providerMs;
+        } else {
+          backend = result.backend;
+          elapsedMs = result.providerMs;
+        }
       }
 
       const isValid = validateWork({
