@@ -6,6 +6,7 @@ license.workspace = true
 readme.workspace = true
 description = "CLI for nano-rspow: generate/validate Nano PoW, benchmark backends"
 repository.workspace = true
+keywords = ["nano", "xno", "nanocurrency", "proof-of-work", "cli"]
 
 [[bin]]
 name = "nano-rspow"
@@ -17,7 +18,7 @@ wgpu-backend = ["nano-rspow/wgpu-backend"]
 opencl = ["nano-rspow/opencl"]
 
 [dependencies]
-nano-rspow = { path = "../nano-rspow", version = "0.13.0", features = ["wgpu-backend"] }
+nano-rspow = { path = "../nano-rspow", version = "0.13.1", features = ["wgpu-backend"] }
 clap = { version = "4", features = ["derive"] }
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }

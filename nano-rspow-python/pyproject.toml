@@ -12,7 +12,7 @@ license = "MIT"
 authors = [
     { name = "Conny Brunnkvist", email = "cbrunnkvist@gmail.com" },
 ]
-keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
+keywords = ["nano", "xno", "nanocurrency", "proof-of-work", "blake2b"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",

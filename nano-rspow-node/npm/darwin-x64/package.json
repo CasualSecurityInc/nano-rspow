@@ -9,6 +9,7 @@
     "nano-rspow-node.darwin-x64.node"
   ],
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
+  "keywords": ["nano", "xno", "nanocurrency", "proof-of-work", "nodejs"],
   "author": "Casual Security Inc. & Conny Brunnkvist <cbrunnkvist@gmail.com>",
   "repository": {
     "type": "git",

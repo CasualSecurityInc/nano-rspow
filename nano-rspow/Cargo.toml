@@ -6,7 +6,7 @@ repository.workspace = true
 version.workspace = true
 readme.workspace = true
 description = "Hybrid CPU/GPU Nano (XNO) Proof of Work library — Rust core, cross-platform."
-keywords = ["nano", "xno", "proof-of-work", "blake2b", "gpu"]
+keywords = ["nano", "xno", "nanocurrency", "proof-of-work", "blake2b"]
 categories = ["cryptography", "hardware-support"]
 
 [features]
