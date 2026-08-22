@@ -765,6 +765,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nano-rspow-ffi"
+version = "0.12.1"
+dependencies = [
+ "nano-rspow",
+]
+
+[[package]]
 name = "nano-rspow-node"
 version = "0.12.1"
 dependencies = [

@@ -65,3 +65,25 @@ retained by Rust and no Rust callback enters Go.
 The cgo call itself is intentionally not used as a throughput claim. Benchmark
 the native `Generate` path separately from a no-op cgo call when comparing
 bindings; proof-of-work throughput is dominated by the selected Rust backend.
+
+## Streaming CLI
+
+The module also contains a small streaming CLI at `cmd/nano-rspow-go`. It is
+not a separate Go module or package: build it from this module after building
+the native library:
+
+```sh
+cargo build -p nano-rspow-ffi
+go build -o ./bin/nano-rspow-go ./cmd/nano-rspow-go
+```
+
+With no arguments it uses the same newline-delimited protocol as
+`nano-rspow generate --stream`:
+
+```text
+<hash_hex>[:0x<threshold_hex>]
+<hash_hex>:0x<threshold_hex>:<work_hex>
+```
+
+Blank lines are ignored and malformed requests are reported to stderr while
+the stream continues. `--help` is the only supported argument.
