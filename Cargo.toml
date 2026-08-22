@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "nano-rspow",
+    "nano-rspow-ffi",
     "nano-rspow-cli",
     "nano-rspow-node",
     "nano-rspow-python",
