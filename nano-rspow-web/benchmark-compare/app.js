@@ -96,6 +96,17 @@ function ScatterTooltip({ active, payload }) {
   `;
 }
 
+function ScatterPoint({ cx, cy, fill, payload, highlighted }) {
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+  const className = highlighted ? 'sample-point sample-point--latest' : 'sample-point';
+  return html`
+    <g className=${className} style=${{ '--point-color': fill }} aria-hidden="true">
+      ${highlighted ? html`<circle className="sample-point-glow" cx=${cx} cy=${cy} r="8" fill=${fill} />` : null}
+      <circle className="sample-point-dot" cx=${cx} cy=${cy} r="4" fill=${fill} />
+    </g>
+  `;
+}
+
 function BenchmarkApp() {
   const [ready, setReady] = useState(false);
   const [initializationError, setInitializationError] = useState('');
@@ -104,11 +115,13 @@ function BenchmarkApp() {
   const [root, setRoot] = useState(randomRoot);
   const [completedInRound, setCompletedInRound] = useState(new Set());
   const [samples, setSamples] = useState([]);
+  const [highlightedSampleId, setHighlightedSampleId] = useState(null);
   const [message, setMessage] = useState('Loading nano-rspow WebAssembly and local providers…');
   const [competitorIndex, setCompetitorIndex] = useState(0);
   const [battle, setBattle] = useState({ running: false, stopRequested: false, completed: 0, current: null });
   const [battleRootState, setBattleRootState] = useState(null);
   const battleStopRef = useRef(false);
+  const highlightTimerRef = useRef(null);
   const currentProviders = useMemo(() => [...CORE_PROVIDERS, COMPETITORS[competitorIndex]], [competitorIndex]);
   const providerByKey = useMemo(() => Object.fromEntries(currentProviders.map((p) => [p.key, p])), [currentProviders]);
   const [battleProviders, setBattleProviders] = useState(() => new Set(
@@ -144,6 +157,20 @@ function BenchmarkApp() {
       });
 
   }, []);
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current !== null) window.clearTimeout(highlightTimerRef.current);
+  }, []);
+
+  const recordSample = (sample) => {
+    setSamples((previous) => [...previous, sample]);
+    setHighlightedSampleId(sample.id);
+    if (highlightTimerRef.current !== null) window.clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedSampleId((current) => (current === sample.id ? null : current));
+      highlightTimerRef.current = null;
+    }, 300);
+  };
 
   const series = useMemo(() => Object.fromEntries(currentProviders.map((provider, providerIndex) => [
     provider.key,
@@ -252,7 +279,7 @@ function BenchmarkApp() {
     try {
       const { elapsedMs, nonce, backend } = await solve(implementation, root);
       const label = providerByKey[implementation].label;
-      setSamples((previous) => [...previous, {
+      recordSample({
         id: `round-${round}-${implementation}`,
         implementation,
         label,
@@ -261,7 +288,7 @@ function BenchmarkApp() {
         root,
         nonce,
         backend,
-      }]);
+      });
       finishRoundIfComplete(implementation);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
@@ -297,7 +324,7 @@ function BenchmarkApp() {
         setMessage(`Battle turn ${turn}/${BATTLE_TURNS}: running ${label}…`);
 
         const { elapsedMs, nonce, backend } = await solve(implementation, battleRoot);
-        setSamples((previous) => [...previous, {
+        recordSample({
           id: `battle-${turn}-${implementation}`,
           implementation,
           label,
@@ -307,7 +334,7 @@ function BenchmarkApp() {
           root: battleRoot,
           nonce,
           backend,
-        }]);
+        });
 
         completed = turn;
         battleRoot = battleRootFromNonce(nonce);
@@ -462,7 +489,12 @@ function BenchmarkApp() {
                         <${XAxis} hide dataKey="providerX" type="number" domain=${[0.5, 1.5]} />
                         <${YAxis} dataKey="elapsedMs" scale="log" domain=${sharedYDomain} tickLine=${false} axisLine=${false} tick=${{ fill: '#64748b', fontSize: 11 }} width=${58} tickFormatter=${formatDuration} />
                         <${Tooltip} cursor=${{ strokeDasharray: '3 3', stroke: '#94a3b8' }} content=${html`<${ScatterTooltip} />`} />
-                        <${Scatter} name=${provider.label} data=${series[provider.key]} fill=${provider.color} />
+                        <${Scatter}
+                          name=${provider.label}
+                          data=${series[provider.key]}
+                          fill=${provider.color}
+                          shape=${(point) => html`<${ScatterPoint} ...${point} highlighted=${point.payload?.id === highlightedSampleId} />`}
+                        />
                       </${ScatterChart}>
                     </${ResponsiveContainer}>
                   `}

@@ -36,7 +36,8 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .benchmark-button { --button-color: #2563eb; display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; border: 2px solid transparent; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; transition: filter 150ms ease, opacity 150ms ease, transform 150ms ease; }
 .benchmark-button:not(:disabled):hover { filter: brightness(0.94); transform: translateY(-1px); }
 .benchmark-button:disabled { cursor: not-allowed; opacity: 0.45; }
-.benchmark-button.is-active { opacity: 1; background: linear-gradient(var(--button-color), var(--button-color)) padding-box, conic-gradient(from var(--rainbow-angle), #f43f5e, #f59e0b, #facc15, #22c55e, #38bdf8, #8b5cf6, #f43f5e) border-box; animation: rainbow-border 1.4s linear infinite; }
+.benchmark-button.is-active { --rainbow-gradient: conic-gradient(from var(--rainbow-angle), #f43f5e, #f59e0b, #facc15, #22c55e, #38bdf8, #8b5cf6, #f43f5e); position: relative; isolation: isolate; opacity: 1; border-width: 4px; background: linear-gradient(var(--button-color), var(--button-color)) padding-box, var(--rainbow-gradient) border-box; animation: rainbow-border 1.4s linear infinite; }
+.benchmark-button.is-active::before { position: absolute; inset: -3px; z-index: -1; border-radius: inherit; background: var(--rainbow-gradient); content: ""; filter: blur(6px); opacity: 0.42; pointer-events: none; animation: rainbow-border 1.4s linear infinite; }
 .benchmark-button.is-disabled { opacity: 0.5; }
 .button-text { animation: button-state-fade 180ms ease both; }
 .button-label { display: block; width: 100%; text-align: center; }
@@ -81,6 +82,12 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .empty-chart { display: grid; height: 100%; margin: 0; place-items: center; color: #94a3b8; font-size: 0.9rem; }
 .chart-tooltip { display: grid; gap: 3px; min-width: 175px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgb(255 255 255 / 0.97); box-shadow: 0 10px 22px rgb(15 23 42 / 0.12); font-size: 0.8rem; }
 .chart-tooltip small { color: #64748b; }
+.sample-point { transform-box: fill-box; transform-origin: center; }
+.sample-point--latest { animation: sample-point-pulse 300ms ease-out both; }
+.sample-point-glow { opacity: 0; filter: drop-shadow(0 0 4px var(--point-color)); }
+.sample-point--latest .sample-point-glow { animation: sample-point-glow 300ms ease-out both; }
+@keyframes sample-point-pulse { 0% { transform: scale(0.8); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes sample-point-glow { 0% { opacity: 0; } 35% { opacity: 0.95; } 100% { opacity: 0; } }
 .chart-stats { margin-top: 14px; padding-top: 13px; border-top: 1px solid #e2e8f0; }
 .chart-stat-primary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .chart-stat-primary span { color: #94a3b8; font-size: 0.7rem; }
