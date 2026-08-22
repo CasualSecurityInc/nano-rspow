@@ -7,7 +7,7 @@ PORT ?= 8080
 WORK_PEER_PORT ?= 7076
 WORK_PEER_LISTEN ?= 127.0.0.1:$(WORK_PEER_PORT)
 WORK_PEER_BACKEND ?= auto
-NANO_NODE_RPC_URL ?= http://127.0.0.1:$(WORK_PEER_PORT)
+NANO_WORK_URL ?= http://127.0.0.1:$(WORK_PEER_PORT)
 CARGO ?= $(shell if command -v rustup >/dev/null 2>&1; then rustup which cargo 2>/dev/null; else command -v cargo 2>/dev/null; fi)
 RUSTC ?= $(shell if command -v rustup >/dev/null 2>&1; then rustup which rustc 2>/dev/null; else command -v rustc 2>/dev/null; fi)
 
@@ -29,7 +29,7 @@ start:
 		echo "cargo is required to build and run the local work peer; install Rust or add cargo to PATH." >&2; \
 		exit 1; \
 	fi
-	NANO_NODE_RPC_URL="$(NANO_NODE_RPC_URL)" PORT="$(PORT)" RUSTC="$(RUSTC)" npx --no-install concurrently \
+	NANO_WORK_URL="$(NANO_WORK_URL)" PORT="$(PORT)" RUSTC="$(RUSTC)" npx --no-install concurrently \
 		--kill-others --kill-others-on-fail --kill-signal SIGTERM --kill-timeout 3000 \
 		--names work-peer,proxy --prefix name --no-color \
 		"$(CARGO) run --package nano-rspow-cli --release -- serve --listen $(WORK_PEER_LISTEN) --backend $(WORK_PEER_BACKEND)" \

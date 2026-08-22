@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const benchmarkDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(benchmarkDirectory, '..', '..');
 const distDirectory = join(benchmarkDirectory, 'dist');
-const nanoRpcUrl = process.env.NANO_NODE_RPC_URL ?? `http://127.0.0.1:${process.env.NANO_NODE_RPC_PORT ?? '7076'}`;
+const nanoRpcUrl = process.env.NANO_WORK_URL ?? `http://127.0.0.1:${process.env.NANO_WORK_PORT ?? '7076'}`;
 const require = createRequire(import.meta.url);
 const mimeTypes = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm' };
 const rootPattern = /^[0-9a-fA-F]{64}$/;

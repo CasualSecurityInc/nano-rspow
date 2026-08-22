@@ -11,7 +11,7 @@ Provider packages and sources:
 | --- | --- | --- |
 | nano-rspow-web | `nano-rspow-web` | Checked-in WebAssembly snapshot in this directory |
 | nano-pow | `nano-pow` | Pinned local NPM dependency |
-| nano-rspow (RPC) | `work_generate` at `http://127.0.0.1:7076` | Proxied by the local bridge; override with `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` |
+| nano-rspow (RPC) | `work_generate` at `http://127.0.0.1:7076` | Proxied by the local bridge; override with `NANO_WORK_URL` or `NANO_WORK_PORT` |
 | nano-rspow-node | local `nano-rspow-node/index.js` | Native addon loaded by the bridge once |
 
 `nanocurrency` remains a pinned local dependency only for browser-side work
@@ -30,7 +30,7 @@ make
 mode, and starts both the local work peer and the proxy. The work peer listens
 on `http://127.0.0.1:7076`; the proxy serves the page at
 `http://localhost:8080/`. Set `WORK_PEER_PORT`, `WORK_PEER_BACKEND`, or `PORT`
-to change the defaults. `NANO_NODE_RPC_URL` can point the proxy at an already
+to change the defaults. `NANO_WORK_URL` can point the proxy at an already
 running external work peer instead. Press Ctrl-C once; the process supervisor
 stops both child processes.
 
