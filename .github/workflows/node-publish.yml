@@ -103,25 +103,12 @@ jobs:
         working-directory: nano-rspow-node
         run: npm run build -- --target ${{ matrix.settings.target }}
 
-      - name: Build CLI
-        run: cargo build -p nano-rspow-cli --release --target ${{ matrix.settings.target }}
-
-      - name: Copy CLI Binary
-        shell: bash
-        run: |
-          if [ "${{ matrix.settings.host }}" = "windows-2025" ]; then
-            cp target/${{ matrix.settings.target }}/release/nano-rspow.exe nano-rspow-node/
-          else
-            cp target/${{ matrix.settings.target }}/release/nano-rspow nano-rspow-node/
-          fi
-
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
             nano-rspow-node/*.node
-            nano-rspow-node/nano-rspow*
           if-no-files-found: error
 
   publish-platforms:
@@ -154,42 +141,6 @@ jobs:
       - name: Move artifacts into platform dirs
         working-directory: nano-rspow-node
         run: npx napi artifacts --output-dir ../artifacts --npm-dir npm
-
-      - name: Copy CLI native binaries into platform dirs
-        shell: bash
-        working-directory: nano-rspow-node
-        run: |
-          declare -A TARGET_MAP=(
-            ["x86_64-apple-darwin"]="darwin-x64:nano-rspow"
-            ["aarch64-apple-darwin"]="darwin-arm64:nano-rspow"
-            ["x86_64-pc-windows-msvc"]="win32-x64-msvc:nano-rspow.exe"
-            ["x86_64-unknown-linux-gnu"]="linux-x64-gnu:nano-rspow"
-            ["aarch64-unknown-linux-gnu"]="linux-arm64-gnu:nano-rspow"
-          )
-          for target in "${!TARGET_MAP[@]}"; do
-            val=${TARGET_MAP[$target]}
-            npm_dir=${val%%:*}
-            bin_name=${val##*:}
-            src="../artifacts/bindings-$target/$bin_name"
-            dest="npm/$npm_dir/$bin_name"
-            if [ -f "$src" ]; then
-              echo "Copying $src to $dest"
-              cp "$src" "$dest"
-              if [[ "$bin_name" != *.exe ]]; then
-                chmod +x "$dest"
-              fi
-              node -e "
-                const fs = require('fs');
-                const pkg = JSON.parse(fs.readFileSync('npm/' + process.argv[1] + '/package.json', 'utf8'));
-                if (!pkg.files.includes(process.argv[2])) {
-                  pkg.files.push(process.argv[2]);
-                  fs.writeFileSync('npm/' + process.argv[1] + '/package.json', JSON.stringify(pkg, null, 2));
-                }
-              " "$npm_dir" "$bin_name"
-            else
-              echo "⚠️ Warning: $src not found!"
-            fi
-          done
 
       - name: List platform packages
         run: ls -R nano-rspow-node/npm

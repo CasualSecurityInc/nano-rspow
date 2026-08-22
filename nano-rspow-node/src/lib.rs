@@ -80,6 +80,28 @@ pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<
     Ok(AsyncTask::new(GenerateTask { hash, threshold }))
 }
 
+/// Generates work for an arbitrary hexadecimal threshold.
+#[napi]
+pub fn generate_work_with_threshold(
+    hash_hex: String,
+    threshold_hex: String,
+) -> Result<AsyncTask<GenerateTask>> {
+    let bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
+        .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hex: {}", e)))?;
+
+    let hash: [u8; 32] = bytes.try_into().map_err(|_| {
+        Error::new(
+            Status::InvalidArg,
+            "Hash must be exactly 32 bytes (64 hex chars)".to_string(),
+        )
+    })?;
+
+    let threshold = u64::from_str_radix(threshold_hex.trim().trim_start_matches("0x"), 16)
+        .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid threshold hex: {}", e)))?;
+
+    Ok(AsyncTask::new(GenerateTask { hash, threshold }))
+}
+
 #[napi]
 pub fn validate_work(hash_hex: String, work_hex: String, work_type: WorkType) -> Result<bool> {
     let hash_bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))

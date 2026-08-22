@@ -8,6 +8,19 @@ Native Nano (XNO) proof of work for Node.js. Pre-compiled binaries are available
 npm install nano-rspow-node
 ```
 
+The package also installs a minimal streaming executable named
+`nano-rspow-node`. It accepts no options except `--help` and uses the same
+line protocol as `nano-rspow generate --stream`:
+
+```text
+<hash_hex>[:0x<threshold_hex>]
+<hash_hex>:0x<threshold_hex>:<work_hex>
+```
+
+`nano-rspow` remains the full-featured CLI provided by the Rust
+`nano-rspow-cli` crate; this Node package intentionally exposes only the
+`nano-rspow-node` entrypoint.
+
 If you are looking for the same functionality in the browser, see the [nano-rspow-web README](../nano-rspow-web/README.md).
 
 ## Usage

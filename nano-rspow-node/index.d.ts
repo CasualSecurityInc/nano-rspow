@@ -10,6 +10,7 @@ export const enum WorkType {
 export type WorkThreshold = string & { readonly __brand: 'WorkThreshold' }
 
 export function generateWork(hashHex: string, workType: WorkType): Promise<string>
+export function generateWorkWithThreshold(hashHex: string, thresholdHex: string): Promise<string>
 export function validateWork(hashHex: string, workHex: string, workType: WorkType): boolean
 export function getBackendName(): string
 export function recommendLocalPow(): boolean

@@ -1,4 +1,4 @@
-const { generateWork, validateWork, WorkType, getBackendName, workTypeToHex } = require('./index');
+const { generateWork, generateWorkWithThreshold, validateWork, WorkType, getBackendName, workTypeToHex } = require('./index');
 
 async function main() {
     console.log("Testing nano-rspow-node via NAPI-RS bindings...");
@@ -33,6 +33,12 @@ async function main() {
     const workDev = await generateWork(hash, WorkType.Dev);
     console.log(`[Dev] Generated: ${workDev} in ${Date.now() - start}ms`);
     console.log(`[Dev] Valid: ${validateWork(hash, workDev, WorkType.Dev)}`);
+
+    const workCustom = await generateWorkWithThreshold(hash, "fe00000000000000");
+    console.log(`[Custom threshold] Generated: ${workCustom}`);
+    if (!validateWork(hash, workCustom, WorkType.Dev)) {
+        throw new Error("Custom-threshold work failed validation");
+    }
 
     const start2 = Date.now();
     console.log(`\nGenerating work for WorkType.Receive...`);
