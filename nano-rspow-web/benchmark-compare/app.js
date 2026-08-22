@@ -91,7 +91,7 @@ function ScatterTooltip({ active, payload }) {
     <div className="chart-tooltip">
       <strong>${sample.label}</strong>
       <span>${formatDuration(sample.elapsedMs)}</span>
-      <small>${sample.mode === 'battle' ? `battle turn ${sample.turn}` : `round ${sample.round}`} · root ${sample.root.slice(0, 12)}…</small>
+      <small>${sample.mode === 'battle' ? `battle turn ${sample.providerTurn}/${sample.turnsPerProvider}` : `round ${sample.round}`} · root ${sample.root.slice(0, 12)}…</small>
     </div>
   `;
 }
@@ -313,15 +313,17 @@ function BenchmarkApp() {
 
     let battleRoot = root;
     setBattleRootState(battleRoot);
+    const totalTurns = BATTLE_TURNS * selectedProviders.length;
     let completed = 0;
     try {
-      for (let turn = 1; turn <= BATTLE_TURNS; turn += 1) {
+      for (let turn = 1; turn <= totalTurns; turn += 1) {
         if (battleStopRef.current) break;
 
         const implementation = selectedProviders[(turn - 1) % selectedProviders.length].key;
+        const providerTurn = Math.floor((turn - 1) / selectedProviders.length) + 1;
         const label = providerByKey[implementation].label;
         setBattle((previous) => ({ ...previous, current: implementation, completed }));
-        setMessage(`Battle turn ${turn}/${BATTLE_TURNS}: running ${label}…`);
+        setMessage(`Battle turn ${providerTurn}/${BATTLE_TURNS} for ${label} (${turn}/${totalTurns} total)…`);
 
         const { elapsedMs, nonce, backend } = await solve(implementation, battleRoot);
         recordSample({
@@ -330,6 +332,8 @@ function BenchmarkApp() {
           label,
           mode: 'battle',
           turn,
+          providerTurn,
+          turnsPerProvider: BATTLE_TURNS,
           elapsedMs,
           root: battleRoot,
           nonce,
@@ -341,15 +345,15 @@ function BenchmarkApp() {
         setBattleRootState(battleRoot);
         setBattle((previous) => ({ ...previous, completed }));
 
-        if (turn < BATTLE_TURNS && !battleStopRef.current) {
-          setMessage(`Battle turn ${turn}/${BATTLE_TURNS} recorded. Cooling down for ${BATTLE_COOLDOWN_MS} ms…`);
+        if (turn < totalTurns && !battleStopRef.current) {
+          setMessage(`Battle turn ${providerTurn}/${BATTLE_TURNS} for ${label} recorded (${turn}/${totalTurns} total). Cooling down for ${BATTLE_COOLDOWN_MS} ms…`);
           await sleep(BATTLE_COOLDOWN_MS);
         }
       }
 
       setMessage(battleStopRef.current
-        ? `Battle stopped after ${completed} of ${BATTLE_TURNS} turns.`
-        : `Battle complete: ${BATTLE_TURNS} alternating turns recorded.`);
+        ? `Battle stopped after ${completed} of ${totalTurns} total turns.`
+        : `Battle complete: ${BATTLE_TURNS} turns per provider (${totalTurns} total) recorded.`);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       setMessage(`Battle stopped after ${completed} turns: ${detail}`);
@@ -390,6 +394,8 @@ function BenchmarkApp() {
   const runningImplementation = active === 'battle' ? battle.current : active;
   const runningThresholdKey = providerByKey[runningImplementation]?.thresholdKey ?? 'threshold';
   const displayedRoot = battle.running && battleRootState ? battleRootState : root;
+  const selectedBattleProviderCount = currentProviders.filter((provider) => battleProviders.has(provider.key)).length;
+  const totalBattleTurns = BATTLE_TURNS * selectedBattleProviderCount;
 
   return html`
     <section className="page-shell">
@@ -404,7 +410,7 @@ function BenchmarkApp() {
 
       <section className="control-card" aria-label="Benchmark controls">
         <div className="round-meta">
-          <span className="round-label">${battle.running ? `Battle turn ${Math.min(battle.completed + 1, BATTLE_TURNS)}/${BATTLE_TURNS}` : `Round ${round}`}</span>
+          <span className="round-label">${battle.running ? `Battle turn ${Math.min(battle.completed + 1, totalBattleTurns)}/${totalBattleTurns} total` : `Round ${round}`}</span>
           <code title=${displayedRoot}>${displayedRoot}</code>
           <span className="threshold">Epoch 2 ${runningThresholdKey} ${EPOCH2_SEND_THRESHOLD}</span>
         </div>
@@ -456,7 +462,7 @@ function BenchmarkApp() {
           </span>
         </button>
         <p className="battle-note">
-          ${BATTLE_TURNS} turns (${BATTLE_COOLDOWN_MS} ms between turns), cycling through the selected providers.
+          ${BATTLE_TURNS} turns per provider (${totalBattleTurns} total with the current selection; ${BATTLE_COOLDOWN_MS} ms between turns), cycling through the selected providers.
           Each result becomes the next work root.
         </p>
         <p className=${initializationError ? 'status status-error' : 'status'} aria-live="polite">
@@ -531,7 +537,7 @@ function BenchmarkApp() {
                 <li key=${sample.id}>
                   <span className=${`sample-badge ${sample.implementation}`}>${sample.label}</span>
                   <strong>${formatDuration(sample.elapsedMs)}</strong>
-                  <span>${sample.mode === 'battle' ? `battle turn ${sample.turn}` : `round ${sample.round}`} · ${sample.backend} · ${sample.nonce}</span>
+                  <span>${sample.mode === 'battle' ? `battle turn ${sample.providerTurn}/${sample.turnsPerProvider}` : `round ${sample.round}`} · ${sample.backend} · ${sample.nonce}</span>
                 </li>
               `)}
             </ol>

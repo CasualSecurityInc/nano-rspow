@@ -45,14 +45,14 @@ files are not part of this build.
 
 Each solver runs once per paired round. The page serializes work and preserves each raw duration; it does not calculate an average.
 
-The **Start battle** control runs 42 individual searches, cycling
-through the selected providers with a 200 ms cool-down between searches. Each
-work value is eight bytes whereas the next input root must be 32 bytes, so the
-page uses the exact returned nonce repeated four times as the next root. The
-scatter plot and summaries update after every search. **Stop!** prevents the
-next search after the in-flight solver finishes. The benchmark deliberately does
-not cancel an in-flight provider call, keeping the lifecycle comparable across
-providers.
+The **Start battle** control runs 42 searches per selected provider, cycling
+through them with a 200 ms cool-down between searches. With four providers that
+is 168 total searches. Each work value is eight bytes whereas the next input
+root must be 32 bytes, so the page uses the exact returned nonce repeated four
+times as the next root. The scatter plot and summaries update after every
+search. **Stop!** prevents the next search after the in-flight solver finishes.
+The benchmark deliberately does not cancel an in-flight provider call, keeping
+the lifecycle comparable across providers.
 
 The bridge preserves the upstream Nano `work_generate` response and adds
 proxy-only metadata under `_benchmark`: `providerMs` measures the upstream
