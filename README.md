@@ -57,8 +57,9 @@ Below is the directory mapping for each target, along with their primary release
 | **Rust (Core)** | [crate API documentation](nano-rspow/src/lib.rs) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 | **Node.js & TS** | [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python README](nano-rspow-python/README.md) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
+| **Go** | [nano-rspow-go README](nano-rspow-go/README.md) | Go module source checkout |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
-| **CLI Tool** | [nano-rspow-cli README](nano-rspow-cli/README.md) | [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **CLI Tool** | [nano-rspow-cli README](nano-rspow-cli/README.md) | The only full-featured `nano-rspow` executable: [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 
 ---
 
@@ -70,7 +71,9 @@ This monorepo is organized into specialized workspaces to deliver native perform
 .
 ├── .cargo/                 # Target-specific build configurations and cargo aliases
 ├── nano-rspow/             # Core Rust library containing cryptographic Blake2b logic & backends
+├── nano-rspow-ffi/          # C ABI used by the Go bindings
 ├── nano-rspow-cli/         # Standalone CLI binary for hardware benchmarking & generation
+├── nano-rspow-go/           # Go module and nano-rspow-go streaming CLI
 ├── nano-rspow-node/        # High-performance Node.js & TypeScript native bindings (N-API)
 ├── nano-rspow-python/      # Native PyO3 bindings for Python environments
 └── nano-rspow-web/         # Web/WASM target crate & self-contained HTML benchmarking dashboard
