@@ -47,9 +47,9 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .button-nanopow { --button-color: #16a34a; background: #16a34a; }
 .button-nanocurrency { --button-color: #d97706; background: #d97706; }
 .button-webglPow { --button-color: #9333ea; background: #9333ea; }
-.status-led { width: 10px; height: 10px; border-radius: 50%; background: #eab308; box-shadow: 0 0 8px #eab308, 0 0 16px #eab308; transition: background 150ms ease, box-shadow 150ms ease; flex-shrink: 0; }
+.status-led { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e, 0 0 16px #22c55e; transition: background 150ms ease, box-shadow 150ms ease; flex-shrink: 0; }
 .benchmark-button.is-active .status-led { background: #ef4444; box-shadow: 0 0 8px #ef4444, 0 0 16px #ef4444; }
-.benchmark-button.is-disabled .status-led { background: #22c55e; box-shadow: 0 0 8px #22c55e, 0 0 16px #22c55e; }
+.benchmark-button.is-recorded .status-led { background: #eab308; box-shadow: 0 0 8px #eab308, 0 0 16px #eab308; }
 .battle-inclusion { display: inline-flex; align-items: center; justify-content: flex-start; width: fit-content; cursor: pointer; }
 .battle-inclusion input { width: 13px; height: 13px; margin: 0; accent-color: #475569; cursor: inherit; }
 .battle-inclusion:has(input:disabled) { cursor: not-allowed; opacity: 0.5; }

@@ -421,7 +421,7 @@ function BenchmarkApp() {
                 <div className="competitor-selector">
                   <button className="competitor-arrow" onClick=${() => setCompetitorIndex((i) => (i - 1 + COMPETITORS.length) % COMPETITORS.length)} aria-label="Previous competitor">‹</button>
                   <button
-                    className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
+                    className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${completedInRound.has(provider.key) ? 'is-recorded' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
                     disabled=${isDisabled(provider.key)}
                     onClick=${() => runBenchmark(provider.key)}
                   >
@@ -431,7 +431,7 @@ function BenchmarkApp() {
                 </div>
               ` : html`
                 <button
-                  className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
+                  className=${`benchmark-button button-${provider.key} ${runningImplementation === provider.key ? 'is-active' : ''} ${completedInRound.has(provider.key) ? 'is-recorded' : ''} ${isDisabled(provider.key) ? 'is-disabled' : ''}`}
                   disabled=${isDisabled(provider.key)}
                   onClick=${() => runBenchmark(provider.key)}
                 >
