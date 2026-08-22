@@ -6,6 +6,7 @@
 //! requests responsive in their own HTTP handler threads.
 
 use std::collections::VecDeque;
+use std::io::Write;
 use std::sync::{
     Arc, Condvar, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -54,7 +55,10 @@ enum Operation {
 }
 
 enum JobOutput {
-    Generate(WorkResult),
+    Generate {
+        result: WorkResult,
+        generation_ms: f64,
+    },
     Benchmark(BenchmarkResult),
 }
 
@@ -218,14 +222,20 @@ fn worker_loop(generator: Arc<WorkGenerator>, shared: Arc<SharedState>) {
         };
 
         let result = match job.operation {
-            Operation::Generate { threshold } => generator
-                .generate_with_cancel(
-                    &job.hash.expect("generate jobs have a hash"),
-                    threshold,
-                    &job.cancel,
-                )
-                .map(JobOutput::Generate)
-                .ok_or_else(|| "Work generation was cancelled".to_owned()),
+            Operation::Generate { threshold } => {
+                let started = Instant::now();
+                generator
+                    .generate_with_cancel(
+                        &job.hash.expect("generate jobs have a hash"),
+                        threshold,
+                        &job.cancel,
+                    )
+                    .map(|result| JobOutput::Generate {
+                        result,
+                        generation_ms: started.elapsed().as_secs_f64() * 1000.0,
+                    })
+                    .ok_or_else(|| "Work generation was cancelled".to_owned())
+            }
             Operation::Benchmark { threshold, count } => {
                 run_benchmark(&generator, threshold, count, &job.cancel)
                     .map(JobOutput::Benchmark)
@@ -383,31 +393,54 @@ fn rpc_generate(request: &Value, server: &WorkServer) -> (u16, String) {
         Ok(receiver) => receiver,
         Err(error) => return rpc_error(503, error),
     };
+    log_event(format!("Queued work for hash {}", hex::encode(hash)));
     match receiver.recv() {
-        Ok(Ok(JobOutput::Generate(result))) => (
-            200,
-            json!({
-                "work": result.nonce_hex(),
-                "difficulty": result.difficulty_hex(),
-                "multiplier": format_multiplier(thresholds::to_multiplier(result.difficulty, thresholds::BASE)),
-                "hash": hex::encode(hash),
-            })
-            .to_string(),
-        ),
+        Ok(Ok(JobOutput::Generate {
+            result,
+            generation_ms,
+        })) => {
+            log_event(format!(
+                "Generated work for hash {} in {generation_ms:.3} ms",
+                hex::encode(hash)
+            ));
+            (
+                200,
+                json!({
+                    "work": result.nonce_hex(),
+                    "difficulty": result.difficulty_hex(),
+                    "multiplier": format_multiplier(thresholds::to_multiplier(result.difficulty, thresholds::BASE)),
+                    "hash": hex::encode(hash),
+                })
+                .to_string(),
+            )
+        }
         Ok(Ok(_)) => rpc_error(500, "invalid worker response".to_owned()),
         Ok(Err(error)) => rpc_error(409, error),
         Err(_) => rpc_error(500, "worker disconnected".to_owned()),
     }
 }
 
+fn log_event(message: String) {
+    println!("{message}");
+    let _ = std::io::stdout().flush();
+}
+
 fn rpc_validate(request: &Value) -> (u16, String) {
-    let Some(hash) = request.get("hash").and_then(Value::as_str).and_then(parse_hash) else {
+    if let Some(version) = request.get("version").and_then(Value::as_str) {
+        if version != "work_1" {
+            return rpc_error(400, "version must be work_1".to_owned());
+        }
+    } else if request.get("version").is_some() {
+        return rpc_error(400, "version must be work_1".to_owned());
+    }
+
+    let Some(hash) = request.get("hash").and_then(parse_validate_hash) else {
         return rpc_error(400, "hash must be 64 hexadecimal characters".to_owned());
     };
-    let Some(work) = request.get("work").and_then(Value::as_str).and_then(parse_hex_u64) else {
-        return rpc_error(400, "work must be a 64-bit hexadecimal value".to_owned());
+    let Some(work) = request.get("work").and_then(parse_validate_work) else {
+        return rpc_error(400, "work must be 16 hexadecimal characters".to_owned());
     };
-    let threshold = match parse_requested_threshold(request) {
+    let threshold = match parse_validate_threshold(request) {
         Ok(threshold) => threshold,
         Err(error) => return rpc_error(400, error),
     };
@@ -482,6 +515,17 @@ fn parse_requested_threshold(request: &Value) -> Result<u64, String> {
     }
 }
 
+fn parse_validate_threshold(request: &Value) -> Result<u64, String> {
+    if request.get("multiplier").is_some() {
+        parse_requested_threshold(request)
+    } else if let Some(difficulty) = request.get("difficulty") {
+        parse_fixed_hex_u64(difficulty)
+            .ok_or_else(|| "difficulty must be 16 hexadecimal characters".to_owned())
+    } else {
+        Ok(thresholds::BASE)
+    }
+}
+
 fn threshold_from_multiplier(multiplier: f64) -> u64 {
     let max = u64::MAX as f64;
     let threshold = max - ((max - thresholds::BASE as f64) / multiplier);
@@ -491,6 +535,26 @@ fn threshold_from_multiplier(multiplier: f64) -> u64 {
 fn parse_hash(value: &str) -> Option<[u8; 32]> {
     let bytes = hex::decode(value.trim().trim_start_matches("0x")).ok()?;
     bytes.try_into().ok()
+}
+
+fn parse_validate_hash(value: &Value) -> Option<[u8; 32]> {
+    let value = value.as_str()?;
+    if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    hex::decode(value).ok()?.try_into().ok()
+}
+
+fn parse_validate_work(value: &Value) -> Option<u64> {
+    parse_fixed_hex_u64(value)
+}
+
+fn parse_fixed_hex_u64(value: &Value) -> Option<u64> {
+    let value = value.as_str()?;
+    if value.len() != 16 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    u64::from_str_radix(value, 16).ok()
 }
 
 fn parse_hex_u64(value: &str) -> Option<u64> {
@@ -552,13 +616,62 @@ mod tests {
     fn validate_reports_current_all_and_receive_thresholds() {
         let server = test_server(1);
         let (status, body) = process_rpc(
-            &json!({ "action": "work_validate", "hash": HASH, "work": "2bf29ef00786a6bc" }).to_string(),
+            &json!({ "action": "work_validate", "version": "work_1", "hash": HASH, "work": "2bf29ef00786a6bc" }).to_string(),
             &server,
         );
         assert_eq!(status, 200);
         let response: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(response["valid_all"], "0");
         assert_eq!(response["valid_receive"], "1");
+        server.shutdown();
+    }
+
+    #[test]
+    fn validate_rejects_unsupported_work_version() {
+        let server = test_server(1);
+        let (status, body) = process_rpc(
+            &json!({ "action": "work_validate", "version": "work_2", "hash": HASH, "work": "2bf29ef00786a6bc" }).to_string(),
+            &server,
+        );
+        assert_eq!(status, 400);
+        assert!(body.contains("version must be work_1"));
+        server.shutdown();
+    }
+
+    #[test]
+    fn validate_reports_requested_difficulty_result() {
+        let server = test_server(1);
+        let (status, body) = process_rpc(
+            &json!({ "action": "work_validate", "hash": HASH, "work": "2bf29ef00786a6bc", "difficulty": "ffffffffffffffff" }).to_string(),
+            &server,
+        );
+        assert_eq!(status, 200);
+        let response: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(response["valid"], "0");
+        server.shutdown();
+    }
+
+    #[test]
+    fn validate_rejects_noncanonical_work_encoding() {
+        let server = test_server(1);
+        let (status, body) = process_rpc(
+            &json!({ "action": "work_validate", "hash": HASH, "work": "1" }).to_string(),
+            &server,
+        );
+        assert_eq!(status, 400);
+        assert!(body.contains("work must be 16 hexadecimal characters"));
+        server.shutdown();
+    }
+
+    #[test]
+    fn validate_rejects_nonstring_difficulty() {
+        let server = test_server(1);
+        let (status, body) = process_rpc(
+            &json!({ "action": "work_validate", "hash": HASH, "work": "2bf29ef00786a6bc", "difficulty": 1 }).to_string(),
+            &server,
+        );
+        assert_eq!(status, 400);
+        assert!(body.contains("difficulty must be 16 hexadecimal characters"));
         server.shutdown();
     }
 

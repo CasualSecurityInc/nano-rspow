@@ -113,11 +113,29 @@ curl -s http://127.0.0.1:7076 \
   -d '{"action":"work_generate","hash":"718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2"}'
 ```
 
+Validate existing work with the standard `work_validate` action:
+
+```bash
+curl -s http://127.0.0.1:7076 \
+  -H 'content-type: application/json' \
+  -d '{"action":"work_validate","version":"work_1","hash":"718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2","work":"2bf29ef00786a6bc"}'
+```
+
+The response contains `valid_all`, `valid_receive`, `difficulty`, and
+`multiplier`. Include `difficulty` or `multiplier` to also receive `valid`;
+`version`, when supplied, must be `work_1`. The request uses a 64-character
+hexadecimal `hash` and a 16-character hexadecimal `work` value; an explicit
+`difficulty` uses the same 16-character hexadecimal form.
+
 `work_generate` and `work_validate` accept an optional hexadecimal
 `difficulty` or numeric `multiplier`; `multiplier` takes precedence. The
 server defaults to the current epoch-2 send/change threshold. `work_cancel`
 cancels the active request and removes queued requests for the same hash.
 `status` reports the active generation flag and waiting queue size.
+
+The server also logs accepted and completed work requests to stdout without
+timestamps. Completion messages include generation time in milliseconds; this
+timer excludes time spent waiting in the queue.
 
 ## Global Flags
 
