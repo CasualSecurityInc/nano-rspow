@@ -53,7 +53,7 @@ async function readResponseJson(response) {
   try {
     return await response.json();
   } catch {
-    throw new Error(`Nano node RPC returned non-JSON status ${response.status}`);
+    throw new Error(`nano-rspow (RPC) returned non-JSON status ${response.status}`);
   }
 }
 
@@ -65,8 +65,8 @@ async function rpcRequest(action) {
     signal: AbortSignal.timeout(5000),
   });
   const body = await readResponseJson(response);
-  if (!response.ok) throw new Error(`Nano node RPC returned HTTP ${response.status}`);
-  if (body?.error) throw new Error(`Nano node RPC: ${body.error}`);
+  if (!response.ok) throw new Error(`nano-rspow (RPC) returned HTTP ${response.status}`);
+  if (body?.error) throw new Error(`nano-rspow (RPC): ${body.error}`);
   return body;
 }
 
@@ -79,15 +79,15 @@ async function generateViaRpc(root, threshold) {
     signal: AbortSignal.timeout(120000),
   });
   const body = await readResponseJson(response);
-  if (!response.ok) throw new Error(`Nano node RPC returned HTTP ${response.status}`);
-  if (body?.error) throw new Error(`Nano node RPC: ${body.error}`);
-  if (!workPattern.test(body?.work ?? '')) throw new Error('Nano node RPC returned malformed work');
+  if (!response.ok) throw new Error(`nano-rspow (RPC) returned HTTP ${response.status}`);
+  if (body?.error) throw new Error(`nano-rspow (RPC): ${body.error}`);
+  if (!workPattern.test(body?.work ?? '')) throw new Error('nano-rspow (RPC) returned malformed work');
   return {
     ...body,
     work: body.work.toLowerCase(),
     _benchmark: {
       providerMs: performance.now() - startedAt,
-      backend: `Nano node RPC (${new URL(nanoRpcUrl).host})`,
+      backend: `nano-rspow (RPC) (${new URL(nanoRpcUrl).host})`,
     },
   };
 }
@@ -143,7 +143,7 @@ const server = createServer(async (request, response) => {
           return { work, providerMs: performance.now() - startedAt, backend: addon.getBackendName() };
         })();
       console.log(JSON.stringify({
-        provider: request.url === '/api/pow/rpc' ? 'Nano node RPC' : 'nano-rspow-node',
+        provider: request.url === '/api/pow/rpc' ? 'nano-rspow (RPC)' : 'nano-rspow-node',
         root,
         threshold,
         ...result,

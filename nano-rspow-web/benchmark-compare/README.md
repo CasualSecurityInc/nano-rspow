@@ -2,8 +2,8 @@
 
 This local page compares Epoch 2 send-work searches from four providers for
 the same randomly generated work roots: the checked-in nano-rspow-web WebAssembly
-snapshot, the pinned nano-pow dependency, a local Nano node's JSON-RPC
-`work_generate`, and the local `nano-rspow-node` addon.
+snapshot, the pinned nano-pow dependency, the local nano-rspow work peer's
+Nano-compatible JSON-RPC `work_generate`, and the local `nano-rspow-node` addon.
 
 Provider packages and sources:
 
@@ -11,7 +11,7 @@ Provider packages and sources:
 | --- | --- | --- |
 | nano-rspow-web | `nano-rspow-web` | Checked-in WebAssembly snapshot in this directory |
 | nano-pow | `nano-pow` | Pinned local NPM dependency |
-| Nano node RPC | `work_generate` at `http://127.0.0.1:7076` | Proxied by the local bridge; override with `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` |
+| nano-rspow (RPC) | `work_generate` at `http://127.0.0.1:7076` | Proxied by the local bridge; override with `NANO_NODE_RPC_URL` or `NANO_NODE_RPC_PORT` |
 | nano-rspow-node | local `nano-rspow-node/index.js` | Native addon loaded by the bridge once |
 
 `nanocurrency` remains a pinned local dependency only for browser-side work

@@ -31,7 +31,7 @@ const COLORS = {
 const CORE_PROVIDERS = [
   { key: 'rspow', label: 'nano-rspow-web', version: '0.10.0', color: COLORS.rspow, thresholdKey: 'threshold' },
   { key: 'node', label: 'nano-rspow-node', version: 'local', color: COLORS.node, thresholdKey: 'threshold' },
-  { key: 'rpc', label: 'Nano node RPC', version: 'local', color: COLORS.rpc, thresholdKey: 'difficulty' },
+  { key: 'rpc', label: 'nano-rspow (RPC)', version: 'local', color: COLORS.rpc, thresholdKey: 'difficulty' },
 ];
 const COMPETITORS = [
   { key: 'nanopow', label: 'nano-pow', version: '5.2.2', color: COLORS.nanopow, thresholdKey: 'difficulty' },
@@ -215,7 +215,7 @@ function BenchmarkApp() {
         const result = await solveNative(implementation === 'rpc' ? '/api/pow/rpc' : '/api/pow/node', workRoot);
         nonce = result.work;
         if (implementation === 'rpc') {
-          if (!result._benchmark) throw new Error('Nano RPC proxy response omitted _benchmark metadata');
+          if (!result._benchmark) throw new Error('nano-rspow (RPC) proxy response omitted _benchmark metadata');
           backend = result._benchmark.backend;
           elapsedMs = result._benchmark.providerMs;
         } else {
