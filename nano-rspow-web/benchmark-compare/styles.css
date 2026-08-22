@@ -84,10 +84,12 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .chart-tooltip small { color: #64748b; }
 .sample-point { transform-box: fill-box; transform-origin: center; }
 .sample-point--latest { animation: sample-point-pulse 300ms ease-out both; }
-.sample-point-glow { opacity: 0; filter: drop-shadow(0 0 4px var(--point-color)); }
+.sample-point-glow { fill: #fff; opacity: 0; filter: drop-shadow(0 0 4px var(--point-color)); }
+.sample-point--latest .sample-point-dot { animation: sample-point-color 300ms ease-out both; }
 .sample-point--latest .sample-point-glow { animation: sample-point-glow 300ms ease-out both; }
 @keyframes sample-point-pulse { 0% { transform: scale(0.8); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
-@keyframes sample-point-glow { 0% { opacity: 0; } 35% { opacity: 0.95; } 100% { opacity: 0; } }
+@keyframes sample-point-color { 0% { fill: #fff; } 100% { fill: var(--point-color); } }
+@keyframes sample-point-glow { 0% { fill: #fff; opacity: 0; } 35% { fill: #fff; opacity: 0.95; } 100% { fill: var(--point-color); opacity: 0; } }
 .chart-stats { margin-top: 14px; padding-top: 13px; border-top: 1px solid #e2e8f0; }
 .chart-stat-primary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .chart-stat-primary span { color: #94a3b8; font-size: 0.7rem; }
