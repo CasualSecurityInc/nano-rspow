@@ -167,6 +167,7 @@ jobs:
           WHEEL=$(find "$RUNNER_TEMP/wheel" -name '*.whl' -print -quit)
           test -n "$WHEEL"
           unzip -l "$WHEEL" | grep -q 'nano_rspow/__init__.pyi$'
+          unzip -p "$WHEEL" '*entry_points.txt' | grep -q '^nano-rspow-python=nano_rspow:cli_main$'
       - name: Install and test native Linux wheel
         run: |
           TEST_ENV="$RUNNER_TEMP/nano-rspow-wheel"
@@ -182,6 +183,7 @@ jobs:
               "2bf29ef00786a6bc",
           ) == "ffffffd21c3933f4"
           PY
+          "$TEST_ENV/bin/nano-rspow-python" --help | grep -q 'nano-rspow-python generates Nano proof of work'
       - name: Install and test source distribution
         run: |
           TEST_ENV="$RUNNER_TEMP/nano-rspow-sdist"

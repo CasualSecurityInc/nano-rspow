@@ -29,6 +29,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use ::nano_rspow::{WorkGenerator, difficulty, thresholds};
+use std::io::{BufRead, Write};
 use std::sync::OnceLock;
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,35 @@ fn generate_work(py: Python<'_>, hash_hex: &str, work_type: WorkType) -> PyResul
     }
 }
 
+/// Generate valid Proof of Work for an arbitrary hexadecimal threshold.
+#[pyfunction]
+fn generate_work_with_threshold(
+    py: Python<'_>,
+    hash_hex: &str,
+    threshold_hex: &str,
+) -> PyResult<WorkResult> {
+    let hash = parse_hash(hash_hex)?;
+    let threshold = u64::from_str_radix(
+        threshold_hex.trim().trim_start_matches("0x"),
+        16,
+    )
+    .map_err(|e| PyValueError::new_err(format!("Invalid threshold hex: {e}")))?;
+    let generator = get_generator();
+
+    let result = py.detach(move || generator.generate(&hash, threshold));
+
+    match result {
+        Some(r) => Ok(WorkResult {
+            nonce: r.nonce,
+            difficulty: r.difficulty,
+            threshold: r.threshold,
+        }),
+        None => Err(pyo3::exceptions::PyRuntimeError::new_err(
+            "Work generation failed or was cancelled",
+        )),
+    }
+}
+
 /// Validate a work nonce against a hash and threshold.
 ///
 /// Args:
@@ -242,6 +272,91 @@ fn backend_name() -> &'static str {
     get_generator().backend_name()
 }
 
+const CLI_HELP: &str = "nano-rspow-python generates Nano proof of work from stdin.\n\nUsage:\n  nano-rspow-python [--help]\n\nWith no arguments, read one request per line and write one result per line.\nEmpty lines are ignored. The only accepted argument is --help.\n\nInput:\n  <hash_hex>\n  <hash_hex>:<threshold_hex>\n\nThe optional threshold must use a 0x prefix. Without one, the current\nepoch-2 send/change threshold is used.\n\nOutput:\n  <hash_hex>:0x<threshold_hex>:<work_hex>\n";
+
+fn parse_cli_request(line: &str) -> Result<(String, [u8; 32], u64), String> {
+    let parts: Vec<&str> = line.split(':').collect();
+    if parts.len() > 2 {
+        return Err("request must be <hash_hex> or <hash_hex>:<threshold_hex>".to_owned());
+    }
+
+    let hash_text = parts[0].trim().to_owned();
+    let hash = parse_hash(&hash_text).map_err(|error| error.to_string())?;
+    let threshold = if let Some(threshold_text) = parts.get(1).map(|part| part.trim()) {
+        if !threshold_text.starts_with("0x") {
+            return Err(format!(
+                "threshold {threshold_text:?} must start with 0x"
+            ));
+        }
+        u64::from_str_radix(&threshold_text[2..], 16)
+            .map_err(|error| format!("invalid threshold {threshold_text:?}: {error}"))?
+    } else {
+        thresholds::EPOCH2_SEND
+    };
+
+    Ok((hash_text, hash, threshold))
+}
+
+/// Run the minimal line-buffered CLI shipped as `nano-rspow-python`.
+#[pyfunction]
+fn cli_main(py: Python<'_>) -> PyResult<i32> {
+    let sys = py.import("sys")?;
+    let args: Vec<String> = sys
+        .getattr("argv")?
+        .extract::<Vec<String>>()?
+        .into_iter()
+        .skip(1)
+        .collect();
+    if args == ["--help"] {
+        print!("{CLI_HELP}");
+        return Ok(0);
+    }
+    if !args.is_empty() {
+        eprintln!("error: only --help is supported");
+        eprint!("{CLI_HELP}");
+        return Ok(2);
+    }
+
+    let generator = get_generator();
+    let stdin = std::io::stdin();
+    let mut stdout = std::io::BufWriter::new(std::io::stdout());
+    for line_result in stdin.lock().lines() {
+        let line = line_result.map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Error reading input: {error}"))
+        })?;
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let (hash_text, hash, threshold) = match parse_cli_request(line) {
+            Ok(request) => request,
+            Err(error) => {
+                eprintln!("Error parsing request {line:?}: {error}");
+                continue;
+            }
+        };
+
+        let result = py.detach(move || generator.generate(&hash, threshold));
+        let Some(result) = result else {
+            eprintln!("Error generating work for {hash_text}: generation failed");
+            continue;
+        };
+        writeln!(
+            stdout,
+            "{hash_text}:0x{threshold:016x}:{:016x}",
+            result.nonce
+        )
+        .map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Error writing result: {error}"))
+        })?;
+        stdout.flush().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Error flushing result: {error}"))
+        })?;
+    }
+    Ok(0)
+}
+
 // ---------------------------------------------------------------------------
 // Threshold constants submodule
 // ---------------------------------------------------------------------------
@@ -277,9 +392,11 @@ fn nano_rspow(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<WorkType>()?;
     m.add_class::<WorkResult>()?;
     m.add_function(wrap_pyfunction!(generate_work, m)?)?;
+    m.add_function(wrap_pyfunction!(generate_work_with_threshold, m)?)?;
     m.add_function(wrap_pyfunction!(validate_work, m)?)?;
     m.add_function(wrap_pyfunction!(compute_difficulty, m)?)?;
     m.add_function(wrap_pyfunction!(backend_name, m)?)?;
+    m.add_function(wrap_pyfunction!(cli_main, m)?)?;
     register_thresholds(m)?;
     Ok(())
 }

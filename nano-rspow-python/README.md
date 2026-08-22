@@ -8,6 +8,19 @@ Native Nano (XNO) proof-of-work bindings for Python. The extension selects an av
 pip install nano-rspow-python
 ```
 
+The package also installs a minimal streaming executable named
+`nano-rspow-python`. It accepts no options except `--help` and uses the same
+line protocol as `nano-rspow generate --stream`:
+
+```text
+<hash_hex>[:0x<threshold_hex>]
+<hash_hex>:0x<threshold_hex>:<work_hex>
+```
+
+`nano-rspow` remains the full-featured CLI provided by the Rust
+`nano-rspow-cli` crate; this Python package intentionally exposes only the
+`nano-rspow-python` entrypoint.
+
 ## Usage
 
 ```python

@@ -63,6 +63,10 @@ def generate_work(hash_hex: str, work_type: WorkType) -> WorkResult:
     """
     ...
 
+def generate_work_with_threshold(hash_hex: str, threshold_hex: str) -> WorkResult:
+    """Generate valid Proof of Work for an arbitrary hexadecimal threshold."""
+    ...
+
 def validate_work(hash_hex: str, work_hex: str, work_type: WorkType) -> bool:
     """Validate a work nonce against a hash and threshold.
 
@@ -99,6 +103,10 @@ def backend_name() -> str:
 
     Returns one of: "cpu", "wgpu", "opencl".
     """
+    ...
+
+def cli_main() -> int:
+    """Run the minimal line-buffered nano-rspow-python CLI."""
     ...
 
 class thresholds:

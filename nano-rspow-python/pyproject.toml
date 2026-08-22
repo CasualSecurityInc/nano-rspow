@@ -32,6 +32,9 @@ Homepage = "https://github.com/CasualSecurityInc/nano-rspow"
 Repository = "https://github.com/CasualSecurityInc/nano-rspow"
 Issues = "https://github.com/CasualSecurityInc/nano-rspow/issues"
 
+[project.scripts]
+nano-rspow-python = "nano_rspow:cli_main"
+
 [dependency-groups]
 test = [
     "maturin>=1.5",
