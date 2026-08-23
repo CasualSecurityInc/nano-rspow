@@ -41,13 +41,22 @@ if (!nativeBinding) {
   throw loadError || new Error(`Failed to load native binding for ${key}`)
 }
 
-const { WorkType, generateWork, generateWorkWithThreshold, validateWork, getBackendName, recommendLocalPow, clearPowTuningCache, workTypeToHex } = nativeBinding
+const { WorkType, generateWork, generateWorkWithThreshold, validateWork, validateWorkWithThreshold, getBackendName, recommendLocalPow, clearPowTuningCache, workTypeToHex } = nativeBinding
 
 module.exports.WorkType = WorkType
 module.exports.generateWork = generateWork
 module.exports.generateWorkWithThreshold = generateWorkWithThreshold
 module.exports.validateWork = validateWork
+module.exports.validateWorkWithThreshold = validateWorkWithThreshold
 module.exports.getBackendName = getBackendName
 module.exports.recommendLocalPow = recommendLocalPow
 module.exports.clearPowTuningCache = clearPowTuningCache
 module.exports.workTypeToHex = workTypeToHex
+
+module.exports.createPowEngine = function createPowEngine () {
+  return {
+    name: 'nano-rspow-node',
+    generate: (root, threshold) => generateWorkWithThreshold(root, threshold),
+    validate: (root, work, threshold) => validateWorkWithThreshold(root, work, threshold)
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "keywords": [
     "nano",
@@ -50,5 +50,8 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.6.2"
+  },
+  "dependencies": {
+    "@openrai/nano-pow-contract": "^0.1.0"
   }
 }

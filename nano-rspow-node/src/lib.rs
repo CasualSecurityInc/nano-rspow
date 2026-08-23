@@ -117,6 +117,28 @@ pub fn validate_work(hash_hex: String, work_hex: String, work_type: WorkType) ->
     Ok(result.is_valid())
 }
 
+/// Validates work against an arbitrary hexadecimal threshold.
+#[napi]
+pub fn validate_work_with_threshold(
+    hash_hex: String,
+    work_hex: String,
+    threshold_hex: String,
+) -> Result<bool> {
+    let hash_bytes = hex::decode(hash_hex.trim().trim_start_matches("0x"))
+        .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid hash hex: {}", e)))?;
+    let hash: [u8; 32] = hash_bytes
+        .try_into()
+        .map_err(|_| Error::new(Status::InvalidArg, "Hash must be 64 hex chars".to_string()))?;
+
+    let work = u64::from_str_radix(work_hex.trim().trim_start_matches("0x"), 16)
+        .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid work hex: {}", e)))?;
+    let threshold = u64::from_str_radix(threshold_hex.trim().trim_start_matches("0x"), 16)
+        .map_err(|e| Error::new(Status::InvalidArg, format!("Invalid threshold hex: {}", e)))?;
+
+    let result = nano_rspow::work_validate(&hash, work, threshold);
+    Ok(result.is_valid())
+}
+
 #[napi]
 pub fn get_backend_name() -> String {
     get_generator().backend_name().to_string()
