@@ -188,6 +188,17 @@ enum BenchTier {
     All,
 }
 
+struct BenchmarkOptions<'a> {
+    count: usize,
+    format: &'a str,
+    hash_str: &'a str,
+    mode: BenchMode,
+    retune: bool,
+    backend: BenchBackend,
+    tier: BenchTier,
+    competitor_path: Option<&'a Path>,
+}
+
 fn parse_hash(s: &str) -> Result<[u8; 32], String> {
     let bytes =
         hex::decode(s.trim().trim_start_matches("0x")).map_err(|e| format!("invalid hex: {e}"))?;
@@ -253,7 +264,16 @@ fn main() {
             backend,
             tier,
             competitor_path,
-        } => cmd_benchmark(count, &format, &hash, mode, retune, backend, tier, competitor_path.as_deref()),
+        } => cmd_benchmark(BenchmarkOptions {
+            count,
+            format: &format,
+            hash_str: &hash,
+            mode,
+            retune,
+            backend,
+            tier,
+            competitor_path: competitor_path.as_deref(),
+        }),
     }
 }
 
@@ -527,14 +547,15 @@ fn cmd_generate(
             Some(result) => {
                 let elapsed = t0.elapsed();
                 println!(" Hash found!");
-                println!("Nonce     : {}  (the work value to submit)", result.nonce_hex());
                 println!(
-                    "Difficulty: {:#018x}",
-                    result.difficulty
+                    "Nonce     : {}  (the work value to submit)",
+                    result.nonce_hex()
                 );
+                println!("Difficulty: {:#018x}", result.difficulty);
                 println!(
                     "Luck      : {:.4}×  (nonce was {:.2}× above min threshold; avg ≈ 1×)",
-                    result.multiplier(), result.multiplier()
+                    result.multiplier(),
+                    result.multiplier()
                 );
                 println!("Time      : {:.3}s", elapsed.as_secs_f64());
             }
@@ -730,7 +751,11 @@ fn resolve_competitor_path(override_path: Option<&Path>) -> Option<PathBuf> {
     let manifest = env!("CARGO_MANIFEST_DIR");
     let repo_root = Path::new(manifest).parent()?.to_path_buf();
     let candidate = repo_root.join(COMPETITOR_DEFAULT_REL);
-    if candidate.exists() { Some(candidate) } else { None }
+    if candidate.exists() {
+        Some(candidate)
+    } else {
+        None
+    }
 }
 
 /// Run N samples of the competitor CLI, one subprocess per sample.
@@ -786,7 +811,7 @@ fn run_competitor_bench(
 
     Some(BenchRow {
         backend: "nano-pow",
-        mode: "warm",   // Node process stays warm internally; we're timing external
+        mode: "warm", // Node process stays warm internally; we're timing external
         threshold_name,
         threshold,
         samples: count,
@@ -797,16 +822,17 @@ fn run_competitor_bench(
     })
 }
 
-fn cmd_benchmark(
-    count: usize,
-    format: &str,
-    hash_str: &str,
-    mode: BenchMode,
-    retune: bool,
-    backend: BenchBackend,
-    tier: BenchTier,
-    competitor_path: Option<&Path>,
-) {
+fn cmd_benchmark(options: BenchmarkOptions<'_>) {
+    let BenchmarkOptions {
+        count,
+        format,
+        hash_str,
+        mode,
+        retune,
+        backend,
+        tier,
+        competitor_path,
+    } = options;
     let hash = match parse_hash(hash_str) {
         Ok(h) => h,
         Err(e) => {
@@ -1051,7 +1077,9 @@ fn cmd_benchmark(
         match resolve_competitor_path(competitor_path) {
             None => {
                 eprintln!("  [skipped] competitor CLI not found.");
-                eprintln!("  Build it first: cd worktrees/nano-pow-competitor/vendor/nano-pow && npm run build");
+                eprintln!(
+                    "  Build it first: cd worktrees/nano-pow-competitor/vendor/nano-pow && npm run build"
+                );
                 eprintln!("  Or pass --competitor-path <path/to/dist/bin/cli.js>.");
                 backends.push(BackendBenchReport {
                     backend: "nano-pow",
@@ -1073,7 +1101,9 @@ fn cmd_benchmark(
                 // (one subprocess per sample; Node.js spins up inside each invocation).
                 // We skip the BenchMode::Cold path — it would be identical.
                 for &(name, thresh) in &tiers {
-                    if let Some(row) = run_competitor_bench(&cli_path, hash_str, thresh, count, name) {
+                    if let Some(row) =
+                        run_competitor_bench(&cli_path, hash_str, thresh, count, name)
+                    {
                         backend_report.rows.push(row.clone());
                         rows.push(row);
                     } else {

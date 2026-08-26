@@ -156,6 +156,12 @@ pub extern "C" fn nano_rspow_status_message(status: NanoRspowStatus) -> *const c
 }
 
 #[unsafe(no_mangle)]
+/// Creates a work generator for the requested backend.
+///
+/// # Safety
+///
+/// If `output` is non-null, it must point to writable storage for one generator
+/// handle. The returned handle must be released with [`nano_rspow_generator_free`].
 pub unsafe extern "C" fn nano_rspow_generator_new(
     backend: u32,
     output: *mut *mut NanoRspowGenerator,
@@ -194,6 +200,12 @@ pub unsafe extern "C" fn nano_rspow_generator_new(
 }
 
 #[unsafe(no_mangle)]
+/// Releases a generator created by [`nano_rspow_generator_new`].
+///
+/// # Safety
+///
+/// `generator` must be null or a live handle returned by
+/// [`nano_rspow_generator_new`] that has not already been freed.
 pub unsafe extern "C" fn nano_rspow_generator_free(generator: *mut NanoRspowGenerator) {
     if !generator.is_null() {
         // SAFETY: pointer must have been returned by generator_new and is
@@ -203,6 +215,12 @@ pub unsafe extern "C" fn nano_rspow_generator_free(generator: *mut NanoRspowGene
 }
 
 #[unsafe(no_mangle)]
+/// Creates a cancellation request handle.
+///
+/// # Safety
+///
+/// If `output` is non-null, it must point to writable storage for one request
+/// handle. The returned handle must be released with [`nano_rspow_request_free`].
 pub unsafe extern "C" fn nano_rspow_request_new(
     output: *mut *mut NanoRspowRequest,
 ) -> NanoRspowStatus {
@@ -222,6 +240,12 @@ pub unsafe extern "C" fn nano_rspow_request_new(
 }
 
 #[unsafe(no_mangle)]
+/// Requests cancellation for a work operation.
+///
+/// # Safety
+///
+/// `request` must be null or a live request handle that is not concurrently
+/// freed while this function runs.
 pub unsafe extern "C" fn nano_rspow_request_cancel(
     request: *mut NanoRspowRequest,
 ) -> NanoRspowStatus {
@@ -236,6 +260,12 @@ pub unsafe extern "C" fn nano_rspow_request_cancel(
 }
 
 #[unsafe(no_mangle)]
+/// Reports whether a request has been cancelled.
+///
+/// # Safety
+///
+/// `request` must be null or a live request handle. If `output` is non-null,
+/// it must point to writable storage for one byte.
 pub unsafe extern "C" fn nano_rspow_request_is_cancelled(
     request: *const NanoRspowRequest,
     output: *mut u8,
@@ -251,6 +281,12 @@ pub unsafe extern "C" fn nano_rspow_request_is_cancelled(
 }
 
 #[unsafe(no_mangle)]
+/// Releases a request created by [`nano_rspow_request_new`].
+///
+/// # Safety
+///
+/// `request` must be null or a live handle returned by [`nano_rspow_request_new`]
+/// that has not already been freed.
 pub unsafe extern "C" fn nano_rspow_request_free(request: *mut NanoRspowRequest) {
     if !request.is_null() {
         // SAFETY: pointer must have been returned by request_new and is
@@ -260,6 +296,13 @@ pub unsafe extern "C" fn nano_rspow_request_free(request: *mut NanoRspowRequest)
 }
 
 #[unsafe(no_mangle)]
+/// Generates work using a generator and cancellation request.
+///
+/// # Safety
+///
+/// Non-null `generator` and `request` pointers must be live handles. `hash` must
+/// point to 32 readable bytes, and `output` must point to writable result storage.
+/// None of these pointers may be concurrently invalidated during the call.
 pub unsafe extern "C" fn nano_rspow_generator_generate(
     generator: *const NanoRspowGenerator,
     hash: *const u8,
@@ -278,7 +321,9 @@ pub unsafe extern "C" fn nano_rspow_generator_generate(
         // SAFETY: all handles and output were checked non-null. Rust does not
         // retain either handle after this call returns.
         let result = unsafe {
-            (*generator).inner.generate_with_cancel(&hash, threshold, &(*request).inner)
+            (*generator)
+                .inner
+                .generate_with_cancel(&hash, threshold, &(*request).inner)
         };
         match result {
             Some(result) => {
@@ -306,6 +351,12 @@ pub unsafe extern "C" fn nano_rspow_generator_generate(
 }
 
 #[unsafe(no_mangle)]
+/// Validates a work nonce with a generator.
+///
+/// # Safety
+///
+/// A non-null `generator` must be a live handle. `hash` must point to 32 readable
+/// bytes and `output` to writable result storage for the duration of the call.
 pub unsafe extern "C" fn nano_rspow_generator_validate(
     generator: *const NanoRspowGenerator,
     hash: *const u8,
@@ -337,6 +388,12 @@ pub unsafe extern "C" fn nano_rspow_generator_validate(
 }
 
 #[unsafe(no_mangle)]
+/// Retrieves diagnostics for a generator backend.
+///
+/// # Safety
+///
+/// A non-null `generator` must be a live handle and `output` must point to
+/// writable [`NanoRspowDiagnostics`] storage for the duration of the call.
 pub unsafe extern "C" fn nano_rspow_generator_diagnostics(
     generator: *const NanoRspowGenerator,
     output: *mut NanoRspowDiagnostics,
@@ -354,6 +411,13 @@ pub unsafe extern "C" fn nano_rspow_generator_diagnostics(
 }
 
 #[unsafe(no_mangle)]
+/// Writes the generator backend name into a caller-provided buffer.
+///
+/// # Safety
+///
+/// A non-null `generator` must be a live handle and `required` must point to
+/// writable storage. When `output` is non-null, it must designate a writable
+/// buffer of at least `capacity` bytes for the duration of the call.
 pub unsafe extern "C" fn nano_rspow_generator_backend_name(
     generator: *const NanoRspowGenerator,
     output: *mut u8,
@@ -368,7 +432,7 @@ pub unsafe extern "C" fn nano_rspow_generator_backend_name(
         let name = unsafe { (*generator).inner.backend_name() }.as_bytes();
         // SAFETY: required was checked above.
         unsafe { *required = name.len() };
-        if capacity < name.len() || (name.len() > 0 && output.is_null()) {
+        if capacity < name.len() || (!name.is_empty() && output.is_null()) {
             return NanoRspowStatus::BufferTooSmall;
         }
         if !name.is_empty() {
@@ -385,9 +449,9 @@ mod tests {
 
     fn known_hash() -> [u8; 32] {
         [
-            0x71, 0x8c, 0xc2, 0x12, 0x1c, 0x3e, 0x64, 0x10, 0x59, 0xbc, 0x1c, 0x2c, 0xfc,
-            0x45, 0x66, 0x6c, 0x99, 0xe8, 0xae, 0x92, 0x2f, 0x7a, 0x80, 0x7b, 0x7d, 0x07,
-            0xb6, 0x2c, 0x99, 0x5d, 0x79, 0xe2,
+            0x71, 0x8c, 0xc2, 0x12, 0x1c, 0x3e, 0x64, 0x10, 0x59, 0xbc, 0x1c, 0x2c, 0xfc, 0x45,
+            0x66, 0x6c, 0x99, 0xe8, 0xae, 0x92, 0x2f, 0x7a, 0x80, 0x7b, 0x7d, 0x07, 0xb6, 0x2c,
+            0x99, 0x5d, 0x79, 0xe2,
         ]
     }
 

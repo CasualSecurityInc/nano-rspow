@@ -27,7 +27,9 @@ impl OpenClBackend {
     pub fn new(_config: OpenClConfig) -> Result<Self, WorkError> {
         let platforms = ocl::core::get_platform_ids();
         if platforms.is_err() || platforms.as_ref().map(|p| p.is_empty()).unwrap_or(true) {
-            return Err(WorkError::GpuInit("No OpenCL platforms available".to_string()));
+            return Err(WorkError::GpuInit(
+                "No OpenCL platforms available".to_string(),
+            ));
         }
 
         let pro_que = ProQue::builder()
@@ -83,8 +85,8 @@ impl Backend for OpenClBackend {
 
         // Convert the 32-byte hash into 4 x u64 (little-endian)
         let mut h = [0u64; 4];
-        for (i, chunk) in hash.chunks_exact(8).enumerate() {
-            h[i] = u64::from_le_bytes(chunk.try_into().unwrap());
+        for (output, chunk) in h.iter_mut().zip(hash.as_chunks::<8>().0) {
+            *output = u64::from_le_bytes(*chunk);
         }
 
         let mut base_nonce: u64 = rand::random();

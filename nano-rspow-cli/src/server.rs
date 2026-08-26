@@ -126,7 +126,11 @@ impl WorkServer {
         operation: Operation,
     ) -> Result<Receiver<Result<JobOutput, String>>, String> {
         let (reply, result) = mpsc::channel();
-        let mut state = self.shared.queue.lock().map_err(|_| "queue lock poisoned")?;
+        let mut state = self
+            .shared
+            .queue
+            .lock()
+            .map_err(|_| "queue lock poisoned")?;
         if self.shared.shutdown.load(Ordering::Acquire) {
             return Err("server is shutting down".to_owned());
         }
@@ -148,17 +152,19 @@ impl WorkServer {
             Ok(state) => state,
             Err(_) => return,
         };
-        if let Some(active) = &state.active {
-            if active.hash == Some(hash) {
-                active.cancel.cancel();
-            }
+        if let Some(active) = &state.active
+            && active.hash == Some(hash)
+        {
+            active.cancel.cancel();
         }
 
         let mut retained = VecDeque::with_capacity(state.queue.len());
         while let Some(job) = state.queue.pop_front() {
             if job.hash == Some(hash) {
                 job.cancel.cancel();
-                let _ = job.reply.send(Err("Work generation was cancelled".to_owned()));
+                let _ = job
+                    .reply
+                    .send(Err("Work generation was cancelled".to_owned()));
             } else {
                 retained.push_back(job);
             }
@@ -263,9 +269,7 @@ fn run_benchmark(
         if cancel.is_cancelled() {
             break;
         }
-        if generator.generate_with_cancel(&hash, threshold, cancel).is_none() {
-            return None;
-        }
+        generator.generate_with_cancel(&hash, threshold, cancel)?;
         completed += 1;
     }
     let duration_ms = start.elapsed().as_millis() as u64;
@@ -287,7 +291,8 @@ pub fn run(config: ServerConfig) -> Result<(), String> {
     }
     let generator = make_generator(&config.backend, config.retune)?;
     let server = WorkServer::new(generator, config.queue_size);
-    let http = Server::http(&config.listen).map_err(|e| format!("failed to listen on {}: {e}", config.listen))?;
+    let http = Server::http(&config.listen)
+        .map_err(|e| format!("failed to listen on {}: {e}", config.listen))?;
     eprintln!(
         "nano-rspow work peer listening on {} (backend: {})",
         config.listen,
@@ -337,7 +342,9 @@ fn make_generator(backend: &str, retune: bool) -> Result<WorkGenerator, String> 
                 Err("GPU backend was not compiled".to_owned())
             }
         }
-        _ => Err(format!("unknown backend '{backend}'; use auto, cpu, or gpu")),
+        _ => Err(format!(
+            "unknown backend '{backend}'; use auto, cpu, or gpu"
+        )),
     }
 }
 
@@ -346,7 +353,10 @@ fn handle_http_request(mut request: Request, server: WorkServer) {
     let read_result = request.as_reader().read_to_string(&mut body);
     let (status, response_body) = match read_result {
         Ok(_) => process_rpc(&body, &server),
-        Err(e) => (400, json!({ "error": format!("failed to read request body: {e}") }).to_string()),
+        Err(e) => (
+            400,
+            json!({ "error": format!("failed to read request body: {e}") }).to_string(),
+        ),
     };
     let mut response = Response::from_string(response_body).with_status_code(StatusCode(status));
     if let Ok(header) = Header::from_bytes(b"Content-Type", b"application/json") {
@@ -370,10 +380,14 @@ fn process_rpc(body: &str, server: &WorkServer) -> (u16, String) {
         "work_cancel" => rpc_cancel(&request, server),
         "status" => {
             let (generating, queue_size) = server.status();
-            (200, json!({
-                "generating": if generating { "1" } else { "0" },
-                "queue_size": queue_size.to_string(),
-            }).to_string())
+            (
+                200,
+                json!({
+                    "generating": if generating { "1" } else { "0" },
+                    "queue_size": queue_size.to_string(),
+                })
+                .to_string(),
+            )
         }
         "benchmark" => rpc_benchmark(&request, server),
         _ => rpc_error(400, format!("unknown action '{action}'")),
@@ -381,7 +395,11 @@ fn process_rpc(body: &str, server: &WorkServer) -> (u16, String) {
 }
 
 fn rpc_generate(request: &Value, server: &WorkServer) -> (u16, String) {
-    let hash = match request.get("hash").and_then(Value::as_str).and_then(parse_hash) {
+    let hash = match request
+        .get("hash")
+        .and_then(Value::as_str)
+        .and_then(parse_hash)
+    {
         Some(hash) => hash,
         None => return rpc_error(400, "hash must be 64 hexadecimal characters".to_owned()),
     };
@@ -445,7 +463,8 @@ fn rpc_validate(request: &Value) -> (u16, String) {
         Err(error) => return rpc_error(400, error),
     };
     let result = difficulty::compute(&hash, work);
-    let has_explicit_threshold = request.get("difficulty").is_some() || request.get("multiplier").is_some();
+    let has_explicit_threshold =
+        request.get("difficulty").is_some() || request.get("multiplier").is_some();
     let mut response = json!({
         "valid_all": if result >= thresholds::current::SEND { "1" } else { "0" },
         "valid_receive": if result >= thresholds::current::RECEIVE { "1" } else { "0" },
@@ -459,7 +478,11 @@ fn rpc_validate(request: &Value) -> (u16, String) {
 }
 
 fn rpc_cancel(request: &Value, server: &WorkServer) -> (u16, String) {
-    let Some(hash) = request.get("hash").and_then(Value::as_str).and_then(parse_hash) else {
+    let Some(hash) = request
+        .get("hash")
+        .and_then(Value::as_str)
+        .and_then(parse_hash)
+    else {
         return rpc_error(400, "hash must be 64 hexadecimal characters".to_owned());
     };
     server.cancel_hash(hash);
@@ -503,13 +526,15 @@ fn rpc_benchmark(request: &Value, server: &WorkServer) -> (u16, String) {
 
 fn parse_requested_threshold(request: &Value) -> Result<u64, String> {
     if let Some(multiplier) = request.get("multiplier") {
-        let multiplier = parse_f64(multiplier).ok_or_else(|| "multiplier must be a number".to_owned())?;
+        let multiplier =
+            parse_f64(multiplier).ok_or_else(|| "multiplier must be a number".to_owned())?;
         if !multiplier.is_finite() || multiplier <= 0.0 {
             return Err("multiplier must be finite and greater than zero".to_owned());
         }
         Ok(threshold_from_multiplier(multiplier))
     } else if let Some(difficulty) = request.get("difficulty") {
-        parse_hex_value(difficulty).ok_or_else(|| "difficulty must be a 64-bit hexadecimal value".to_owned())
+        parse_hex_value(difficulty)
+            .ok_or_else(|| "difficulty must be a 64-bit hexadecimal value".to_owned())
     } else {
         Ok(thresholds::current::SEND)
     }
@@ -562,7 +587,10 @@ fn parse_hex_u64(value: &str) -> Option<u64> {
 }
 
 fn parse_hex_value(value: &Value) -> Option<u64> {
-    value.as_str().and_then(parse_hex_u64).or_else(|| value.as_u64())
+    value
+        .as_str()
+        .and_then(parse_hex_u64)
+        .or_else(|| value.as_u64())
 }
 
 fn parse_f64(value: &Value) -> Option<f64> {
@@ -572,13 +600,17 @@ fn parse_f64(value: &Value) -> Option<f64> {
 }
 
 fn parse_decimal_usize(value: &Value) -> Option<usize> {
-    value.as_u64().and_then(|value| usize::try_from(value).ok()).or_else(|| {
-        value.as_str().and_then(|value| value.parse().ok())
-    })
+    value
+        .as_u64()
+        .and_then(|value| usize::try_from(value).ok())
+        .or_else(|| value.as_str().and_then(|value| value.parse().ok()))
 }
 
 fn format_multiplier(value: f64) -> String {
-    format!("{value:.15}").trim_end_matches('0').trim_end_matches('.').to_owned()
+    format!("{value:.15}")
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_owned()
 }
 
 fn rpc_error(status: u16, error: String) -> (u16, String) {
@@ -601,7 +633,8 @@ mod tests {
     fn generate_matches_nano_work_server_response_shape() {
         let server = test_server(2);
         let (status, body) = process_rpc(
-            &json!({ "action": "work_generate", "hash": HASH, "difficulty": "fe00000000000000" }).to_string(),
+            &json!({ "action": "work_generate", "hash": HASH, "difficulty": "fe00000000000000" })
+                .to_string(),
             &server,
         );
         assert_eq!(status, 200);
@@ -678,7 +711,8 @@ mod tests {
     #[test]
     fn invalid_input_is_a_json_rpc_error() {
         let server = test_server(1);
-        let (status, body) = process_rpc("{\"action\":\"work_generate\",\"hash\":\"bad\"}", &server);
+        let (status, body) =
+            process_rpc("{\"action\":\"work_generate\",\"hash\":\"bad\"}", &server);
         assert_eq!(status, 400);
         assert!(body.contains("64 hexadecimal"));
         server.shutdown();
@@ -700,7 +734,10 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(1));
         }
-        let _ = process_rpc(&json!({ "action": "work_cancel", "hash": HASH }).to_string(), &server);
+        let _ = process_rpc(
+            &json!({ "action": "work_cancel", "hash": HASH }).to_string(),
+            &server,
+        );
         let (status, body) = request.join().unwrap();
         assert_eq!(status, 409);
         assert!(body.contains("cancelled"));
@@ -715,13 +752,22 @@ mod tests {
         state.queue.push_back(Job {
             hash: Some(parse_hash(HASH).unwrap()),
             cancel: CancelToken::new(),
-            operation: Operation::Generate { threshold: u64::MAX },
+            operation: Operation::Generate {
+                threshold: u64::MAX,
+            },
             reply,
         });
         drop(state);
-        assert!(server
-            .enqueue(Some(parse_hash(HASH).unwrap()), Operation::Generate { threshold: u64::MAX })
-            .is_err());
+        assert!(
+            server
+                .enqueue(
+                    Some(parse_hash(HASH).unwrap()),
+                    Operation::Generate {
+                        threshold: u64::MAX
+                    }
+                )
+                .is_err()
+        );
         server.shutdown();
         assert!(result.recv().unwrap().is_err());
     }

@@ -192,11 +192,11 @@ impl WgpuWebGenerator {
         );
         let mut hash0 = [0u32; 4];
         let mut hash1 = [0u32; 4];
-        for (i, chunk) in hash[..16].chunks_exact(4).enumerate() {
-            hash0[i] = u32::from_le_bytes(chunk.try_into().unwrap());
+        for (output, chunk) in hash0.iter_mut().zip(hash[..16].as_chunks::<4>().0) {
+            *output = u32::from_le_bytes(*chunk);
         }
-        for (i, chunk) in hash[16..].chunks_exact(4).enumerate() {
-            hash1[i] = u32::from_le_bytes(chunk.try_into().unwrap());
+        for (output, chunk) in hash1.iter_mut().zip(hash[16..].as_chunks::<4>().0) {
+            *output = u32::from_le_bytes(*chunk);
         }
 
         let threshold_lo = threshold as u32;
