@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/CasualSecurityInc/nano-rspow/nano-rspow-go/thresholds/legacy"
+	testingthresholds "github.com/CasualSecurityInc/nano-rspow/nano-rspow-go/thresholds/testing"
 )
 
 var knownHash = [32]byte{
@@ -19,7 +22,7 @@ func TestKnownVectorValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer generator.Close()
-	result, err := generator.Validate(knownHash, 0x2bf29ef00786a6bc, LegacyEpoch1)
+	result, err := generator.Validate(knownHash, 0x2bf29ef00786a6bc, legacy.Epoch1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,14 +37,14 @@ func TestDevGenerationAndValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer generator.Close()
-	result, err := generator.GenerateType(context.Background(), knownHash, WorkDev)
+	result, err := generator.Generate(context.Background(), knownHash, testingthresholds.Dev)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !result.Valid {
 		t.Fatalf("generated result is invalid: %+v", result)
 	}
-	validated, err := generator.Validate(knownHash, result.Nonce, Dev)
+	validated, err := generator.Validate(knownHash, result.Nonce, testingthresholds.Dev)
 	if err != nil {
 		t.Fatal(err)
 	}

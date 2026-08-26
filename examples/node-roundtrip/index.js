@@ -1,4 +1,4 @@
-const { generateWork, validateWork, WorkType } = require('nano-rspow-node');
+const { generateWorkWithThreshold, validateWorkWithThreshold } = require('nano-rspow-node');
 
 async function main() {
     console.log("Testing Node roundtrip consuming nano-rspow-node from NPM...");
@@ -8,13 +8,14 @@ async function main() {
     console.log(`Hash: ${hash}`);
 
     const start = Date.now();
-    console.log(`Generating work for WorkType.Dev...`);
-    const workDev = await generateWork(hash, WorkType.Dev);
+    const threshold = "fe00000000000000";
+    console.log(`Generating work at a custom testing threshold...`);
+    const workDev = await generateWorkWithThreshold(hash, threshold);
     const duration = Date.now() - start;
 
     console.log(`[Dev] Generated: ${workDev} in ${duration}ms`);
     
-    const isValid = validateWork(hash, workDev, WorkType.Dev);
+    const isValid = validateWorkWithThreshold(hash, workDev, threshold);
     console.log(`[Dev] Valid: ${isValid}`);
     
     if (!isValid) {

@@ -5,6 +5,10 @@ High-performance CLI for Nano (XNO) Proof of Work generation and validation. Sup
 Current Nano mainnet thresholds are `0xfffffff800000000` for send/change
 blocks and `0xfffffe0000000000` for receive/open/epoch blocks. The
 `0xffffffc000000000` threshold is legacy epoch-1 work only.
+Nodes can require a stricter threshold; pass its hexadecimal value with
+`--threshold` or the RPC `difficulty` field. See Nano's
+[Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
+for current network requirements.
 
 ## Install
 
@@ -27,7 +31,7 @@ The package installs the `nano-rspow` executable.
 Generate PoW for a block hash.
 
 ```bash
-# Default: GPU backend, epoch2 send threshold
+# Default: GPU backend, current send/change threshold
 nano-rspow generate 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2
 
 # Force CPU backend
@@ -64,7 +68,7 @@ nano-rspow benchmark --count 20 --format markdown
 nano-rspow benchmark --format json
 
 # Specific backend and tier
-nano-rspow benchmark --backend gpu --tier ep2_send
+nano-rspow benchmark --backend gpu --tier send
 ```
 
 ### `info`
@@ -129,7 +133,7 @@ hexadecimal `hash` and a 16-character hexadecimal `work` value; an explicit
 
 `work_generate` and `work_validate` accept an optional hexadecimal
 `difficulty` or numeric `multiplier`; `multiplier` takes precedence. The
-server defaults to the current epoch-2 send/change threshold. `work_cancel`
+server defaults to the current send/change threshold. `work_cancel`
 cancels the active request and removes queued requests for the same hash.
 `status` reports the active generation flag and waiting queue size.
 

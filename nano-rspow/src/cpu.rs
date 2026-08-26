@@ -242,12 +242,12 @@ mod tests {
         let hash = [0u8; 32];
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
-        let nonce = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+        let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
         let diff = difficulty::compute(&hash, nonce);
         assert!(
-            diff >= thresholds::DEV,
+            diff >= thresholds::testing::DEV,
             "nonce {nonce:#018x} produced difficulty {diff:#018x} < threshold {:#018x}",
-            thresholds::DEV
+            thresholds::testing::DEV
         );
     }
 
@@ -275,9 +275,9 @@ mod tests {
 
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
-        let nonce = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+        let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
         let diff = difficulty::compute(&hash, nonce);
-        assert!(diff >= thresholds::DEV);
+        assert!(diff >= thresholds::testing::DEV);
     }
 
     #[test]
@@ -288,12 +288,12 @@ mod tests {
 
         // Multiple calls on the same backend should all produce valid work
         for _ in 0..5 {
-            let nonce = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+            let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
             let diff = difficulty::compute(&hash, nonce);
             assert!(
-                diff >= thresholds::DEV,
+                diff >= thresholds::testing::DEV,
                 "nonce {nonce:#018x} produced difficulty {diff:#018x} < threshold {:#018x}",
-                thresholds::DEV
+                thresholds::testing::DEV
             );
         }
     }
@@ -313,7 +313,7 @@ mod tests {
                 let backend = Arc::clone(&backend);
                 let cancel = cancel.clone();
                 thread::spawn(move || {
-                    backend.generate(&hash, thresholds::DEV, &cancel)
+                    backend.generate(&hash, thresholds::testing::DEV, &cancel)
                 })
             })
             .collect();
@@ -328,7 +328,7 @@ mod tests {
         // All nonces should be valid
         for &nonce in &nonces {
             let diff = difficulty::compute(&hash, nonce);
-            assert!(diff >= thresholds::DEV);
+            assert!(diff >= thresholds::testing::DEV);
         }
     }
 
@@ -365,9 +365,9 @@ mod tests {
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
 
-        let nonce1 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
-        let nonce2 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
-        let nonce3 = backend.generate(&hash, thresholds::DEV, &cancel).unwrap();
+        let nonce1 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+        let nonce2 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+        let nonce3 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
 
         // Three nonces from a seeded RNG with 2^64 space should all be distinct.
         assert_ne!(nonce1, nonce2, "same nonce on consecutive generate calls");

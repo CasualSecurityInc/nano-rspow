@@ -4,6 +4,16 @@ nano-rspow generates and validates [Nano](https://www.nano.org) proof of work on
 
 The native core selects an available GPU backend when possible and otherwise uses its multi-threaded CPU backend. The browser package tries WebGPU, then falls back to single-threaded WebAssembly CPU execution.
 
+## Current Nano thresholds
+
+For current Nano mainnet blocks, use the send/change floor
+`fffffff800000000` or the receive/open/epoch floor `fffffe0000000000`.
+These are convenience presets, not an upper limit: every binding also accepts
+an arbitrary threshold when the node that will publish the block requires a
+stricter value. Historical Epoch 1 thresholds are isolated in explicitly named
+legacy APIs. See Nano's [Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
+for the network requirements.
+
 ---
 
 ## 🎯 Who is this for?

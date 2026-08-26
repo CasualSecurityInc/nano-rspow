@@ -16,7 +16,7 @@ Input:
   <hash_hex>:<threshold_hex>
 
 The optional threshold must use a 0x prefix. Without one, the current
-epoch-2 send/change threshold is used.
+send/change threshold is used.
 
 Output:
   <hash_hex>:0x<threshold_hex>:<work_hex>

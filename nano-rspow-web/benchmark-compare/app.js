@@ -18,8 +18,8 @@ import * as NanoPowModule from 'nano-pow';
 
 const html = htm.bind(React.createElement);
 
-const EPOCH2_SEND_THRESHOLD = 'fffffff800000000';
-const NANOPOW_OPTIONS = { difficulty: EPOCH2_SEND_THRESHOLD };
+const CURRENT_SEND_THRESHOLD = 'fffffff800000000';
+const NANOPOW_OPTIONS = { difficulty: CURRENT_SEND_THRESHOLD };
 const BATTLE_TURNS = 42;
 const BATTLE_COOLDOWN_MS = 200;
 const COLORS = {
@@ -196,7 +196,7 @@ function BenchmarkApp() {
     const response = await fetch(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ root: workRoot, threshold: EPOCH2_SEND_THRESHOLD }),
+      body: JSON.stringify({ root: workRoot, threshold: CURRENT_SEND_THRESHOLD }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? `native bridge returned ${response.status}`);
@@ -227,11 +227,11 @@ function BenchmarkApp() {
     let elapsedMs;
 
     console.groupCollapsed(`${timer} start`);
-    console.info('root', workRoot, 'threshold', EPOCH2_SEND_THRESHOLD);
+    console.info('root', workRoot, 'threshold', CURRENT_SEND_THRESHOLD);
     console.time(timer);
     try {
       if (implementation === 'rspow') {
-        const result = await generateNanoRspow(workRoot, EPOCH2_SEND_THRESHOLD);
+        const result = await generateNanoRspow(workRoot, CURRENT_SEND_THRESHOLD);
         nonce = result.nonce;
         backend = result.is_gpu ? 'WebGPU' : 'CPU WASM fallback';
       } else if (implementation === 'nanopow') {
@@ -254,10 +254,10 @@ function BenchmarkApp() {
       const isValid = validateWork({
         blockHash: workRoot,
         work: nonce,
-        threshold: EPOCH2_SEND_THRESHOLD,
+        threshold: CURRENT_SEND_THRESHOLD,
       });
-      console.assert(isValid, `${provider.label} returned invalid Epoch 2 work`, { workRoot, nonce });
-      if (!isValid) throw new Error(`${provider.label} returned work below the Epoch 2 send threshold`);
+      console.assert(isValid, `${provider.label} returned invalid current send work`, { workRoot, nonce });
+      if (!isValid) throw new Error(`${provider.label} returned work below the current send threshold`);
 
       elapsedMs ??= performance.now() - startedAt;
       console.info('finished and validated', { nonce, backend, elapsedMs });
@@ -275,7 +275,7 @@ function BenchmarkApp() {
     if (!ready || active || completedInRound.has(implementation)) return;
 
     setActive(implementation);
-    setMessage(`Running ${providerByKey[implementation].label} at the Epoch 2 send threshold…`);
+    setMessage(`Running ${providerByKey[implementation].label} at the current send threshold…`);
     try {
       const { elapsedMs, nonce, backend } = await solve(implementation, root);
       const label = providerByKey[implementation].label;
@@ -400,7 +400,7 @@ function BenchmarkApp() {
   return html`
     <section className="page-shell">
       <header className="hero">
-        <p className="eyebrow">Browser benchmark · Epoch 2 send</p>
+        <p className="eyebrow">Browser benchmark · current send</p>
         <h1>One work root and four PoW engines.</h1>
         <p className="lede">
           Each round uses the same random root and records elapsed wall-clock time.
@@ -412,7 +412,7 @@ function BenchmarkApp() {
         <div className="round-meta">
           <span className="round-label">${battle.running ? `Battle turn ${Math.min(battle.completed + 1, totalBattleTurns)}/${totalBattleTurns} total` : `Round ${round}`}</span>
           <code title=${displayedRoot}>${displayedRoot}</code>
-          <span className="threshold">Epoch 2 ${runningThresholdKey} ${EPOCH2_SEND_THRESHOLD}</span>
+          <span className="threshold">Current send ${runningThresholdKey} ${CURRENT_SEND_THRESHOLD}</span>
         </div>
         <div className="button-row">
           ${currentProviders.map((provider, idx) => html`

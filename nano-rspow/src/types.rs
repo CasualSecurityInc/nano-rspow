@@ -26,7 +26,7 @@ impl WorkResult {
         self.difficulty >= self.threshold
     }
 
-    /// Returns the multiplier relative to the epoch 2 base threshold.
+    /// Returns the multiplier relative to this result's required threshold.
     pub fn multiplier(&self) -> f64 {
         thresholds::to_multiplier(self.difficulty, self.threshold)
     }
@@ -128,7 +128,7 @@ mod tests {
         let r = WorkResult {
             nonce: 0x2bf29ef00786a6bc,
             difficulty: 0xffffffd21c3933f4,
-            threshold: thresholds::LEGACY_EPOCH1,
+            threshold: thresholds::legacy::EPOCH1,
         };
         assert!(r.is_valid());
         assert_eq!(r.nonce_hex(), "2bf29ef00786a6bc");
@@ -139,7 +139,7 @@ mod tests {
         let r = WorkResult {
             nonce: 0,
             difficulty: 0,
-            threshold: thresholds::LEGACY_EPOCH1,
+            threshold: thresholds::legacy::EPOCH1,
         };
         assert!(!r.is_valid());
     }

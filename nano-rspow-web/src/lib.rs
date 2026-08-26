@@ -32,7 +32,8 @@ impl Default for WasmCancelToken {
     }
 }
 
-/// Try up to max_nonces nonces in a single synchronous batch.
+/// Try up to `max_nonces` nonces at an arbitrary hexadecimal threshold in a
+/// single synchronous batch.
 /// Returns the nonce as a hex string if found, or `null` if the batch
 /// was exhausted. RNG state persists across calls.
 #[wasm_bindgen]
@@ -73,7 +74,8 @@ impl GenerateResult {
     }
 }
 
-/// Asynchronously generate Proof of Work for a 32-byte block hash (hex).
+/// Asynchronously generate Proof of Work for a 32-byte block hash and an
+/// arbitrary hexadecimal threshold.
 ///
 /// Tries WebGPU first, then falls back to single-threaded CPU WASM.
 #[wasm_bindgen]
@@ -139,7 +141,8 @@ pub async fn generate_work(hash_hex: &str, threshold_hex: &str) -> Result<Genera
     })
 }
 
-/// Asynchronously generate Proof of Work forcing WebGPU execution.
+/// Asynchronously generate Proof of Work at an arbitrary threshold, forcing
+/// WebGPU execution.
 ///
 /// Pass a `WasmCancelToken` created via `new WasmCancelToken()` and call
 /// `.cancel()` on it from JavaScript to abort the GPU batch loop (e.g. on timeout).
@@ -187,7 +190,8 @@ pub async fn generate_work_gpu(
     Err(JsValue::from_str("WebGPU work generation failed"))
 }
 
-/// Synchronously generate Proof of Work forcing single-threaded WASM CPU execution.
+/// Synchronously generate Proof of Work at an arbitrary threshold, forcing
+/// single-threaded WASM CPU execution.
 #[wasm_bindgen]
 pub fn generate_work_cpu(hash_hex: &str, threshold_hex: &str) -> Result<GenerateResult, JsValue> {
     console_log!(
@@ -213,7 +217,7 @@ pub fn generate_work_cpu(hash_hex: &str, threshold_hex: &str) -> Result<Generate
     })
 }
 
-/// Synchronously validate if a nonce meets the difficulty threshold for a given block hash.
+/// Synchronously validate a nonce against an arbitrary threshold for a block hash.
 
 #[wasm_bindgen]
 pub fn validate_work(

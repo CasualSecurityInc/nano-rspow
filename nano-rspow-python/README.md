@@ -26,6 +26,7 @@ line protocol as `nano-rspow generate --stream`:
 ```python
 import nano_rspow
 from nano_rspow import WorkType
+from nano_rspow.thresholds import current
 
 root = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2"
 result = nano_rspow.generate_work(root, WorkType.Send)
@@ -33,6 +34,12 @@ result = nano_rspow.generate_work(root, WorkType.Send)
 print(result.nonce_hex)
 assert result.is_valid
 assert nano_rspow.validate_work(root, result.nonce_hex, WorkType.Send)
+assert current.SEND == 0xfffffff800000000
+
+# Use an arbitrary threshold when a node requires more than the public floor.
+threshold = "fffffff900000000"
+result = nano_rspow.generate_work_with_threshold(root, threshold)
+assert nano_rspow.validate_work_with_threshold(root, result.nonce_hex, threshold)
 ```
 
 ## API reference
@@ -44,6 +51,15 @@ Generates work for a 32-byte hexadecimal block root. Raises `ValueError` for inv
 ### `validate_work(hash_hex, work_hex, work_type) -> bool`
 
 Tests a hexadecimal nonce against a block root and the threshold selected by `work_type`. Raises `ValueError` for invalid input.
+
+### `generate_work_with_threshold(hash_hex, threshold_hex) -> WorkResult`
+
+Generates work for any hexadecimal threshold. Use it when a node requires a
+stricter threshold than the public Nano floor or when handling historical data.
+
+### `validate_work_with_threshold(hash_hex, work_hex, threshold_hex) -> bool`
+
+Validates a nonce against any hexadecimal threshold.
 
 ### `compute_difficulty(hash_hex, nonce_hex) -> str`
 
@@ -57,10 +73,8 @@ Returns the selected backend name, such as `cpu`, `wgpu`, or `opencl`.
 
 | Value | Use |
 | --- | --- |
-| `Send` | Epoch 2 send and change blocks |
-| `Receive` | Epoch 2 receive blocks |
-| `LegacyEpoch1` | Historical epoch-1 validation only |
-| `Epoch1` | Compatibility alias for `LegacyEpoch1` |
+| `Send` | Current send and change blocks |
+| `Receive` | Current receive, open, and epoch blocks |
 
 ### `WorkResult`
 
@@ -68,4 +82,13 @@ Returns the selected backend name, such as `cpu`, `wgpu`, or `opencl`.
 
 ### `thresholds`
 
-The `nano_rspow.thresholds` submodule provides `EPOCH2_SEND`, `EPOCH2_RECEIVE`, `LEGACY_EPOCH1`, `EPOCH1`, `BETA_LEGACY_EPOCH1`, `BETA_EPOCH1`, `DEV`, and `BASE`.
+The `nano_rspow.thresholds` submodule separates values by applicability:
+
+- `thresholds.current.SEND` and `.RECEIVE` are the current public mainnet floors.
+- `thresholds.legacy.EPOCH1` and `.BETA_EPOCH1` are historical values.
+- `thresholds.testing.DEV` is for tests only.
+
+Nano nodes may require a stricter arbitrary threshold. Use the explicit
+custom-threshold APIs for that case. See Nano's
+[Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
+for current network requirements.

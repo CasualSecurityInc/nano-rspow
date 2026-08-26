@@ -4,13 +4,13 @@
 //!
 //! Tiers mirror the CLI `benchmark` command:
 //!   dev        0xfe00000000000000  (very low — fast iteration)
-//!   ep2_recv   0xfffffe0000000000  (epoch-2 receive — common real-world)
+//!   receive    0xfffffe0000000000  (current receive/open/epoch)
 //!   legacy_epoch1  0xffffffc000000000  (legacy-only)
-//!   ep2_send   0xfffffff800000000  (epoch-2 send/change — hardest)
+//!   send       0xfffffff800000000  (current send/change)
 //!
 //! CPU benchmarks run at `dev` threshold only (higher tiers take 1-2 s each,
 //! making Criterion wall-time impractical).  GPU benchmarks run at `dev` and
-//! `ep2_recv`; `legacy_epoch1` and `ep2_send` are included but marked slow so
+//! `receive`; `legacy_epoch1` and `send` are included but marked slow so
 //! they only run when specifically requested (`cargo bench -- legacy_epoch1`).
 
 use criterion::{Criterion, SamplingMode, Throughput, criterion_group, criterion_main};
@@ -25,7 +25,7 @@ const BENCH_HASH: [u8; 32] = [
 // ── difficulty_compute ────────────────────────────────────────────────────────
 
 fn bench_difficulty(c: &mut Criterion) {
-    // Official known-good nonce for BENCH_HASH at epoch-2-send threshold.
+    // Official known-good nonce for BENCH_HASH at the current send threshold.
     let nonce = 0x2bf29ef00786a6bc_u64;
     c.bench_function("difficulty_compute", |b| {
         b.iter(|| difficulty::compute(&BENCH_HASH, std::hint::black_box(nonce)));
@@ -41,7 +41,7 @@ fn bench_cpu_generation(c: &mut Criterion) {
     // Only dev threshold: higher tiers take 1-2 s per sample.
     group.bench_function("dev", |b| {
         let generator = nano_rspow::WorkGenerator::cpu();
-        b.iter(|| generator.generate(&BENCH_HASH, thresholds::DEV).unwrap());
+        b.iter(|| generator.generate(&BENCH_HASH, thresholds::testing::DEV).unwrap());
     });
 
     group.finish();
@@ -65,13 +65,13 @@ fn bench_gpu_generation(c: &mut Criterion) {
         group.throughput(Throughput::Elements(1));
 
         group.bench_function("dev", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::DEV).unwrap());
+            b.iter(|| generator.generate(&BENCH_HASH, thresholds::testing::DEV).unwrap());
         });
 
-        group.bench_function("ep2_recv", |b| {
+        group.bench_function("receive", |b| {
             b.iter(|| {
                 generator
-                    .generate(&BENCH_HASH, thresholds::EPOCH2_RECEIVE)
+                    .generate(&BENCH_HASH, thresholds::current::RECEIVE)
                     .unwrap()
             });
         });
@@ -88,13 +88,13 @@ fn bench_gpu_generation(c: &mut Criterion) {
         group.sampling_mode(SamplingMode::Flat);
 
         group.bench_function("legacy_epoch1", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::LEGACY_EPOCH1).unwrap());
+            b.iter(|| generator.generate(&BENCH_HASH, thresholds::legacy::EPOCH1).unwrap());
         });
 
-        group.bench_function("ep2_send", |b| {
+        group.bench_function("send", |b| {
             b.iter(|| {
                 generator
-                    .generate(&BENCH_HASH, thresholds::EPOCH2_SEND)
+                    .generate(&BENCH_HASH, thresholds::current::SEND)
                     .unwrap()
             });
         });

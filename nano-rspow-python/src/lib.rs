@@ -17,11 +17,11 @@
 //! print(result.nonce_hex)
 //! print(result.is_valid)
 //!
-//! # Validate existing work
-//! valid = nano_rspow.validate_work(
+//! # Validate historical work with an explicit threshold
+//! valid = nano_rspow.validate_work_with_threshold(
 //!     "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2",
 //!     "2bf29ef00786a6bc",
-//!     WorkType.LegacyEpoch1,
+//!     "ffffffc000000000",
 //! )
 //! ```
 
@@ -49,26 +49,21 @@ fn get_generator() -> &'static WorkGenerator {
 
 /// Nano network work type — determines the difficulty threshold.
 ///
-/// Values mirror the thresholds defined in `nano-rspow/src/thresholds.rs`:
-/// - `Send`    → epoch 2 send/change (0xfffffff800000000)
-/// - `Receive` → epoch 2 receive     (0xfffffe0000000000)
-/// - `LegacyEpoch1` → legacy threshold only (0xffffffc000000000)
-/// - `Epoch1`  → deprecated compatibility alias for `LegacyEpoch1`
+/// Values mirror the current mainnet presets in `nano-rspow/src/thresholds.rs`:
+/// - `Send`    → send/change (0xfffffff800000000)
+/// - `Receive` → receive/open/epoch (0xfffffe0000000000)
 #[pyclass(eq, eq_int, from_py_object)]
 #[derive(Clone, Copy, PartialEq)]
 enum WorkType {
     Send = 0,
     Receive = 1,
-    Epoch1 = 2,
-    LegacyEpoch1 = 3,
 }
 
 impl WorkType {
     fn threshold(self) -> u64 {
         match self {
-            WorkType::Send => thresholds::EPOCH2_SEND,
-            WorkType::Receive => thresholds::EPOCH2_RECEIVE,
-            WorkType::Epoch1 | WorkType::LegacyEpoch1 => thresholds::LEGACY_EPOCH1,
+            WorkType::Send => thresholds::current::SEND,
+            WorkType::Receive => thresholds::current::RECEIVE,
         }
     }
 }
@@ -146,6 +141,11 @@ fn parse_hash(hash_hex: &str) -> PyResult<[u8; 32]> {
     Ok(hash)
 }
 
+fn parse_threshold(threshold_hex: &str) -> PyResult<u64> {
+    u64::from_str_radix(threshold_hex.trim().trim_start_matches("0x"), 16)
+        .map_err(|e| PyValueError::new_err(format!("Invalid threshold hex: {e}")))
+}
+
 // ---------------------------------------------------------------------------
 // Public API — module-level functions
 // ---------------------------------------------------------------------------
@@ -196,11 +196,7 @@ fn generate_work_with_threshold(
     threshold_hex: &str,
 ) -> PyResult<WorkResult> {
     let hash = parse_hash(hash_hex)?;
-    let threshold = u64::from_str_radix(
-        threshold_hex.trim().trim_start_matches("0x"),
-        16,
-    )
-    .map_err(|e| PyValueError::new_err(format!("Invalid threshold hex: {e}")))?;
+    let threshold = parse_threshold(threshold_hex)?;
     let generator = get_generator();
 
     let result = py.detach(move || generator.generate(&hash, threshold));
@@ -240,6 +236,24 @@ fn validate_work(hash_hex: &str, work_hex: &str, work_type: WorkType) -> PyResul
     Ok(result.is_valid())
 }
 
+/// Validate a work nonce against an arbitrary hexadecimal threshold.
+///
+/// Use this function when a node requires a threshold stricter than the
+/// current mainnet presets, or when validating historical work.
+#[pyfunction]
+fn validate_work_with_threshold(
+    hash_hex: &str,
+    work_hex: &str,
+    threshold_hex: &str,
+) -> PyResult<bool> {
+    let hash = parse_hash(hash_hex)?;
+    let nonce = u64::from_str_radix(work_hex.trim().trim_start_matches("0x"), 16)
+        .map_err(|e| PyValueError::new_err(format!("Invalid work hex: {e}")))?;
+    let threshold = parse_threshold(threshold_hex)?;
+
+    Ok(::nano_rspow::work_validate(&hash, nonce, threshold).is_valid())
+}
+
 /// Compute the raw PoW difficulty for a hash+nonce pair.
 ///
 /// This is a low-level function useful for validation tooling
@@ -272,7 +286,7 @@ fn backend_name() -> &'static str {
     get_generator().backend_name()
 }
 
-const CLI_HELP: &str = "nano-rspow-python generates Nano proof of work from stdin.\n\nUsage:\n  nano-rspow-python [--help]\n\nWith no arguments, read one request per line and write one result per line.\nEmpty lines are ignored. The only accepted argument is --help.\n\nInput:\n  <hash_hex>\n  <hash_hex>:<threshold_hex>\n\nThe optional threshold must use a 0x prefix. Without one, the current\nepoch-2 send/change threshold is used.\n\nOutput:\n  <hash_hex>:0x<threshold_hex>:<work_hex>\n";
+const CLI_HELP: &str = "nano-rspow-python generates Nano proof of work from stdin.\n\nUsage:\n  nano-rspow-python [--help]\n\nWith no arguments, read one request per line and write one result per line.\nEmpty lines are ignored. The only accepted argument is --help.\n\nInput:\n  <hash_hex>\n  <hash_hex>:<threshold_hex>\n\nThe optional threshold must use a 0x prefix. Without one, the current\nsend/change threshold is used.\n\nOutput:\n  <hash_hex>:0x<threshold_hex>:<work_hex>\n";
 
 fn parse_cli_request(line: &str) -> Result<(String, [u8; 32], u64), String> {
     let parts: Vec<&str> = line.split(':').collect();
@@ -291,7 +305,7 @@ fn parse_cli_request(line: &str) -> Result<(String, [u8; 32], u64), String> {
         u64::from_str_radix(&threshold_text[2..], 16)
             .map_err(|error| format!("invalid threshold {threshold_text:?}: {error}"))?
     } else {
-        thresholds::EPOCH2_SEND
+        thresholds::current::SEND
     };
 
     Ok((hash_text, hash, threshold))
@@ -361,21 +375,29 @@ fn cli_main(py: Python<'_>) -> PyResult<i32> {
 // Threshold constants submodule
 // ---------------------------------------------------------------------------
 
-/// Register the ``thresholds`` submodule with Nano PoW threshold constants.
-///
-/// Constants are sourced from ``nano-rspow/src/thresholds.rs`` and match
-/// the values used by rsnano-node and the C++ nano-node.
+/// Register grouped Nano PoW threshold preset submodules.
 fn register_thresholds(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     let sub = PyModule::new(parent.py(), "thresholds")?;
-    sub.add("EPOCH2_SEND", thresholds::EPOCH2_SEND)?;
-    sub.add("EPOCH2_RECEIVE", thresholds::EPOCH2_RECEIVE)?;
-    sub.add("LEGACY_EPOCH1", thresholds::LEGACY_EPOCH1)?;
-    sub.add("EPOCH1", thresholds::LEGACY_EPOCH1)?;
-    sub.add("BETA_LEGACY_EPOCH1", thresholds::BETA_LEGACY_EPOCH1)?;
-    sub.add("BETA_EPOCH1", thresholds::BETA_LEGACY_EPOCH1)?;
-    sub.add("DEV", thresholds::DEV)?;
-    sub.add("BASE", thresholds::BASE)?;
+    let current = PyModule::new(parent.py(), "current")?;
+    current.add("SEND", thresholds::current::SEND)?;
+    current.add("RECEIVE", thresholds::current::RECEIVE)?;
+    let legacy = PyModule::new(parent.py(), "legacy")?;
+    legacy.add("EPOCH1", thresholds::legacy::EPOCH1)?;
+    legacy.add("BETA_EPOCH1", thresholds::legacy::BETA_EPOCH1)?;
+    let testing = PyModule::new(parent.py(), "testing")?;
+    testing.add("DEV", thresholds::testing::DEV)?;
+    sub.add_submodule(&current)?;
+    sub.add_submodule(&legacy)?;
+    sub.add_submodule(&testing)?;
     parent.add_submodule(&sub)?;
+
+    // Register each level so `from nano_rspow.thresholds import current` works
+    // in addition to attribute access on the extension module.
+    let modules = parent.py().import("sys")?.getattr("modules")?;
+    modules.set_item("nano_rspow.thresholds", &sub)?;
+    modules.set_item("nano_rspow.thresholds.current", &current)?;
+    modules.set_item("nano_rspow.thresholds.legacy", &legacy)?;
+    modules.set_item("nano_rspow.thresholds.testing", &testing)?;
     Ok(())
 }
 
@@ -394,6 +416,7 @@ fn nano_rspow(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(generate_work, m)?)?;
     m.add_function(wrap_pyfunction!(generate_work_with_threshold, m)?)?;
     m.add_function(wrap_pyfunction!(validate_work, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_work_with_threshold, m)?)?;
     m.add_function(wrap_pyfunction!(compute_difficulty, m)?)?;
     m.add_function(wrap_pyfunction!(backend_name, m)?)?;
     m.add_function(wrap_pyfunction!(cli_main, m)?)?;

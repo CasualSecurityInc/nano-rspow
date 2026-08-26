@@ -9,16 +9,12 @@ class WorkType(IntEnum):
     """Nano network work type — determines the difficulty threshold.
 
     Values:
-        Send:    Epoch 2 send/change threshold (0xfffffff800000000)
-        Receive: Epoch 2 receive threshold     (0xfffffe0000000000)
-        LegacyEpoch1: Legacy threshold only     (0xffffffc000000000)
-        Epoch1: LegacyEpoch1 compatibility alias (deprecated)
+        Send:    Current send/change threshold (0xfffffff800000000)
+        Receive: Current receive/open/epoch threshold (0xfffffe0000000000)
     """
 
     Send = 0
     Receive = 1
-    Epoch1 = 2
-    LegacyEpoch1 = 3
 
 class WorkResult:
     """The result of a PoW generation or validation.
@@ -83,6 +79,10 @@ def validate_work(hash_hex: str, work_hex: str, work_type: WorkType) -> bool:
     """
     ...
 
+def validate_work_with_threshold(hash_hex: str, work_hex: str, threshold_hex: str) -> bool:
+    """Validate a nonce against an arbitrary hexadecimal threshold."""
+    ...
+
 def compute_difficulty(hash_hex: str, nonce_hex: str) -> str:
     """Compute the raw PoW difficulty for a hash+nonce pair.
 
@@ -110,32 +110,18 @@ def cli_main() -> int:
     ...
 
 class thresholds:
-    """Nano PoW threshold constants for all network epochs.
+    """Grouped threshold presets from the Rust core library."""
 
-    Constants are sourced from the Rust core library and match
-    the values used by rsnano-node and the C++ nano-node.
-    """
+    class current:
+        """Current Nano mainnet threshold presets."""
+        SEND: int
+        RECEIVE: int
 
-    EPOCH2_SEND: int
-    """Epoch 2 send/change threshold (current live network default for sends)."""
+    class legacy:
+        """Historical Epoch 1 threshold presets."""
+        EPOCH1: int
+        BETA_EPOCH1: int
 
-    EPOCH2_RECEIVE: int
-    """Epoch 2 receive threshold."""
-
-    LEGACY_EPOCH1: int
-    """Legacy epoch 1 threshold; not for current mainnet epoch blocks."""
-
-    EPOCH1: int
-    """Deprecated compatibility alias for LEGACY_EPOCH1."""
-
-    BETA_LEGACY_EPOCH1: int
-    """Beta network legacy epoch 1 threshold."""
-
-    BETA_EPOCH1: int
-    """Deprecated compatibility alias for BETA_LEGACY_EPOCH1."""
-
-    DEV: int
-    """Dev network threshold (very low, for testing)."""
-
-    BASE: int
-    """The highest threshold — used as the base for multiplier calculations."""
+    class testing:
+        """Test-only threshold presets."""
+        DEV: int

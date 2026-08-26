@@ -408,7 +408,7 @@ fn rpc_generate(request: &Value, server: &WorkServer) -> (u16, String) {
                 json!({
                     "work": result.nonce_hex(),
                     "difficulty": result.difficulty_hex(),
-                    "multiplier": format_multiplier(thresholds::to_multiplier(result.difficulty, thresholds::BASE)),
+                    "multiplier": format_multiplier(thresholds::to_multiplier(result.difficulty, thresholds::current::SEND)),
                     "hash": hex::encode(hash),
                 })
                 .to_string(),
@@ -447,10 +447,10 @@ fn rpc_validate(request: &Value) -> (u16, String) {
     let result = difficulty::compute(&hash, work);
     let has_explicit_threshold = request.get("difficulty").is_some() || request.get("multiplier").is_some();
     let mut response = json!({
-        "valid_all": if result >= thresholds::EPOCH2_SEND { "1" } else { "0" },
-        "valid_receive": if result >= thresholds::EPOCH2_RECEIVE { "1" } else { "0" },
+        "valid_all": if result >= thresholds::current::SEND { "1" } else { "0" },
+        "valid_receive": if result >= thresholds::current::RECEIVE { "1" } else { "0" },
         "difficulty": format!("{result:016x}"),
-        "multiplier": format_multiplier(thresholds::to_multiplier(result, thresholds::BASE)),
+        "multiplier": format_multiplier(thresholds::to_multiplier(result, thresholds::current::SEND)),
     });
     if has_explicit_threshold {
         response["valid"] = json!(if result >= threshold { "1" } else { "0" });
@@ -491,7 +491,7 @@ fn rpc_benchmark(request: &Value, server: &WorkServer) -> (u16, String) {
                 "difficulty": format!("{threshold:016x}"),
                 "duration": result.duration_ms.to_string(),
                 "hint": "Times in milliseconds",
-                "multiplier": format_multiplier(thresholds::to_multiplier(threshold, thresholds::BASE)),
+                "multiplier": format_multiplier(thresholds::to_multiplier(threshold, thresholds::current::SEND)),
             })
             .to_string(),
         ),
@@ -511,7 +511,7 @@ fn parse_requested_threshold(request: &Value) -> Result<u64, String> {
     } else if let Some(difficulty) = request.get("difficulty") {
         parse_hex_value(difficulty).ok_or_else(|| "difficulty must be a 64-bit hexadecimal value".to_owned())
     } else {
-        Ok(thresholds::BASE)
+        Ok(thresholds::current::SEND)
     }
 }
 
@@ -522,13 +522,13 @@ fn parse_validate_threshold(request: &Value) -> Result<u64, String> {
         parse_fixed_hex_u64(difficulty)
             .ok_or_else(|| "difficulty must be 16 hexadecimal characters".to_owned())
     } else {
-        Ok(thresholds::BASE)
+        Ok(thresholds::current::SEND)
     }
 }
 
 fn threshold_from_multiplier(multiplier: f64) -> u64 {
     let max = u64::MAX as f64;
-    let threshold = max - ((max - thresholds::BASE as f64) / multiplier);
+    let threshold = max - ((max - thresholds::current::SEND as f64) / multiplier);
     threshold.clamp(0.0, max) as u64
 }
 

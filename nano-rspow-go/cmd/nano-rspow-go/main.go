@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	nanorspow "github.com/CasualSecurityInc/nano-rspow/nano-rspow-go"
+	"github.com/CasualSecurityInc/nano-rspow/nano-rspow-go/thresholds/current"
 )
 
 const helpText = `nano-rspow-go generates Nano proof of work from stdin.
@@ -26,7 +27,7 @@ Input:
   <hash_hex>:<threshold_hex>
 
 The optional threshold must use a 0x prefix. Without one, the current
-epoch-2 send/change threshold is used.
+send/change threshold is used.
 
 Output:
   <hash_hex>:0x<threshold_hex>:<work_hex>
@@ -104,7 +105,7 @@ func parseRequest(line string) (string, [32]byte, uint64, error) {
 		return "", zeroHash, 0, err
 	}
 
-	threshold := nanorspow.Epoch2Send
+	threshold := current.Send
 	if len(parts) == 2 {
 		thresholdText := strings.TrimSpace(parts[1])
 		if !strings.HasPrefix(thresholdText, "0x") {

@@ -1,4 +1,4 @@
-const { generateWork, generateWorkWithThreshold, validateWork, WorkType, getBackendName, workTypeToHex } = require('./index');
+const { generateWork, generateWorkWithThreshold, validateWork, validateWorkWithThreshold, WorkType, LegacyWorkType, TestingWorkType, getBackendName, workTypeToHex, legacyWorkTypeToHex, testingWorkTypeToHex } = require('./index');
 
 async function main() {
     console.log("Testing nano-rspow-node via NAPI-RS bindings...");
@@ -11,11 +11,12 @@ async function main() {
     console.log("\nChecking WorkType -> hex mappings...");
     const expected = {
         [WorkType.Send]: "fffffff800000000",
-        [WorkType.Receive]: "fffffe0000000000",
-        [WorkType.LegacyEpoch1]: "ffffffc000000000",
-        [WorkType.Epoch1]: "ffffffc000000000",
-        [WorkType.Dev]: "fe00000000000000",
+        [WorkType.Receive]: "fffffe0000000000"
     };
+
+    if ("LegacyEpoch1" in WorkType || "Dev" in WorkType) {
+        throw new Error("WorkType must expose current mainnet presets only");
+    }
 
     for (const wt of Object.values(WorkType)) {
         const hex = workTypeToHex(wt);
@@ -28,15 +29,15 @@ async function main() {
         }
     }
 
-    const start = Date.now();
-    console.log(`\nGenerating work for WorkType.Dev...`);
-    const workDev = await generateWork(hash, WorkType.Dev);
-    console.log(`[Dev] Generated: ${workDev} in ${Date.now() - start}ms`);
-    console.log(`[Dev] Valid: ${validateWork(hash, workDev, WorkType.Dev)}`);
+    const devThreshold = testingWorkTypeToHex(TestingWorkType.Dev);
+    const legacyThreshold = legacyWorkTypeToHex(LegacyWorkType.Epoch1);
+    if (legacyThreshold !== "ffffffc000000000") {
+        throw new Error(`Unexpected legacy threshold: ${legacyThreshold}`);
+    }
 
-    const workCustom = await generateWorkWithThreshold(hash, "fe00000000000000");
+    const workCustom = await generateWorkWithThreshold(hash, devThreshold);
     console.log(`[Custom threshold] Generated: ${workCustom}`);
-    if (!validateWork(hash, workCustom, WorkType.Dev)) {
+    if (!validateWorkWithThreshold(hash, workCustom, devThreshold)) {
         throw new Error("Custom-threshold work failed validation");
     }
 

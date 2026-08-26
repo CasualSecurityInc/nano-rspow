@@ -1,11 +1,18 @@
 import type { PowEngine } from '@openrai/nano-pow-contract'
 
+/** Current Nano mainnet work presets. */
 export enum WorkType {
   Send = 'Send',
-  Receive = 'Receive',
-  LegacyEpoch1 = 'LegacyEpoch1',
-  /** @deprecated Use LegacyEpoch1. Not for current mainnet epoch blocks. */
-  Epoch1 = 'Epoch1',
+  Receive = 'Receive'
+}
+
+/** Historical presets for use with explicit custom-threshold APIs. */
+export enum LegacyWorkType {
+  Epoch1 = 'Epoch1'
+}
+
+/** Test-only presets for use with explicit custom-threshold APIs. */
+export enum TestingWorkType {
   Dev = 'Dev'
 }
 
@@ -20,3 +27,5 @@ export function getBackendName(): string
 export function recommendLocalPow(): boolean
 export function clearPowTuningCache(): boolean
 export function workTypeToHex(workType: WorkType): WorkThreshold
+export function legacyWorkTypeToHex(workType: LegacyWorkType): WorkThreshold
+export function testingWorkTypeToHex(workType: TestingWorkType): WorkThreshold

@@ -13,22 +13,48 @@ fn get_generator() -> &'static WorkGenerator {
 
 #[napi(string_enum)]
 pub enum WorkType {
+    /// Current mainnet threshold for send and change blocks.
     Send,
+    /// Current mainnet threshold for receive, open, and epoch blocks.
     Receive,
-    /// Legacy epoch-1 threshold. Not for current mainnet epoch blocks.
-    LegacyEpoch1,
-    /// Deprecated compatibility alias for `LegacyEpoch1`.
-    Epoch1,
-    Dev,
 }
 
 impl WorkType {
     fn threshold(&self) -> u64 {
         match self {
-            WorkType::Send => thresholds::EPOCH2_SEND,
-            WorkType::Receive => thresholds::EPOCH2_RECEIVE,
-            WorkType::LegacyEpoch1 | WorkType::Epoch1 => thresholds::LEGACY_EPOCH1,
-            WorkType::Dev => thresholds::DEV,
+            WorkType::Send => thresholds::current::SEND,
+            WorkType::Receive => thresholds::current::RECEIVE,
+        }
+    }
+}
+
+/// Historical threshold presets. Pass their hexadecimal value to the explicit
+/// custom-threshold APIs; they are not current mainnet work types.
+#[napi(string_enum)]
+pub enum LegacyWorkType {
+    /// Epoch 1 mainnet threshold.
+    Epoch1,
+}
+
+impl LegacyWorkType {
+    fn threshold(&self) -> u64 {
+        match self {
+            LegacyWorkType::Epoch1 => thresholds::legacy::EPOCH1,
+        }
+    }
+}
+
+/// Test-only threshold presets. Do not use them for a published mainnet block.
+#[napi(string_enum)]
+pub enum TestingWorkType {
+    /// Low-difficulty development threshold.
+    Dev,
+}
+
+impl TestingWorkType {
+    fn threshold(&self) -> u64 {
+        match self {
+            TestingWorkType::Dev => thresholds::testing::DEV,
         }
     }
 }
@@ -81,6 +107,9 @@ pub fn generate_work(hash_hex: String, work_type: WorkType) -> Result<AsyncTask<
 }
 
 /// Generates work for an arbitrary hexadecimal threshold.
+///
+/// Use this API when a node or integration requires a threshold stricter than
+/// the current mainnet presets, or when handling historical work.
 #[napi]
 pub fn generate_work_with_threshold(
     hash_hex: String,
@@ -156,5 +185,17 @@ pub fn clear_pow_tuning_cache() -> bool {
 
 #[napi]
 pub fn work_type_to_hex(work_type: WorkType) -> String {
+    format!("{:016x}", work_type.threshold())
+}
+
+/// Returns the hexadecimal threshold for a historical preset.
+#[napi]
+pub fn legacy_work_type_to_hex(work_type: LegacyWorkType) -> String {
+    format!("{:016x}", work_type.threshold())
+}
+
+/// Returns the hexadecimal threshold for a test-only preset.
+#[napi]
+pub fn testing_work_type_to_hex(work_type: TestingWorkType) -> String {
     format!("{:016x}", work_type.threshold())
 }

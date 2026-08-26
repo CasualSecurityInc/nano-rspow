@@ -16,7 +16,7 @@
 //!
 //! // Validate a known-good work value (nonce) matching the above test vector
 //! let work = u64::from_str_radix("2bf29ef00786a6bc", 16).unwrap();
-//! let result = nano_rspow::work_validate(&hash, work, thresholds::LEGACY_EPOCH1);
+//! let result = nano_rspow::work_validate(&hash, work, thresholds::current::RECEIVE);
 //! assert!(result.is_valid());
 //! ```
 
@@ -221,7 +221,7 @@ pub fn recommend_local_pow() -> bool {
 
         let estimated_total_hps = hashes_per_sec * core_count;
         
-        // Target: ~15 MH/s minimum for reasonable EPOCH2_SEND speed
+        // Target: ~15 MH/s minimum for reasonable current send-threshold speed.
         estimated_total_hps >= 15_000_000.0
     };
 
@@ -260,7 +260,7 @@ mod tests {
     fn assert_repeated_generate_valid(generator: &WorkGenerator) {
         let hash = test_hash();
         for _ in 0..3 {
-            let result = generator.generate(&hash, thresholds::DEV).unwrap();
+            let result = generator.generate(&hash, thresholds::testing::DEV).unwrap();
             assert!(result.is_valid());
         }
     }
@@ -272,7 +272,7 @@ mod tests {
         for _ in 0..4 {
             let g = Arc::clone(&g);
             handles.push(thread::spawn(move || {
-                let result = g.generate(&hash, thresholds::DEV).unwrap();
+                let result = g.generate(&hash, thresholds::testing::DEV).unwrap();
                 assert!(result.is_valid());
             }));
         }

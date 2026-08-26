@@ -33,16 +33,16 @@ measurement result.
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | `cpu` | `cold` | `dev` | `0xfe00000000000000` | 5 | 0.1 | 1.5 | 0.4 | 0.1 |
 | `cpu` | `warm` | `dev` | `0xfe00000000000000` | 5 | 0.0 | 0.1 | 0.0 | 0.0 |
-| `cpu` | `cold` | `ep2_recv` | `0xfffffe0000000000` | 5 | 16.4 | 927.1 | 394.6 | 310.5 |
-| `cpu` | `warm` | `ep2_recv` | `0xfffffe0000000000` | 5 | 43.5 | 907.1 | 372.6 | 226.3 |
+| `cpu` | `cold` | `receive` | `0xfffffe0000000000` | 5 | 16.4 | 927.1 | 394.6 | 310.5 |
+| `cpu` | `warm` | `receive` | `0xfffffe0000000000` | 5 | 43.5 | 907.1 | 372.6 | 226.3 |
 | `cpu` | `cold` | `legacy_epoch1` | `0xffffffc000000000` | 5 | 87.7 | 12704.5 | 4952.2 | 2482.8 |
 | `cpu` | `warm` | `legacy_epoch1` | `0xffffffc000000000` | 5 | 1443.1 | 3212.6 | 2497.8 | 2493.2 |
-| `cpu` | `cold` | `ep2_send` | `0xfffffff800000000` | 1 | 3633.9 | 3633.9 | 3633.9 | 3633.9 |
-| `cpu` | `warm` | `ep2_send` | — | — | — | — | — | — |
+| `cpu` | `cold` | `send` | `0xfffffff800000000` | 1 | 3633.9 | 3633.9 | 3633.9 | 3633.9 |
+| `cpu` | `warm` | `send` | — | — | — | — | — | — |
 
-The warm `ep2_send` run did not finish before the runner's 30-second foreground
+The warm `send` run did not finish before the runner's 30-second foreground
 limit. It is omitted rather than represented by an incomplete value. The cold
-`ep2_send` row has one sample only and is not suitable for comparisons.
+`send` row has one sample only and is not suitable for comparisons.
 
 ## Reproduce
 

@@ -113,11 +113,11 @@ mod tests {
         let hash = [0u8; 32];
 
         // 1M nonces is more than enough for DEV threshold
-        let result = generate_cpu_batch(&hash, thresholds::DEV, 1_000_000);
+        let result = generate_cpu_batch(&hash, thresholds::testing::DEV, 1_000_000);
 
         assert!(result.is_some(), "batch should find a nonce at DEV threshold");
         let diff = difficulty::compute(&hash, result.unwrap());
-        assert!(diff >= thresholds::DEV);
+        assert!(diff >= thresholds::testing::DEV);
     }
 
     /// With an impossibly high threshold, even a large batch returns None.

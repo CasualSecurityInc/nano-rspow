@@ -116,7 +116,7 @@ enum Commands {
         #[arg(long, value_enum, default_value_t = BenchBackend::All)]
         backend: BenchBackend,
 
-        /// Tier to benchmark: dev, ep2_recv, legacy_epoch1, ep2_send, or all
+        /// Tier to benchmark: dev, receive, legacy_epoch1, send, or all
         #[arg(long, value_enum, default_value_t = BenchTier::All)]
         tier: BenchTier,
 
@@ -182,9 +182,9 @@ enum BenchBackend {
 #[serde(rename_all = "snake_case")]
 enum BenchTier {
     Dev,
-    Ep2Recv,
+    Receive,
     LegacyEpoch1,
-    Ep2Send,
+    Send,
     All,
 }
 
@@ -295,10 +295,10 @@ fn cmd_info() {
     println!("  [✗] cuda    — not compiled (see feat/cuda-oxide branch)");
     println!();
     println!("Thresholds:");
-    println!("  epoch2 send    = {:#018x}", thresholds::EPOCH2_SEND);
-    println!("  epoch2 receive = {:#018x}", thresholds::EPOCH2_RECEIVE);
-    println!("  legacy_epoch1  = {:#018x}", thresholds::LEGACY_EPOCH1);
-    println!("  dev (testing)  = {:#018x}", thresholds::DEV);
+    println!("  current send    = {:#018x}", thresholds::current::SEND);
+    println!("  current receive = {:#018x}", thresholds::current::RECEIVE);
+    println!("  legacy epoch1   = {:#018x}", thresholds::legacy::EPOCH1);
+    println!("  dev (testing)   = {:#018x}", thresholds::testing::DEV);
 }
 
 fn print_gpu_diag_table(d: &GpuDiagnostics) {
@@ -618,9 +618,9 @@ struct BackendBenchReport {
 #[derive(Debug, Serialize)]
 struct BenchmarkThresholds {
     dev: u64,
-    ep2_recv: u64,
+    receive: u64,
     legacy_epoch1: u64,
-    ep2_send: u64,
+    send: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -832,10 +832,10 @@ fn cmd_benchmark(
     }
 
     let all_tiers: &[(&'static str, u64)] = &[
-        ("dev", thresholds::DEV),
-        ("ep2_recv", thresholds::EPOCH2_RECEIVE),
-        ("legacy_epoch1", thresholds::LEGACY_EPOCH1),
-        ("ep2_send", thresholds::EPOCH2_SEND),
+        ("dev", thresholds::testing::DEV),
+        ("receive", thresholds::current::RECEIVE),
+        ("legacy_epoch1", thresholds::legacy::EPOCH1),
+        ("send", thresholds::current::SEND),
     ];
 
     let tiers: Vec<(&'static str, u64)> = match tier {
@@ -844,9 +844,9 @@ fn cmd_benchmark(
             .filter(|&&(name, _)| name == "dev")
             .copied()
             .collect(),
-        BenchTier::Ep2Recv => all_tiers
+        BenchTier::Receive => all_tiers
             .iter()
-            .filter(|&&(name, _)| name == "ep2_recv")
+            .filter(|&&(name, _)| name == "receive")
             .copied()
             .collect(),
         BenchTier::LegacyEpoch1 => all_tiers
@@ -854,9 +854,9 @@ fn cmd_benchmark(
             .filter(|&&(name, _)| name == "legacy_epoch1")
             .copied()
             .collect(),
-        BenchTier::Ep2Send => all_tiers
+        BenchTier::Send => all_tiers
             .iter()
-            .filter(|&&(name, _)| name == "ep2_send")
+            .filter(|&&(name, _)| name == "send")
             .copied()
             .collect(),
         BenchTier::All => all_tiers.to_vec(),
@@ -896,7 +896,7 @@ fn cmd_benchmark(
             let generator = WorkGenerator::cpu();
             backend_report.timings.setup_ms = Some(setup_t0.elapsed().as_secs_f64() * 1000.0);
             let warmup_t0 = Instant::now();
-            generator.generate(&hash, thresholds::DEV);
+            generator.generate(&hash, thresholds::testing::DEV);
             backend_report.timings.warmup_ms = Some(warmup_t0.elapsed().as_secs_f64() * 1000.0);
             for &(name, thresh) in &tiers {
                 let row = run_backend_bench_warm(&generator, &hash, thresh, count, name);
@@ -954,7 +954,7 @@ fn cmd_benchmark(
                     }
                     if mode != BenchMode::Cold {
                         let warmup_t0 = Instant::now();
-                        generator.generate(&hash, thresholds::DEV);
+                        generator.generate(&hash, thresholds::testing::DEV);
                         backend_report.timings.warmup_ms =
                             Some(warmup_t0.elapsed().as_secs_f64() * 1000.0);
                         for &(name, thresh) in &tiers {
@@ -1018,7 +1018,7 @@ fn cmd_benchmark(
                     }
                     if mode != BenchMode::Cold {
                         let warmup_t0 = Instant::now();
-                        generator.generate(&hash, thresholds::DEV);
+                        generator.generate(&hash, thresholds::testing::DEV);
                         backend_report.timings.warmup_ms =
                             Some(warmup_t0.elapsed().as_secs_f64() * 1000.0);
                         for &(name, thresh) in &tiers {
@@ -1094,10 +1094,10 @@ fn cmd_benchmark(
             backend,
             tier,
             thresholds: BenchmarkThresholds {
-                dev: thresholds::DEV,
-                ep2_recv: thresholds::EPOCH2_RECEIVE,
-                legacy_epoch1: thresholds::LEGACY_EPOCH1,
-                ep2_send: thresholds::EPOCH2_SEND,
+                dev: thresholds::testing::DEV,
+                receive: thresholds::current::RECEIVE,
+                legacy_epoch1: thresholds::legacy::EPOCH1,
+                send: thresholds::current::SEND,
             },
             backends,
             rows,
@@ -1152,11 +1152,11 @@ fn print_ascii_table(rows: &[BenchRow]) {
     println!("{sep}");
     println!();
     println!(
-        "Tiers benchmarked: dev={:#018x} ep2_recv={:#018x} legacy_epoch1={:#018x} ep2_send={:#018x}",
-        thresholds::DEV,
-        thresholds::EPOCH2_RECEIVE,
-        thresholds::LEGACY_EPOCH1,
-        thresholds::EPOCH2_SEND
+        "Tiers benchmarked: dev={:#018x} receive={:#018x} legacy_epoch1={:#018x} send={:#018x}",
+        thresholds::testing::DEV,
+        thresholds::current::RECEIVE,
+        thresholds::legacy::EPOCH1,
+        thresholds::current::SEND
     );
 }
 
@@ -1186,5 +1186,5 @@ fn print_markdown_table(rows: &[BenchRow]) {
     }
 
     println!();
-    println!("> Tiers benchmarked: `dev`, `ep2_recv`, `legacy_epoch1`, `ep2_send`.");
+    println!("> Tiers benchmarked: `dev`, `receive`, `legacy_epoch1`, `send`.");
 }

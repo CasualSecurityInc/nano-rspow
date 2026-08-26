@@ -57,12 +57,14 @@ nano_rspow_status nano_rspow_generator_new(uint32_t backend, nano_rspow_generato
 void nano_rspow_generator_free(nano_rspow_generator *generator);
 nano_rspow_status nano_rspow_generator_generate(const nano_rspow_generator *generator,
                                                 const uint8_t *hash,
+                                                /* Caller-supplied arbitrary Nano PoW threshold. */
                                                 uint64_t threshold,
                                                 const nano_rspow_request *request,
                                                 nano_rspow_work_result *output);
 nano_rspow_status nano_rspow_generator_validate(const nano_rspow_generator *generator,
                                                 const uint8_t *hash,
                                                 uint64_t nonce,
+                                                /* Caller-supplied arbitrary Nano PoW threshold. */
                                                 uint64_t threshold,
                                                 nano_rspow_work_result *output);
 nano_rspow_status nano_rspow_generator_diagnostics(const nano_rspow_generator *generator,

@@ -22,16 +22,11 @@ import (
 	"runtime"
 	"sync"
 	"unsafe"
+
+	"github.com/CasualSecurityInc/nano-rspow/nano-rspow-go/thresholds/current"
 )
 
-const (
-	nativeABIVersion        = 1
-	Epoch2Send       uint64 = 0xfffffff800000000
-	Epoch2Receive    uint64 = 0xfffffe0000000000
-	LegacyEpoch1     uint64 = 0xffffffc000000000
-	BetaLegacyEpoch1 uint64 = 0xfffff00000000000
-	Dev              uint64 = 0xfe00000000000000
-)
+const nativeABIVersion = 1
 
 // Backend controls native generator selection. Auto always retains CPU
 // fallback; GPU is an opportunistic runtime accelerator.
@@ -43,29 +38,20 @@ const (
 	BackendWGPU Backend = C.NANO_RSPOW_BACKEND_WGPU
 )
 
-// WorkType is a Nano threshold preset.
+// WorkType selects a current Nano mainnet threshold preset.
 type WorkType uint8
 
 const (
 	WorkSend WorkType = iota
 	WorkReceive
-	WorkLegacyEpoch1
-	WorkBetaLegacyEpoch1
-	WorkDev
 )
 
 func (w WorkType) Threshold() (uint64, error) {
 	switch w {
 	case WorkSend:
-		return Epoch2Send, nil
+		return current.Send, nil
 	case WorkReceive:
-		return Epoch2Receive, nil
-	case WorkLegacyEpoch1:
-		return LegacyEpoch1, nil
-	case WorkBetaLegacyEpoch1:
-		return BetaLegacyEpoch1, nil
-	case WorkDev:
-		return Dev, nil
+		return current.Receive, nil
 	default:
 		return 0, fmt.Errorf("nano-rspow: unknown work type %d", w)
 	}
@@ -244,7 +230,7 @@ func (g *Generator) Generate(ctx context.Context, hash [32]byte, threshold uint6
 	}
 }
 
-// GenerateType is Generate with a standard Nano threshold preset.
+// GenerateType is Generate with a current Nano mainnet threshold preset.
 func (g *Generator) GenerateType(ctx context.Context, hash [32]byte, workType WorkType) (WorkResult, error) {
 	threshold, err := workType.Threshold()
 	if err != nil {

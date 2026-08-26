@@ -1,6 +1,6 @@
 # Browser PoW comparison
 
-This local page compares Epoch 2 send-work searches from four providers for
+This local page compares current send-work searches from four providers for
 the same randomly generated work roots: the checked-in nano-rspow-web WebAssembly
 snapshot, the pinned nano-pow dependency, the local nano-rspow work peer's
 Nano-compatible JSON-RPC `work_generate`, and the local `nano-rspow-node` addon.
@@ -59,5 +59,5 @@ proxy-only metadata under `_benchmark`: `providerMs` measures the upstream
 JSON-RPC request or native addon `generateWork` call, and `backend` identifies
 the selected provider. Browser HTTP/fetch time is excluded from the plotted
 duration. Every returned nonce is still independently validated in the browser
-against the shared Epoch 2 send threshold before it is recorded or used as the
+against the shared current send threshold before it is recorded or used as the
 next battle root.

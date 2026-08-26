@@ -7,6 +7,7 @@ Test vectors are sourced from the same data used in the Rust core library:
 
 import nano_rspow
 from nano_rspow import WorkType, WorkResult
+from nano_rspow.thresholds import current, legacy, testing
 
 
 # ---------------------------------------------------------------------------
@@ -25,8 +26,8 @@ RSNANO_WORK = "3c82cc724905ee95"
 RSNANO_DIFFICULTY_INT = 18446743921403126366
 
 # Threshold constants from thresholds.rs
-EPOCH2_SEND = 0xfffffff800000000
-EPOCH2_RECEIVE = 0xFFFFFE0000000000
+CURRENT_SEND = 0xfffffff800000000
+CURRENT_RECEIVE = 0xFFFFFE0000000000
 LEGACY_EPOCH1 = 0xFFFFFFc000000000
 DEV = 0xFE00000000000000
 
@@ -75,18 +76,22 @@ class TestValidateWork:
 
     def test_known_valid_legacy_epoch1(self):
         """Known-good work from nano-work-server validates at legacy epoch-1 difficulty."""
-        assert nano_rspow.validate_work(VECTOR_HASH, VECTOR_WORK, WorkType.LegacyEpoch1)
+        assert nano_rspow.validate_work_with_threshold(
+            VECTOR_HASH, VECTOR_WORK, f"{LEGACY_EPOCH1:016x}"
+        )
 
     def test_known_invalid(self):
         """Work = 0 should not meet any real threshold."""
-        assert not nano_rspow.validate_work(
-            VECTOR_HASH, "0000000000000000", WorkType.LegacyEpoch1
+        assert not nano_rspow.validate_work_with_threshold(
+            VECTOR_HASH, "0000000000000000", f"{LEGACY_EPOCH1:016x}"
         )
 
     def test_invalid_hash_hex_raises(self):
         """Non-hex hash should raise ValueError."""
         try:
-            nano_rspow.validate_work("zzzz", VECTOR_WORK, WorkType.LegacyEpoch1)
+            nano_rspow.validate_work_with_threshold(
+                "zzzz", VECTOR_WORK, f"{LEGACY_EPOCH1:016x}"
+            )
             assert False, "Expected ValueError"
         except ValueError:
             pass
@@ -110,11 +115,12 @@ class TestGenerateWork:
         # Round-trip validation
         assert nano_rspow.validate_work(zero_hash, result.nonce_hex, WorkType.Receive)
 
-    def test_generate_legacy_epoch1_known_hash(self):
-        """Generate work for a known hash at legacy epoch-1 difficulty."""
-        result = nano_rspow.generate_work(VECTOR_HASH, WorkType.LegacyEpoch1)
+    def test_generate_custom_threshold_roundtrip(self):
+        """Generate and validate work at a caller-supplied historical threshold."""
+        threshold = f"{LEGACY_EPOCH1:016x}"
+        result = nano_rspow.generate_work_with_threshold(VECTOR_HASH, threshold)
         assert result.is_valid
-        assert nano_rspow.validate_work(VECTOR_HASH, result.nonce_hex, WorkType.LegacyEpoch1)
+        assert nano_rspow.validate_work_with_threshold(VECTOR_HASH, result.nonce_hex, threshold)
 
     def test_str_returns_nonce(self):
         """str(result) should return the nonce hex."""
@@ -136,8 +142,8 @@ class TestWorkType:
         """Enum integer values should be stable."""
         assert WorkType.Send == 0
         assert WorkType.Receive == 1
-        assert WorkType.Epoch1 == 2
-        assert WorkType.LegacyEpoch1 == 3
+        assert not hasattr(WorkType, "LegacyEpoch1")
+        assert not hasattr(WorkType, "Dev")
 
     def test_equality(self):
         """Enum equality should work."""
@@ -148,22 +154,21 @@ class TestWorkType:
 class TestThresholds:
     """Tests for the threshold constants submodule."""
 
-    def test_epoch2_send(self):
-        """EPOCH2_SEND must match the Rust constant."""
-        assert nano_rspow.thresholds.EPOCH2_SEND == 0xfffffff800000000
+    def test_current_send(self):
+        assert nano_rspow.thresholds.current.SEND == CURRENT_SEND
+        assert current.SEND == CURRENT_SEND
+        assert not hasattr(nano_rspow.thresholds, "LEGACY_EPOCH1")
 
-    def test_epoch2_receive(self):
-        assert nano_rspow.thresholds.EPOCH2_RECEIVE == 0xFFFFFE0000000000
+    def test_current_receive(self):
+        assert nano_rspow.thresholds.current.RECEIVE == CURRENT_RECEIVE
 
     def test_legacy_epoch1(self):
-        assert nano_rspow.thresholds.LEGACY_EPOCH1 == 0xFFFFFFc000000000
+        assert nano_rspow.thresholds.legacy.EPOCH1 == LEGACY_EPOCH1
+        assert legacy.EPOCH1 == LEGACY_EPOCH1
 
     def test_dev(self):
-        assert nano_rspow.thresholds.DEV == 0xFE00000000000000
-
-    def test_base_equals_epoch2_send(self):
-        """BASE should equal EPOCH2_SEND (the hardest threshold)."""
-        assert nano_rspow.thresholds.BASE == nano_rspow.thresholds.EPOCH2_SEND
+        assert nano_rspow.thresholds.testing.DEV == DEV
+        assert testing.DEV == DEV
 
 
 class TestBackendName:

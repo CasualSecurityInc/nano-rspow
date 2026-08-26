@@ -41,9 +41,25 @@ if (!nativeBinding) {
   throw loadError || new Error(`Failed to load native binding for ${key}`)
 }
 
-const { WorkType, generateWork, generateWorkWithThreshold, validateWork, validateWorkWithThreshold, getBackendName, recommendLocalPow, clearPowTuningCache, workTypeToHex } = nativeBinding
+const {
+  WorkType,
+  LegacyWorkType,
+  TestingWorkType,
+  generateWork,
+  generateWorkWithThreshold,
+  validateWork,
+  validateWorkWithThreshold,
+  getBackendName,
+  recommendLocalPow,
+  clearPowTuningCache,
+  workTypeToHex,
+  legacyWorkTypeToHex,
+  testingWorkTypeToHex
+} = nativeBinding
 
 module.exports.WorkType = WorkType
+module.exports.LegacyWorkType = LegacyWorkType
+module.exports.TestingWorkType = TestingWorkType
 module.exports.generateWork = generateWork
 module.exports.generateWorkWithThreshold = generateWorkWithThreshold
 module.exports.validateWork = validateWork
@@ -52,6 +68,8 @@ module.exports.getBackendName = getBackendName
 module.exports.recommendLocalPow = recommendLocalPow
 module.exports.clearPowTuningCache = clearPowTuningCache
 module.exports.workTypeToHex = workTypeToHex
+module.exports.legacyWorkTypeToHex = legacyWorkTypeToHex
+module.exports.testingWorkTypeToHex = testingWorkTypeToHex
 
 module.exports.createPowEngine = function createPowEngine () {
   return {

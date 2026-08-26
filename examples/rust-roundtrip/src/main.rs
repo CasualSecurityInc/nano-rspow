@@ -13,7 +13,7 @@ fn main() {
     println!("Active backend: {}", generator.backend_name());
 
     let start = std::time::Instant::now();
-    let result = generator.generate(&hash, thresholds::DEV).expect("Failed to generate work");
+    let result = generator.generate(&hash, thresholds::testing::DEV).expect("Failed to generate work");
     let duration = start.elapsed();
 
     println!("Generated nonce: {} in {:?}", result.nonce_hex(), duration);

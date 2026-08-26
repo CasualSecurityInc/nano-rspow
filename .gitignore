@@ -12,6 +12,7 @@ yarn-error.log*
 
 # napi-rs artifacts
 artifacts/
+nano-rspow-node/napi-generated.d.ts
 
 # Python
 __pycache__/

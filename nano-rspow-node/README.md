@@ -59,19 +59,31 @@ Deletes nano-rspow's temporary tuning cache. Returns `true` only when a cache di
 
 Returns the threshold selected by `workType` as a 16-character lowercase hexadecimal string.
 
+### Custom thresholds
+
+`generateWorkWithThreshold(hashHex, thresholdHex)` and
+`validateWorkWithThreshold(hashHex, workHex, thresholdHex)` accept any
+16-character hexadecimal threshold. Use them when a node requires a stricter
+threshold than the public Nano floors, or when validating historical work.
+
 ### Work types
 
 | `WorkType`  | Use for                        |
 |-------------|--------------------------------|
 | `Send`      | Send and change blocks         |
-| `Receive`   | Receive, open, and epoch blocks at the current epoch-2 threshold |
-| `LegacyEpoch1` | Historical epoch-1 work only; not for current mainnet blocks |
-| `Epoch1`    | Deprecated compatibility alias for `LegacyEpoch1` |
-| `Dev`       | Low-difficulty development-network work; do not use for mainnet blocks |
+| `Receive`   | Receive, open, and epoch blocks |
 
 Current Nano mainnet uses `fffffff800000000` for send/change blocks and
-`fffffe0000000000` for receive/open/epoch blocks. `LegacyEpoch1` maps to
-`ffffffc000000000` and exists only for historical compatibility.
+`fffffe0000000000` for receive/open/epoch blocks. See Nano's
+[Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
+for the current network requirements.
+
+### Historical and testing presets
+
+`LegacyWorkType.Epoch1` maps to `ffffffc000000000` for historical Epoch 1
+validation only. `TestingWorkType.Dev` maps to `fe00000000000000` for tests.
+Convert either value with its matching `*WorkTypeToHex` function, then pass it
+to the explicit custom-threshold APIs.
 
 ## See Also
 

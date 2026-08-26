@@ -73,7 +73,7 @@ mod tests {
             "difficulty mismatch: got {actual:#018x}, expected {expected_difficulty:#018x}"
         );
         assert!(
-            actual >= thresholds::LEGACY_EPOCH1,
+            actual >= thresholds::legacy::EPOCH1,
             "work must meet legacy epoch1 threshold"
         );
     }
@@ -87,7 +87,7 @@ mod tests {
 
         let actual = compute(&hash, work);
         assert_eq!(actual, expected_difficulty);
-        assert!(actual >= thresholds::LEGACY_EPOCH1);
+        assert!(actual >= thresholds::legacy::EPOCH1);
     }
 
     /// Vector 3 — boundary: work exactly at the legacy epoch-1 threshold should be valid.
@@ -96,7 +96,7 @@ mod tests {
         // We brute-force a nonce that's right at the boundary using CPU search
         // (very low dev threshold for speed)
         let hash = [0u8; 32];
-        let threshold = thresholds::DEV; // Very low — tests finish fast
+        let threshold = thresholds::testing::DEV; // Very low — tests finish fast
 
         // Search for a valid nonce
         let nonce = (0u64..).find(|&n| compute(&hash, n) >= threshold).unwrap();
@@ -110,7 +110,7 @@ mod tests {
         // work = 0 almost certainly produces difficulty below any real threshold
         let hash = hex_to_array("718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2");
         let work = 0u64;
-        assert!(!is_valid(&hash, work, thresholds::LEGACY_EPOCH1));
+        assert!(!is_valid(&hash, work, thresholds::legacy::EPOCH1));
     }
 
     /// Vector 5 — determinism: same inputs always produce same output.

@@ -411,7 +411,7 @@ mod tests {
                     generator,
                     hash.as_ptr(),
                     0x2bf29ef00786a6bc,
-                    nano_rspow::thresholds::LEGACY_EPOCH1,
+                    nano_rspow::thresholds::legacy::EPOCH1,
                     &mut result,
                 )
             },

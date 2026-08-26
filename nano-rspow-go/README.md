@@ -62,6 +62,16 @@ typed `WorkResult`; cancellation signals an opaque Rust request handle.
 `Validate`, `BackendName`, and `Diagnostics` are synchronous. No Go pointer is
 retained by Rust and no Rust callback enters Go.
 
+## Threshold presets
+
+Import current presets from `thresholds/current`: `current.Send` for send and
+change blocks, or `current.Receive` for receive, open, and epoch blocks.
+Historical Epoch 1 values are isolated in `thresholds/legacy`; test-only values
+are in `thresholds/testing`. `Generate` and `Validate` always accept an
+arbitrary `uint64` threshold, including a stricter requirement supplied by a
+node. See Nano's [Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
+for current network requirements.
+
 The cgo call itself is intentionally not used as a throughput claim. Benchmark
 the native `Generate` path separately from a no-op cgo call when comparing
 bindings; proof-of-work throughput is dominated by the selected Rust backend.
