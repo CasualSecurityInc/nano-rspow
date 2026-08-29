@@ -29,10 +29,12 @@
     "index.d.ts",
     "pow-engine.js",
     "pow-engine.d.ts",
+    "recommendation.js",
     "README.md"
   ],
   "scripts": {
-    "build": "cargo build -p nano-rspow-web --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir . ../target/wasm32-unknown-unknown/release/nano_rspow_web.wasm"
+    "build": "cargo build -p nano-rspow-web --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir . ../target/wasm32-unknown-unknown/release/nano_rspow_web.wasm",
+    "test": "node --test recommendation.test.js"
   },
   "dependencies": {
     "@openrai/nano-pow-contract": "^0.1.0"

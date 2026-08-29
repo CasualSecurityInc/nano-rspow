@@ -85,6 +85,13 @@ Synchronously generates PoW at any hexadecimal threshold, forcing single-threade
 
 Tests at most `max_nonces` nonces synchronously on the CPU. Returns a lowercase 16-character nonce when found, otherwise `null`. The CPU random-number-generator state persists between calls. Pass an unsigned 32-bit integer.
 
+### `recommendLocalPow(reprobe = false): Promise<boolean>`
+
+Returns whether this browser should prefer local PoW. On a cache miss it tests
+WebGPU capability, or the single-threaded WASM CPU fallback's throughput. The
+result is cached internally. Pass `true` to force a fresh evaluation after a
+hardware or browser capability change.
+
 ### `validate_work(hash_hex: string, nonce_hex: string, threshold_hex: string): boolean`
 Synchronously validates whether a nonce meets an arbitrary hexadecimal threshold for the given block hash.
 

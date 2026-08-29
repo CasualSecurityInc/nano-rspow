@@ -74,6 +74,30 @@ impl GenerateResult {
     }
 }
 
+/// Measure whether this browser can reasonably perform local proof-of-work.
+///
+/// A usable WebGPU pipeline is always recommended. Without WebGPU, the
+/// single-threaded WASM CPU fallback must sustain the same 15 MH/s threshold
+/// used by the native recommendation before it is recommended.
+#[wasm_bindgen]
+pub async fn probe_local_pow() -> bool {
+    if webgpu::WgpuWebGenerator::new().await.is_ok() {
+        return true;
+    }
+
+    let hash = [0u8; 32];
+    let started_at = js_sys::Date::now();
+    let mut hashes = 0_u64;
+
+    while js_sys::Date::now() - started_at < 10.0 {
+        let _ = cpu::generate_cpu_batch(&hash, u64::MAX, 1_000);
+        hashes += 1_000;
+    }
+
+    let elapsed_seconds = (js_sys::Date::now() - started_at) / 1_000.0;
+    elapsed_seconds > 0.0 && (hashes as f64 / elapsed_seconds) >= 15_000_000.0
+}
+
 /// Asynchronously generate Proof of Work for a 32-byte block hash and an
 /// arbitrary hexadecimal threshold.
 ///
