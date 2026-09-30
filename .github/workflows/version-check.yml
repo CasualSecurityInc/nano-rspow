@@ -48,3 +48,32 @@ jobs:
           fi
 
           echo "OK: all packages are on major.minor $CARGO_MM"
+
+      - name: Check npm lockfiles match their manifests
+        run: |
+          # package-lock.json is version-bearing: npm stores its own copy of the
+          # package version at the top level and under packages[""]. `npm install`
+          # reconciles those against package.json but `npm ci` does not, so a
+          # hand-edited manifest leaves the lockfile permanently behind. It does
+          # not fail a publish, but it makes the tree lie about its own version.
+          #
+          # benchmark-compare is excluded on purpose: it is a private, unpublished
+          # local experiment on its own version scheme.
+          FAILED=0
+          for dir in nano-rspow-node nano-rspow-web; do
+            MANIFEST=$(jq -r .version "$dir/package.json")
+            LOCK=$(jq -r .version "$dir/package-lock.json")
+            LOCK_ENTRY=$(jq -r '.packages[""].version' "$dir/package-lock.json")
+            if [ "$LOCK" != "$MANIFEST" ] || [ "$LOCK_ENTRY" != "$MANIFEST" ]; then
+              echo "ERROR: $dir/package-lock.json records '$LOCK' (packages[\"\"]: '$LOCK_ENTRY') but package.json is '$MANIFEST'"
+              FAILED=1
+            else
+              echo "OK: $dir lockfile matches package.json ($MANIFEST)"
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Use the bump script rather than editing manifests by hand:"
+            echo "  node scripts/bump-version.js <patch|minor|major|new-version>"
+            exit 1
+          fi

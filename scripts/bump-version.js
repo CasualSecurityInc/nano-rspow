@@ -96,11 +96,46 @@ function bumpPackageJson(relativeDir, packageName) {
   }
 }
 
-// 2. Update nano-rspow-node package.json
-bumpPackageJson('nano-rspow-node', 'nano-rspow-node (Node Wrapper)');
+// Helper to update the version recorded in package-lock.json.
+//
+// The lockfile is version-bearing: npm stores its own copy of the package's
+// version at the top level and again under packages[""], and `npm ci` does not
+// reconcile those against package.json the way `npm install` does. Left alone
+// they drift, and the repository ends up carrying a version that disagrees
+// with the manifest it belongs to. Both published npm packages are covered.
+function bumpPackageLock(relativeDir, packageName) {
+  const lockPath = path.join(rootDir, relativeDir, 'package-lock.json');
+  if (!fs.existsSync(lockPath)) {
+    console.warn(`⚠️ Could not find package-lock.json in ${relativeDir}`);
+    return;
+  }
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  const oldVersion = lock.version;
+  lock.version = newVersion;
+  if (lock.packages && lock.packages['']) {
+    lock.packages[''].version = newVersion;
+  }
+  fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n', 'utf8');
+  // Surface a pre-existing mismatch so drift that is already in the tree is
+  // visible in the bump output rather than silently corrected.
+  const note = oldVersion === newVersion ? '' : ` (was ${oldVersion})`;
+  console.log(`✅ ${packageName} package-lock.json version set to ${newVersion}${note}`);
+}
 
-// 3. Update nano-rspow-web package.json
-bumpPackageJson('nano-rspow-web', 'nano-rspow-web (Web WASM)');
+// Update a package's manifest and its lockfile together, so adding a published
+// package cannot repeat the mistake of bumping one and forgetting the other.
+function bumpPackage(relativeDir, packageName) {
+  bumpPackageJson(relativeDir, packageName);
+  bumpPackageLock(relativeDir, packageName);
+}
+
+// 2. Update nano-rspow-node package manifest and lockfile
+bumpPackage('nano-rspow-node', 'nano-rspow-node (Node Wrapper)');
+
+// 3. Update nano-rspow-web package manifest and lockfile
+// benchmark-compare is deliberately excluded: it is a private, unpublished
+// local experiment pinned at its own version and is not part of the release.
+bumpPackage('nano-rspow-web', 'nano-rspow-web (Web WASM)');
 
 // 4. Update inter-crate dependency versions (nano-rspow-cli depends on nano-rspow)
 const cliCargoPath = path.join(rootDir, 'nano-rspow-cli', 'Cargo.toml');
@@ -115,5 +150,6 @@ if (fs.existsSync(cliCargoPath)) {
 }
 
 console.log('\n🎉 Version sync complete! All source manifests aligned.');
-console.log('To update lockfiles and verify consistency, you can run:');
+console.log('npm lockfiles are updated as part of the bump. To refresh Cargo.lock');
+console.log('and confirm the workspace still builds, run:');
 console.log('  cargo check --all-targets');

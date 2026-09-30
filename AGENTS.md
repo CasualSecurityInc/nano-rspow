@@ -29,8 +29,10 @@ This file contains critical, unavoidable rules that all AI coding agents working
   ```bash
   node scripts/bump-version.js <patch|minor|major|new-version>
   ```
-  This ensures versions across `Cargo.toml`, `nano-rspow-node/package.json`, and `nano-rspow-web/package.json` remain synchronized.
-* After bumping, run `cargo check --all-targets` to update lockfiles and verify consistency before committing.
+  This keeps `Cargo.toml`, `nano-rspow-cli/Cargo.toml`, and the `package.json` **and `package-lock.json`** of both `nano-rspow-node` and `nano-rspow-web` synchronized. The npm lockfiles are version-bearing and `npm ci` does not reconcile them, so they must be bumped explicitly. `nano-rspow-python` needs nothing: its `pyproject.toml` declares a dynamic version that maturin derives from `Cargo.toml`.
+* After bumping, run `cargo check --all-targets` to refresh `Cargo.lock` and verify consistency before committing.
+* **Version policy:** `Cargo.toml` is the single source of truth. `major.minor` must be identical across Cargo, Node and Web; **patch versions may diverge independently**, and each publish workflow gates on its own package's version already being absent from its registry. `version-check.yml` enforces the policy plus lockfile agreement on every push and pull request.
+* Release by tagging from the repo root and pushing: `git tag v<new-version> && git push origin v<new-version>`.
 
 ## Package Publishing Rules (Node.js)
 
