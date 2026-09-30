@@ -1,5 +1,12 @@
 use nano_rspow::CancelToken;
 use nano_rspow::wgpu_types::{SHADER, Uniforms, WORKGROUP_SIZE};
+use std::cell::{Cell, RefCell};
+use std::collections::VecDeque;
+use std::future::Future;
+use std::pin::Pin;
+use std::rc::Rc;
+use std::sync::Mutex;
+use std::task::{Context, Poll, Waker};
 
 macro_rules! console_log {
     ($($t:tt)*) => (
@@ -7,11 +14,224 @@ macro_rules! console_log {
     )
 }
 
+// ---------------------------------------------------------------------------
+// Shared generator
+// ---------------------------------------------------------------------------
+//
+// A `WgpuWebGenerator` holds only reusable GPU resources: building one
+// requests an instance, adapter, device and queue, compiles the WGSL shader,
+// creates the compute pipeline and allocates the double-buffered slots.
+// Rebuilding that per call charged the whole bring-up to the caller once per
+// block, so exactly one generator is cached for the life of the module and
+// reused.
+//
+// Reuse is only sound because generation is serialised. The ping-pong slots
+// are shared resources: `generate` keeps its `slot` index in a local, but two
+// overlapping calls would write the same slot and then read back each other's
+// results, returning a nonce computed against the wrong hash and threshold.
+// The gate below prevents that.
+
+static GATE: Gate = Gate::new();
+
+// The cached generator, rebuilt whenever the device is lost.
+//
+// Cache and bookkeeping are thread-local rather than `static` because wgpu's web
+// backend handles are neither `Send` nor `Sync`. `wasm32-unknown-unknown` is
+// single-threaded, so a thread-local cache is also exactly the right
+// granularity: one generator per realm, whether that realm is a window or a
+// worker. Keeping the epoch thread-local matters too — a shared counter would
+// let one realm's rebuild mask another realm's device loss.
+thread_local! {
+    static CACHE: RefCell<Option<Rc<WgpuWebGenerator>>> = const { RefCell::new(None) };
+    /// Set by the device-loss callback, cleared when a fresh generator is
+    /// installed.
+    static DEVICE_LOST: Cell<bool> = const { Cell::new(false) };
+    /// Incremented per build so a late loss notification from an already
+    /// replaced generator is ignored.
+    static EPOCH: Cell<u64> = const { Cell::new(0) };
+}
+
+/// A minimal FIFO async mutex.
+///
+/// Generation is the only async operation that needs mutual exclusion, so this
+/// is deliberately a ticket queue of wakers rather than a dependency. It is
+/// built on `std::task::Waker` so the host test suite can drive it without a
+/// JavaScript event loop.
+struct Gate {
+    state: Mutex<GateState>,
+}
+
+struct GateState {
+    held: bool,
+    waiters: VecDeque<Waker>,
+}
+
+/// Releases the gate when dropped, handing ownership straight to the next
+/// waiter so `held` never has to be cleared in between.
+struct GateGuard<'a> {
+    gate: &'a Gate,
+}
+
+impl Gate {
+    const fn new() -> Self {
+        Self {
+            state: Mutex::new(GateState {
+                held: false,
+                waiters: VecDeque::new(),
+            }),
+        }
+    }
+
+    async fn lock(&self) -> GateGuard<'_> {
+        Acquire { gate: self }.await
+    }
+}
+
+struct Acquire<'a> {
+    gate: &'a Gate,
+}
+
+impl<'a> Future for Acquire<'a> {
+    type Output = GateGuard<'a>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut state = self
+            .gate
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        if state.held {
+            // Queue at the back, but never enqueue one waker twice: a future
+            // may be re-polled while pending. Distinct waiters keep their
+            // arrival order, so the queue stays FIFO.
+            match state
+                .waiters
+                .iter_mut()
+                .find(|woken| woken.will_wake(cx.waker()))
+            {
+                Some(woken) => *woken = cx.waker().clone(),
+                None => state.waiters.push_back(cx.waker().clone()),
+            }
+            return Poll::Pending;
+        }
+
+        state.held = true;
+        Poll::Ready(GateGuard { gate: self.gate })
+    }
+}
+
+impl Drop for GateGuard<'_> {
+    fn drop(&mut self) {
+        let mut state = self
+            .gate
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        match state.waiters.pop_front() {
+            // Ownership passes directly to the next waiter; `held` stays true.
+            Some(woken) => {
+                drop(state);
+                woken.wake();
+            }
+            None => state.held = false,
+        }
+    }
+}
+
+/// The cached generator, unless the device backing it has been lost.
+fn cached_generator() -> Option<Rc<WgpuWebGenerator>> {
+    if DEVICE_LOST.with(Cell::get) {
+        return None;
+    }
+    CACHE.with(|cache| cache.borrow().clone())
+}
+
+/// Return the cached generator, building it on first use.
+///
+/// Held under the gate, so only one caller can be here at a time and no
+/// separate in-flight-initialisation bookkeeping is needed. A failed build is
+/// deliberately not cached: callers such as `generate_work` fall back to the
+/// CPU, and the next call should get a fresh attempt at the GPU.
+async fn ensure_generator() -> Result<Rc<WgpuWebGenerator>, String> {
+    if let Some(generator) = cached_generator() {
+        return Ok(generator);
+    }
+
+    DEVICE_LOST.with(|lost| lost.set(false));
+    let epoch = EPOCH.with(|epoch| {
+        let next = epoch.get() + 1;
+        epoch.set(next);
+        next
+    });
+    CACHE.with(|cache| *cache.borrow_mut() = None);
+
+    let generator = Rc::new(WgpuWebGenerator::new().await?);
+    watch_device_lost(&generator, epoch);
+    CACHE.with(|cache| *cache.borrow_mut() = Some(Rc::clone(&generator)));
+    Ok(generator)
+}
+
+/// Discard the cached generator once the current device is lost.
+///
+/// Per-call construction used to paper over device loss by accident. With a
+/// cached generator the recovery has to be explicit, otherwise every later call
+/// would keep dispatching through a dead device. The callback fires on the
+/// browser's event loop, and the epoch check ignores a late notification from a
+/// generator that has already been replaced.
+fn watch_device_lost(generator: &WgpuWebGenerator, epoch: u64) {
+    generator
+        .device
+        .set_device_lost_callback(move |reason, message| {
+            if EPOCH.with(Cell::get) != epoch {
+                return;
+            }
+            DEVICE_LOST.with(|lost| lost.set(true));
+            console_log!(
+                "[WebGPU] Device lost ({:?}): {}. Cached generator discarded.",
+                reason,
+                message
+            );
+        });
+}
+
+/// Generate proof of work through the process-wide generator, building it on
+/// first use.
+///
+/// `Ok(None)` means the search was exhausted or cancelled; `Err` means the GPU
+/// stack was unavailable, which is the same condition a caller saw when
+/// `WgpuWebGenerator::new` failed.
+pub async fn generate_shared(
+    hash: &[u8; 32],
+    threshold: u64,
+    cancel: &CancelToken,
+) -> Result<Option<u64>, String> {
+    let _guard = GATE.lock().await;
+    let generator = ensure_generator().await?;
+    console_log!("[WebGPU] Generating with cached device and pipeline.");
+    Ok(generator.generate(hash, threshold, cancel).await)
+}
+
+/// Build the shared generator ahead of time so the first `generate_shared`
+/// call does not pay for it.
+///
+/// This is what `probe_local_pow` uses: it already needed to know whether a
+/// full generator was constructible, and now the answer is also reusable.
+pub async fn warm_up() -> Result<(), String> {
+    let _guard = GATE.lock().await;
+    ensure_generator().await.map(|_| ())
+}
+
 // Double-buffered WebGPU generator.
 // Two slots (ping/pong) let us submit batch N while reading back batch N-1,
 // guaranteeing the mapped buffer is always already retired — fixing Safari's
 // mapAsync bug where mapping an in-flight buffer returns only zeros.
-pub struct WgpuWebGenerator {
+//
+// Instances are not built directly by callers: use `generate_shared`, which
+// caches one generator for the life of the module and serialises access to the
+// slots.
+struct WgpuWebGenerator {
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,

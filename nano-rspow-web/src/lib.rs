@@ -81,7 +81,12 @@ impl GenerateResult {
 /// used by the native recommendation before it is recommended.
 #[wasm_bindgen]
 pub async fn probe_local_pow() -> bool {
-    if webgpu::WgpuWebGenerator::new().await.is_ok() {
+    // Warming the shared generator answers the capability question with the
+    // same full construction a real work call needs, and leaves the device and
+    // pipeline ready for the first `generate_work` instead of throwing them
+    // away. The gate is released before the CPU benchmark below, so a
+    // concurrent generation is never blocked for its full duration.
+    if webgpu::warm_up().await.is_ok() {
         return true;
     }
 
@@ -122,30 +127,23 @@ pub async fn generate_work(hash_hex: &str, threshold_hex: &str) -> Result<Genera
 
     // 1. WebGPU Primary
     console_log!("[WASM] Auto Mode: Initializing WebGPU...");
-    match webgpu::WgpuWebGenerator::new().await {
-        Ok(webgpu_gen) => {
-            console_log!("[WASM] WebGPU successfully initialized. Starting generation...");
-            match webgpu_gen.generate(&hash, threshold, &cancel).await {
-                Some(nonce) => {
-                    console_log!(
-                        "[WASM] WebGPU generation succeeded with nonce: {:016x}",
-                        nonce
-                    );
-                    return Ok(GenerateResult {
-                        nonce,
-                        is_gpu: true,
-                    });
-                }
-                None => {
-                    if cancel.is_cancelled() {
-                        console_log!("[WASM] WebGPU generation was cancelled.");
-                        return Err(JsValue::from_str("Work generation cancelled"));
-                    }
-                    console_log!(
-                        "[WASM] WebGPU generation returned None (failed). Falling back to CPU."
-                    );
-                }
+    match webgpu::generate_shared(&hash, threshold, &cancel).await {
+        Ok(Some(nonce)) => {
+            console_log!(
+                "[WASM] WebGPU generation succeeded with nonce: {:016x}",
+                nonce
+            );
+            return Ok(GenerateResult {
+                nonce,
+                is_gpu: true,
+            });
+        }
+        Ok(None) => {
+            if cancel.is_cancelled() {
+                console_log!("[WASM] WebGPU generation was cancelled.");
+                return Err(JsValue::from_str("Work generation cancelled"));
             }
+            console_log!("[WASM] WebGPU generation returned None (failed). Falling back to CPU.");
         }
         Err(e) => {
             console_log!(
@@ -190,14 +188,15 @@ pub async fn generate_work_gpu(
     let threshold = u64::from_str_radix(threshold_hex, 16)
         .map_err(|e| JsValue::from_str(&format!("Invalid threshold hex: {}", e)))?;
 
-    console_log!("[WASM] Force WebGPU: Initializing WebGPU...");
-    let webgpu_gen = webgpu::WgpuWebGenerator::new().await.map_err(|e| {
-        console_log!("[WASM] Force WebGPU: Initialization failed: {}", e);
-        JsValue::from_str(&format!("WebGPU initialization failed: {}", e))
-    })?;
+    console_log!("[WASM] Force WebGPU: Initializing WebGPU and generating...");
+    let nonce = webgpu::generate_shared(&hash, threshold, &cancel_token.0)
+        .await
+        .map_err(|e| {
+            console_log!("[WASM] Force WebGPU: Initialization failed: {}", e);
+            JsValue::from_str(&format!("WebGPU initialization failed: {}", e))
+        })?;
 
-    console_log!("[WASM] Force WebGPU: Starting generation...");
-    if let Some(nonce) = webgpu_gen.generate(&hash, threshold, &cancel_token.0).await {
+    if let Some(nonce) = nonce {
         console_log!("[WASM] Force WebGPU: Succeeded with nonce: {:016x}", nonce);
         return Ok(GenerateResult {
             nonce,
