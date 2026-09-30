@@ -98,47 +98,12 @@ jobs:
         # index.html. --no-open because there is no browser on a runner.
         run: make web-demo-build
 
-      - name: Assert the dashboard is complete and current
-        run: |
-          set -euo pipefail
-          DASHBOARD=nano-rspow-web/browser-demo/index.html
-          if [ ! -s "$DASHBOARD" ]; then
-            echo "::error::$DASHBOARD is missing or empty"
-            exit 1
-          fi
-          echo "ok $DASHBOARD ($(stat -c %s "$DASHBOARD") bytes)"
-
-          # The page inlines the WebAssembly as base64, the wasm-bindgen glue and
-          # the WGSL shader, because it is opened straight from disk over file://
-          # where a fetch of a sibling asset would fail. Each marker proves one of
-          # those three things made it in.
-          check_inlined() {
-            if grep -qF "$1" "$DASHBOARD"; then
-              echo "ok inlined: $1"
-            else
-              echo "::error::$DASHBOARD is missing '$1'; the build did not inline it"
-              exit 1
-            fi
-          }
-          check_inlined 'const wasmBase64'
-          check_inlined 'globalThis.generate_work'
-          check_inlined '@compute @workgroup_size(WGS_PLACEHOLDER)'
-
-          # Must come from this build, so a change to the crate, the shader or the
-          # demo is actually reflected instead of shipping a stale artifact.
-          STALE=$(find nano-rspow/src nano-rspow-web/src \
-            \( -name '*.rs' -o -name '*.wgsl' \) \
-            -newer "$DASHBOARD" -print -quit)
-          if [ -z "$STALE" ]; then
-            STALE=$(find nano-rspow-web/browser-demo -maxdepth 1 \
-              \( -name 'demo.js' -o -name 'index.template.html' \) \
-              -newer "$DASHBOARD" -print -quit)
-          fi
-          if [ -n "$STALE" ]; then
-            echo "::error::$STALE is newer than $DASHBOARD; the build did not pick up the change"
-            exit 1
-          fi
-          echo "dashboard is up to date with its sources"
+      - name: Verify the dashboard is complete and current
+        # The same script `make web-demo-check` runs. It covers the artifact
+        # being absent, incomplete, or older than the crate source: the page is
+        # generated rather than committed precisely so it cannot go stale, and
+        # this is what holds it to that.
+        run: ./scripts/check-browser-demo.sh
 
       - name: Serve the dashboard and confirm it loads
         # The page is designed for file://, so a plain static server is enough

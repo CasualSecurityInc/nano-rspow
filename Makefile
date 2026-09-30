@@ -10,7 +10,7 @@ DEMO_DIR := nano-rspow-web/browser-demo
 COMPARE_DIR := nano-rspow-web/benchmark-compare
 PORT ?= 8080
 
-.PHONY: help web-prereqs web-demo web-demo-build web-compare web-compare-run web-all web-clean
+.PHONY: help web-prereqs web-demo web-demo-build web-demo-check web-compare web-compare-run web-all web-clean
 
 help: ## Show this help
 	@echo "nano-rspow web dashboards"
@@ -33,6 +33,11 @@ web-demo: ## Build the browser-only dashboard and open it
 web-demo-build: ## Build the browser-only dashboard without opening a browser
 	@python3 $(DEMO_DIR)/build-demo.py --no-open
 
+# The dashboard is generated and not committed, so this is how you find out
+# whether the copy on disk is missing, incomplete or older than the sources.
+web-demo-check: ## Verify the built browser-only dashboard is present and current
+	@./scripts/check-browser-demo.sh
+
 web-compare: ## Build the head-to-head dashboard into dist/ without serving it
 	@$(MAKE) --no-print-directory -C $(COMPARE_DIR) build
 
@@ -42,6 +47,6 @@ web-compare-run: ## Build and serve the head-to-head dashboard on :$(PORT)
 web-all: web-demo web-compare ## Build both dashboards
 
 web-clean: ## Remove generated dashboard output
-	@rm -rf $(COMPARE_DIR)/dist $(COMPARE_DIR)/.generated
-	@echo "Removed benchmark-compare dist/ and .generated/."
-	@echo "browser-demo/index.html is kept; delete it to force a rebuild."
+	@rm -rf $(COMPARE_DIR)/dist $(COMPARE_DIR)/.generated $(DEMO_DIR)/index.html $(DEMO_DIR)/pkg
+	@echo "Removed benchmark-compare dist/ and .generated/, and browser-demo index.html and pkg/."
+	@echo "Rebuild either dashboard with: make web-all"

@@ -84,10 +84,16 @@ backends, nothing else. No server, no addon:
 ```bash
 make web-demo            # builds and opens nano-rspow-web/browser-demo/index.html
 make web-demo-build      # same build, no browser launch
+make web-demo-check      # is the built page present, complete and current?
 ```
 
-The page is a single self-contained file, so you can also just open
-`browser-demo/index.html` directly.
+`index.html` is a single self-contained file — the WebAssembly, the
+wasm-bindgen glue and the WGSL shader are all inlined, so it works when opened
+straight from disk over `file://`. It is **generated and not committed**,
+because a 550 KB committed artifact eventually gets opened after the crate has
+moved on and silently benchmarks an old WebAssembly module. If the file is
+missing or older than its sources, `make web-demo-check` says so and tells you
+to rebuild.
 
 **Head-to-head dashboard** — compares this package against `nano-pow` and
 against the `nano-rspow-node` addon and the Rust CLI work peer. It needs the
@@ -106,10 +112,9 @@ you are already running. `make web-compare` builds into `dist/` without serving.
 
 CI builds and verifies the **browser-only** dashboard only, in the
 `browser-demo` job of `.github/workflows/web-browser-tests.yml`. It runs the same
-prerequisite script, the same `make web-demo-build`, then asserts the output is
-complete, that the WebAssembly, glue and WGSL shader were actually inlined, and
-that the page is newer than the crate source so a stale committed artifact
-cannot ship.
+prerequisite script, the same `make web-demo-build`, and then
+`scripts/check-browser-demo.sh` — the same check as `make web-demo-check` — so
+CI and your machine cannot disagree about what a valid dashboard is.
 
 The head-to-head dashboard is not built in CI because it requires the native
 `nano-rspow-node` addon, which is a platform-specific native compile. It is a
