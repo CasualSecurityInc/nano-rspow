@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import initNanoRspow, { generate_work as generateNanoRspow, validate_work as validateNanoRspowWork } from './nano_rspow_web.js';
+import initNanoRspow, { generate_work as generateNanoRspow } from './nano_rspow_web.js';
 import { validateWork } from 'nanocurrency';
 import * as NanoPowModule from 'nano-pow';
 
@@ -39,27 +39,6 @@ const COMPETITORS = [
   { key: 'webglPow', label: 'nano-webgl-pow', version: '1.1.1', color: '#9333ea', thresholdKey: 'difficulty' },
 ];
 const NanoPow = NanoPowModule.NanoPow ?? NanoPowModule.default;
-
-// Shared-generator self-check.
-//
-// nano-rspow-web builds one WebGPU generator per page and reuses it, and
-// serialises generation because the generator's ping-pong buffers are shared:
-// overlapping calls would write the same slot and read back each other's
-// results, handing back work computed for a different root. These cases start
-// every call before awaiting any of them, give each a distinct root and
-// threshold, then validate each nonce against its own inputs. Thresholds sit in
-// the easy dev band so the check stays quick; the aliasing it guards against
-// depends on which slot a call writes, not on how hard the work is.
-//
-// This is separate from the benchmark on purpose. The benchmark serialises
-// providers, so it would never exercise the concurrent path.
-const SELF_CHECK_CASES = [
-  { root: '0'.repeat(63) + '1', threshold: 'ffff000000000000' },
-  { root: '1'.repeat(64), threshold: 'fffffe0000000000' },
-  { root: '2'.repeat(64), threshold: 'fffffc0000000000' },
-  { root: '3'.repeat(64), threshold: 'fffffd0000000000' },
-];
-const IDLE_SELF_CHECK = { running: false, status: 'idle', lines: [] };
 
 function randomRoot() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -141,7 +120,6 @@ function BenchmarkApp() {
   const [competitorIndex, setCompetitorIndex] = useState(0);
   const [battle, setBattle] = useState({ running: false, stopRequested: false, completed: 0, current: null });
   const [battleRootState, setBattleRootState] = useState(null);
-  const [selfCheck, setSelfCheck] = useState(IDLE_SELF_CHECK);
   const battleStopRef = useRef(false);
   const highlightTimerRef = useRef(null);
   const currentProviders = useMemo(() => [...CORE_PROVIDERS, COMPETITORS[competitorIndex]], [competitorIndex]);
@@ -403,75 +381,6 @@ function BenchmarkApp() {
     });
   };
 
-  const runSelfCheck = async () => {
-    if (selfCheck.running) return;
-    setSelfCheck({ running: true, status: 'running', lines: ['Running…'] });
-
-    // Count device bring-ups. The cached generator should log this at most once
-    // across all four calls; more than one means the cache is not being reused.
-    // Zero is fine too, meaning an earlier search already warmed it.
-    let bringUps = 0;
-    const realLog = console.log;
-    console.log = (...args) => {
-      if (typeof args[0] === 'string' && args[0].includes('Initialization complete')) bringUps += 1;
-      realLog(...args);
-    };
-
-    const lines = [];
-    let failures = 0;
-
-    try {
-      if (!navigator.gpu) {
-        setSelfCheck({
-          running: false,
-          status: 'skip',
-          lines: ['SKIPPED — this browser has no WebGPU, so there is no shared generator to test.'],
-        });
-        return;
-      }
-
-      const startedAt = performance.now();
-      // Every call starts before any is awaited, so they overlap.
-      const results = await Promise.all(
-        SELF_CHECK_CASES.map((testCase) =>
-          generateNanoRspow(testCase.root, testCase.threshold).then((result) => ({ testCase, result })),
-        ),
-      );
-      const elapsedMs = performance.now() - startedAt;
-
-      for (const { testCase, result } of results) {
-        // The decisive assertion: this nonce must satisfy this case's own root
-        // and threshold, not merely some case's.
-        const valid = validateNanoRspowWork(testCase.root, result.nonce, testCase.threshold);
-        const onGpu = result.is_gpu === true;
-        if (!valid) failures += 1;
-        if (!onGpu) failures += 1;
-        lines.push(
-          `${valid && onGpu ? 'PASS' : 'FAIL'}  ${result.nonce}  thr=${testCase.threshold}  `
-          + `backend=${onGpu ? 'WebGPU' : 'CPU WASM fallback'}`,
-        );
-      }
-
-      if (bringUps > 1) failures += 1;
-      lines.push('');
-      lines.push(`elapsed            ${formatDuration(elapsedMs)}`);
-      lines.push(`device bring-ups   ${bringUps} across ${SELF_CHECK_CASES.length} concurrent calls`);
-      lines.push(bringUps > 1
-        ? '  ^ the generator is being rebuilt per call'
-        : '  ^ generator built once and reused');
-
-      setSelfCheck({ running: false, status: failures > 0 ? 'fail' : 'pass', lines });
-    } catch (error) {
-      setSelfCheck({
-        running: false,
-        status: 'error',
-        lines: [`ERROR — ${error instanceof Error ? error.message : String(error)}`],
-      });
-    } finally {
-      console.log = realLog;
-    }
-  };
-
   const buttonState = (implementation) => {
     if (runningImplementation === implementation) return providerByKey[implementation].label;
     if (completedInRound.has(implementation)) return `${providerByKey[implementation].label} • recorded`;
@@ -559,27 +468,6 @@ function BenchmarkApp() {
         <p className=${initializationError ? 'status status-error' : 'status'} aria-live="polite">
           ${message}
         </p>
-
-        <div className="selfcheck">
-          <button
-            className="selfcheck-button"
-            disabled=${!ready || selfCheck.running || Boolean(active) || battle.running}
-            onClick=${runSelfCheck}
-          >
-            <span className="button-text" key=${selfCheck.running ? 'running' : 'idle'}>
-              ${selfCheck.running ? 'Running self-check…' : 'Run shared-generator self-check'}
-            </span>
-          </button>
-          <p className="selfcheck-hint">
-            Fires ${SELF_CHECK_CASES.length} concurrent <code>nano-rspow-web</code> searches with distinct roots
-            and thresholds, then validates every nonce against its own inputs. Guards against the cached WebGPU
-            generator being shared by overlapping calls. Disabled while a benchmark is running.
-          </p>
-          ${selfCheck.status !== 'idle' && selfCheck.status !== 'running' ? html`
-            <pre className=${`selfcheck-result selfcheck-result--${selfCheck.status}`} aria-live="polite"
-              >${selfCheck.lines.join('\n')}</pre>
-          ` : null}
-        </div>
       </section>
 
       <section className="plots-grid" aria-label="Provider runtime distribution plots">

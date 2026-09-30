@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "build": "cargo build -p nano-rspow-web --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir . ../target/wasm32-unknown-unknown/release/nano_rspow_web.wasm",
-    "test": "node --test recommendation.test.js"
+    "test": "node --test recommendation.test.js",
+    "test:browser": "npm run build && node --test tests/browser/*.test.mjs"
   },
   "dependencies": {
     "@openrai/nano-pow-contract": "^0.1.0"

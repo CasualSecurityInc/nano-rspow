@@ -66,17 +66,6 @@ h2 { margin-bottom: 0; font-size: 1.15rem; letter-spacing: -0.025em; }
 .status { min-height: 1.25rem; margin: 16px 0 0; color: #475569; font-size: 0.875rem; text-align: left; }
 .status-error { color: #b91c1c; }
 
-.selfcheck { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
-.selfcheck-button { width: 100%; min-height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: border-color 150ms ease, color 150ms ease, background 150ms ease; }
-.selfcheck-button:not(:disabled):hover { border-color: #2563eb; color: #2563eb; background: #f8fafc; }
-.selfcheck-button:disabled { cursor: not-allowed; opacity: 0.45; }
-.selfcheck-hint { margin: 8px 0 0; color: #64748b; font-size: 0.75rem; line-height: 1.5; }
-.selfcheck-hint code { font-size: 0.95em; }
-.selfcheck-result { margin: 10px 0 0; padding: 11px 13px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #334155; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; line-height: 1.65; white-space: pre-wrap; word-break: break-all; text-align: left; overflow-x: auto; }
-.selfcheck-result--pass { border-color: #86efac; background: #f0fdf4; color: #15803d; }
-.selfcheck-result--fail, .selfcheck-result--error { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
-.selfcheck-result--skip { border-color: #fde68a; background: #fffbeb; color: #a16207; }
-
 .chart-card, .samples-card { margin-top: 20px; padding: 22px; }
 .plots-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .provider-chart { min-width: 0; padding: 16px; }

@@ -1,0 +1,56 @@
+name: Web Browser Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nano-rspow-web/**'
+      - 'nano-rspow/src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    paths:
+      - 'nano-rspow-web/**'
+      - 'nano-rspow/src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-browser-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-generator:
+    name: Shared generator concurrency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: nano-rspow-web/package-lock.json
+
+      - name: Setup browser
+        # The test drives a real browser because wgpu finds no adapter when the
+        # crate is built for the host, so the WebGPU path cannot be covered by
+        # `cargo test`. ubuntu-latest has no hardware adapter, so the test falls
+        # back to SwiftShader there, which is slow but correct.
+        run: |
+          npx --yes playwright@1.56.0 install --with-deps chromium
+          echo "CHROME_PATH=$(find "$HOME/.cache/ms-playwright" -name 'chrome' -type f -path '*chrome-linux*' | head -1)" >> "$GITHUB_ENV"
+
+      - name: Run browser tests
+        working-directory: nano-rspow-web
+        run: npm run test:browser
