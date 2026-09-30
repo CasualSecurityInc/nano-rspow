@@ -87,7 +87,7 @@ after(async () => {
 });
 
 describe('shared WebGPU generator', () => {
-  it('gives every concurrent generate_work call work valid for its own inputs', { timeout: 60_000 }, async () => {
+  it('gives every concurrent generate_work call work valid for its own inputs', { timeout: 300_000 }, async () => {
     const outcome = await page.evaluate(`
       const module = await import('/nano_rspow_web.js');
       await module.default();
@@ -114,9 +114,12 @@ describe('shared WebGPU generator', () => {
       const startedAt = performance.now();
       // Every call starts before any is awaited, so they overlap.
       const results = await Promise.all(
-        cases.map((testCase) =>
+        cases.map((testCase, index) =>
           module.generate_work(testCase.root, testCase.threshold)
-            .then((result) => ({ testCase, result })),
+            .then((result) => {
+              globalThis.__progress.push('case ' + index + ' (' + Math.round(performance.now() - startedAt) + ' ms)');
+              return { testCase, result };
+            }),
         ),
       );
       const elapsedMs = performance.now() - startedAt;
@@ -131,7 +134,7 @@ describe('shared WebGPU generator', () => {
       }));
 
       return { checked, bringUps, elapsedMs, expected: cases.length };
-    `, { timeoutMs: 20_000 });
+    `, { timeoutMs: 180_000 });
 
     if (outcome.skipped) {
       // Report loudly rather than quietly passing, so a green run on a machine

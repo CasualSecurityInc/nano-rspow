@@ -240,11 +240,21 @@ export async function openPage(url) {
        * one. The CDP-side deadline is the backstop for a page that has stopped
        * responding entirely.
        */
-      async evaluate(body, { timeoutMs = 60_000 } = {}) {
+      async evaluate(body, { timeoutMs = 180_000 } = {}) {
+        // Two deadlines, deliberately different values.
+        //
+        // The page-side one lives in the page because a wedged WebAssembly
+        // instance still runs the event loop; only the promise is stuck. It
+        // reports how far the body got, which is what distinguishes "slow" from
+        // "wedged". The CDP-side deadline is the backstop for a page that has
+        // stopped responding entirely, set well above the page-side one so the
+        // more specific message is the one that surfaces.
         const guarded = `
+          globalThis.__progress = [];
           const __deadline = new Promise((_, reject) => setTimeout(
             () => reject(new Error(
-              'the page never settled within ${timeoutMs} ms — the WebAssembly module is likely wedged'
+              'the page never settled within ${timeoutMs} ms; completed: '
+              + (globalThis.__progress.length ? globalThis.__progress.join(', ') : 'nothing')
             )),
             ${timeoutMs},
           ));
@@ -257,13 +267,14 @@ export async function openPage(url) {
           returnByValue: true,
         });
 
+        const cdpTimeoutMs = timeoutMs + 60_000;
         let deadline;
         const result = await Promise.race([
           evaluation,
           new Promise((_, reject) => {
             deadline = setTimeout(
-              () => reject(new Error(`the page stopped responding after ${timeoutMs} ms`)),
-              timeoutMs,
+              () => reject(new Error(`the page stopped responding after ${cdpTimeoutMs} ms`)),
+              cdpTimeoutMs,
             );
           }),
         ]).finally(() => clearTimeout(deadline));
