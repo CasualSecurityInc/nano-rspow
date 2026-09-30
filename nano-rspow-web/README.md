@@ -78,6 +78,25 @@ Asynchronously generates Proof of Work for a 32-byte block hash at any hexadecim
 ### `generate_work_gpu(hash_hex: string, threshold_hex: string, cancel_token: WasmCancelToken): Promise<GenerateResult>`
 Forces WebGPU PoW generation at any hexadecimal threshold. Rejects if WebGPU is unavailable or if the cancellation token is triggered.
 
+### GPU resource lifetime and concurrency
+
+One WebGPU generator is built per page and reused by every call. Building one
+requests an instance, adapter, device and queue, compiles the WGSL shader,
+creates the compute pipeline and allocates the double-buffered slots, so
+rebuilding it per call charged that whole cost to the caller once per block.
+`recommendLocalPow` builds the same generator, which also warms the cache for
+the first `generate_work` call.
+
+Two consequences for callers:
+
+- **Generation is serialised.** The generator's ping-pong buffers are shared, so
+  overlapping calls would write the same slot and read back each other's
+  results, handing back work computed for a different block. Calls are
+  therefore queued and run one at a time, in the order they arrive. Concurrent
+  calls are safe but wait their turn; they are never rejected or interleaved.
+- **A lost device is recovered automatically.** If the browser drops the
+  device, the cached generator is discarded and the next call builds a new one.
+
 ### `generate_work_cpu(hash_hex: string, threshold_hex: string): GenerateResult`
 Synchronously generates PoW at any hexadecimal threshold, forcing single-threaded CPU WebAssembly.
 
