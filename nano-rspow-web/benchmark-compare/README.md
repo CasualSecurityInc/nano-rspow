@@ -20,15 +20,17 @@ by this temporary experiment.
 
 ## Building
 
+From the repository root:
+
 ```bash
-cd nano-rspow-web/benchmark-compare
-make
+make web-prereqs      # once, after cloning; builds the native addon
+make web-compare-run  # builds and serves on http://localhost:8080/
 ```
 
-`make` builds the native `nano-rspow-node` addon if it is missing, installs this
-directory's npm dependencies, compiles `nano-rspow-web` to WebAssembly, bundles
-the page into `dist/`, then starts the local work peer and the proxy. Open
-<http://localhost:8080/> when it comes up. Press Ctrl-C once to stop both.
+Or from inside this directory, `make` does both. `make build` compiles and
+bundles into `dist/` without serving, `make prereqs` runs the shared toolchain
+setup, and `make clean` removes the generated output. Press Ctrl-C once to stop
+the work peer and the proxy.
 
 The WebAssembly module is compiled from source by `build.mjs`, so the page
 always benchmarks the current crate and there is no artifact to copy around.

@@ -7,6 +7,10 @@ import subprocess
 import webbrowser
 
 def main():
+    # `--no-open` is parsed before anything is built. CI and any headless caller
+    # want the self-contained index.html without a browser popping up.
+    no_open = "--no-open" in sys.argv[1:]
+
     # 1. Paths Setup
     script_dir = os.path.dirname(os.path.abspath(__file__))
     workspace_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
@@ -181,11 +185,15 @@ globalThis.initSync = initSync;
         shutil.rmtree(pkg_dir)
     print("✓ Cleaned up external pkg directory. Crate benchmark is now fully self-contained.")
     
-    # 6. Open index.html in the browser
+    # 6. Open index.html in the browser, unless a headless caller asked us not to
     file_url = "file://" + index_html_path
-    print(f"\n5. Launching the Benchmarking Dashboard in your default browser:")
+    if no_open:
+        print("\n5. Built without launching a browser (--no-open).")
+        print(f"   Open it yourself: {file_url}")
+        return
+
+    print("\n5. Launching the Benchmarking Dashboard in your default browser:")
     print(f"   URL: {file_url}")
-    
     webbrowser.open(file_url)
     print("\n✓ Launch complete. Enjoy the dashboard!")
 

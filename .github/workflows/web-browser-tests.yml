@@ -54,3 +54,102 @@ jobs:
       - name: Run browser tests
         working-directory: nano-rspow-web
         run: npm run test:browser
+
+  browser-demo:
+    name: Browser-only dashboard build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nano-rspow -> .
+            nano-rspow-web -> .
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install wasm-bindgen
+        # Same binary the publish workflows install, so a dashboard that builds
+        # here builds there.
+        run: |
+          WASM_BINDGEN_VERSION=0.2.121
+          wget -qO- "https://github.com/wasm-bindgen/releases/download/${WASM_BINDGEN_VERSION}/wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xz
+          echo "$PWD/wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+
+      - name: Verify prerequisites
+        # The same script a developer runs, so CI and local cannot disagree
+        # about the toolchain. The native addon is skipped: it is only needed by
+        # the head-to-head dashboard, which CI does not build.
+        run: ./scripts/setup-web-toolchain.sh --skip-addon
+
+      - name: Build the dashboard
+        # Inlines the freshly compiled WebAssembly into a single self-contained
+        # index.html. --no-open because there is no browser on a runner.
+        run: make web-demo-build
+
+      - name: Assert the dashboard is complete and current
+        run: |
+          set -euo pipefail
+          DASHBOARD=nano-rspow-web/browser-demo/index.html
+          if [ ! -s "$DASHBOARD" ]; then
+            echo "::error::$DASHBOARD is missing or empty"
+            exit 1
+          fi
+          echo "ok $DASHBOARD ($(stat -c %s "$DASHBOARD") bytes)"
+
+          # The page inlines the WebAssembly as base64, the wasm-bindgen glue and
+          # the WGSL shader, because it is opened straight from disk over file://
+          # where a fetch of a sibling asset would fail. Each marker proves one of
+          # those three things made it in.
+          check_inlined() {
+            if grep -qF "$1" "$DASHBOARD"; then
+              echo "ok inlined: $1"
+            else
+              echo "::error::$DASHBOARD is missing '$1'; the build did not inline it"
+              exit 1
+            fi
+          }
+          check_inlined 'const wasmBase64'
+          check_inlined 'globalThis.generate_work'
+          check_inlined '@compute @workgroup_size(WGS_PLACEHOLDER)'
+
+          # Must come from this build, so a change to the crate, the shader or the
+          # demo is actually reflected instead of shipping a stale artifact.
+          STALE=$(find nano-rspow/src nano-rspow-web/src \
+            \( -name '*.rs' -o -name '*.wgsl' \) \
+            -newer "$DASHBOARD" -print -quit)
+          if [ -z "$STALE" ]; then
+            STALE=$(find nano-rspow-web/browser-demo -maxdepth 1 \
+              \( -name 'demo.js' -o -name 'index.template.html' \) \
+              -newer "$DASHBOARD" -print -quit)
+          fi
+          if [ -n "$STALE" ]; then
+            echo "::error::$STALE is newer than $DASHBOARD; the build did not pick up the change"
+            exit 1
+          fi
+          echo "dashboard is up to date with its sources"
+
+      - name: Serve the dashboard and confirm it loads
+        # The page is designed for file://, so a plain static server is enough
+        # to prove the bundle parses and the module initialises.
+        run: |
+          set -euo pipefail
+          cd nano-rspow-web/browser-demo
+          python3 -m http.server 8080 > /tmp/serve.log 2>&1 &
+          for _ in $(seq 1 20); do
+            curl -fsS http://localhost:8080/index.html > /dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/index.html > /dev/null
+          echo "page served"

@@ -39,7 +39,7 @@ node when it differs. See Nano's
 [Work Generation guide](https://docs.nano.org/integration-guides/work-generation/)
 for current network requirements.
 
-## Benchmarking Dashboard
+## Benchmarking Dashboards
 
 <table>
 <tr>
@@ -54,9 +54,66 @@ for current network requirements.
 </tr>
 </table>
 
-An interactive benchmarking dashboard is included in `browser-demo/index.html` to measure WebGPU and CPU WebAssembly performance.
+Try the browser-only dashboard without building anything:
+**[https://casualsecurityinc.github.io/nano-rspow/](https://casualsecurityinc.github.io/nano-rspow/)**
 
-Try it out for yourself: **[https://casualsecurityinc.github.io/nano-rspow/](https://casualsecurityinc.github.io/nano-rspow/)**
+### Running them locally
+
+Everything runs through `make` from the repository root. Run `make help` for the
+full list.
+
+**One-time setup, after cloning:**
+
+```bash
+make web-prereqs
+```
+
+That installs the `wasm32-unknown-unknown` Rust target, builds the
+`nano-rspow-node` native addon and installs the dashboard's npm dependencies,
+skipping whatever is already satisfied. It is safe to re-run. It needs `cargo`,
+`npm` and `python3` on your `PATH`, plus the `wasm-bindgen` CLI — if that is
+missing the script tells you how to install it, and the browser-only dashboard is
+the only thing you need it for on top of the rest.
+
+Verify the toolchain without changing anything with
+`./scripts/setup-web-toolchain.sh --check`.
+
+**Browser-only dashboard** — measures this package's WebGPU and WASM CPU
+backends, nothing else. No server, no addon:
+
+```bash
+make web-demo            # builds and opens nano-rspow-web/browser-demo/index.html
+make web-demo-build      # same build, no browser launch
+```
+
+The page is a single self-contained file, so you can also just open
+`browser-demo/index.html` directly.
+
+**Head-to-head dashboard** — compares this package against `nano-pow` and
+against the `nano-rspow-node` addon and the Rust CLI work peer. It needs the
+native addon, which is why it is a separate command:
+
+```bash
+make web-compare-run     # builds, then serves on http://localhost:8080/
+```
+
+Overrides: `make web-compare-run PORT=8081`, or `WORK_PEER_PORT`,
+`WORK_PEER_BACKEND=auto|cpu|gpu`, and `NANO_WORK_URL` to point at a work peer
+you are already running. `make web-compare` builds into `dist/` without serving.
+`make web-all` builds both, `make web-clean` removes the generated output.
+
+### What CI covers
+
+CI builds and verifies the **browser-only** dashboard only, in the
+`browser-demo` job of `.github/workflows/web-browser-tests.yml`. It runs the same
+prerequisite script, the same `make web-demo-build`, then asserts the output is
+complete, that the WebAssembly, glue and WGSL shader were actually inlined, and
+that the page is newer than the crate source so a stale committed artifact
+cannot ship.
+
+The head-to-head dashboard is not built in CI because it requires the native
+`nano-rspow-node` addon, which is a platform-specific native compile. It is a
+local tool, and `make web-compare-run` is the supported way to run it.
 
 
 
