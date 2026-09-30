@@ -1,0 +1,51 @@
+name: Install wasm-bindgen CLI
+description: >
+  Downloads the wasm-bindgen CLI and puts it on PATH for later steps. The
+  wasm32 build of nano-rspow-web cannot produce a loadable module without it,
+  so any job that compiles that crate needs this.
+
+inputs:
+  version:
+    description: wasm-bindgen release to install
+    required: false
+    default: '0.2.121'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install
+      shell: bash
+      env:
+        WASM_BINDGEN_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        archive="wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+        url="https://github.com/wasm-bindgen/releases/download/${WASM_BINDGEN_VERSION}/${archive}"
+        binary="wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl"
+
+        # Downloaded to a file and verified before use, with retries, rather than
+        # piped into tar. A truncated or rate-limited download otherwise
+        # surfaces as a baffling "gzip: stdin: unexpected end of file" from tar,
+        # and several workflows fetching the same release asset at once makes
+        # that a real possibility.
+        for attempt in 1 2 3; do
+          echo "attempt ${attempt}: fetching ${url}"
+          if wget --tries=3 --waitretry=5 --timeout=60 -q -O "${archive}" "${url}" \
+            && tar -tzf "${archive}" >/dev/null 2>&1; then
+            tar -xzf "${archive}"
+            break
+          fi
+          if [ "${attempt}" = "3" ]; then
+            echo "::error::could not download ${url}"
+            exit 1
+          fi
+          sleep 5
+        done
+
+        chmod +x "${binary}"
+        # An absolute path. GITHUB_PATH entries are resolved relative to the
+        # working directory of whichever step runs next, which is not
+        # guaranteed to be this one.
+        echo "${GITHUB_WORKSPACE}/${binary}" >> "${GITHUB_PATH}"
+        echo "installed $(cd "${GITHUB_WORKSPACE}" && ./"${binary}" --version)"

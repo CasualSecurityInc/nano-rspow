@@ -42,6 +42,12 @@ jobs:
           cache: npm
           cache-dependency-path: nano-rspow-web/package-lock.json
 
+      - name: Install wasm-bindgen
+        # `npm run test:browser` runs `npm run build` first, which compiles
+        # nano-rspow-web to wasm32 and needs this. It was missing from this job,
+        # which is why the test failed with "wasm-bindgen: not found".
+        uses: ./.github/actions/install-wasm-bindgen
+
       - name: Setup browser
         # The test drives a real browser because wgpu finds no adapter when the
         # crate is built for the host, so the WebGPU path cannot be covered by
@@ -80,12 +86,8 @@ jobs:
           node-version: 24
 
       - name: Install wasm-bindgen
-        # Same binary the publish workflows install, so a dashboard that builds
-        # here builds there.
-        run: |
-          WASM_BINDGEN_VERSION=0.2.121
-          wget -qO- "https://github.com/wasm-bindgen/releases/download/${WASM_BINDGEN_VERSION}/wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xz
-          echo "$PWD/wasm-bindgen-${WASM_BINDGEN_VERSION}-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+        # `make web-demo-build` compiles nano-rspow-web to wasm32 and runs this.
+        uses: ./.github/actions/install-wasm-bindgen
 
       - name: Verify prerequisites
         # The same script a developer runs, so CI and local cannot disagree
