@@ -80,6 +80,11 @@ function launchFlags(userDataDirectory) {
     `--user-data-dir=${userDataDirectory}`,
     '--no-first-run',
     '--no-default-browser-check',
+    // A container has no user namespaces, so Chrome's sandbox cannot start. It
+    // exits immediately and never writes DevToolsActivePort, which surfaces as
+    // "Chrome did not report a DevTools port" with nothing to explain it. This
+    // is a throwaway profile in a CI container, not a browsing session.
+    '--no-sandbox',
     '--disable-gpu-sandbox',
     // Chrome ships WebGPU behind this flag in headless builds.
     '--enable-unsafe-webgpu',
@@ -111,7 +116,7 @@ async function waitForDevToolsPort(userDataDirectory) {
     }
     await delay(50);
   }
-  throw new Error(`Chrome did not report a DevTools port within ${LAUNCH_TIMEOUT_MS} ms`);
+  throw new Error(`Chrome did not report a DevTools port within ${LAUNCH_TIMEOUT_MS} ms.`);
 }
 
 /**
@@ -124,10 +129,18 @@ export async function openPage(url) {
   const executable = await findChrome();
   const userDataDirectory = mkdtempSync(join(tmpdir(), 'nano-rspow-browser-test-'));
 
+  // stderr is captured rather than ignored. When Chrome refuses to start, that
+  // stream is the only thing that says why.
   const child = spawn(executable, [
     ...launchFlags(userDataDirectory),
     'about:blank',
-  ], { stdio: 'ignore' });
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+
+  let chromeStderr = '';
+  child.stderr?.on('data', (chunk) => {
+    chromeStderr = `${chromeStderr}${chunk}`.slice(-4000);
+  });
+  const chromeDiagnostics = () => chromeStderr.trim();
 
   let socket;
   const consoleLines = [];
@@ -264,7 +277,8 @@ export async function openPage(url) {
       },
     };
   } catch (error) {
+    const detail = chromeDiagnostics();
     await close();
-    throw error;
+    throw new Error(`${error.message}${detail ? `\nChrome said:\n${detail}` : ''}`);
   }
 }
