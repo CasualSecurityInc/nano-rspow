@@ -45,6 +45,39 @@ files are not part of this build.
 
 Each solver runs once per paired round. The page serializes work and preserves each raw duration; it does not calculate an average.
 
+## Shared-generator self-check
+
+`nano-rspow-web` builds one WebGPU generator per page and reuses it, and
+serializes generation because the generator's ping-pong buffers are shared:
+overlapping calls would write the same slot and read back each other's results,
+handing back work computed for a different root. The **Run shared-generator
+self-check** button guards that. It starts four `nano-rspow-web` searches with
+distinct roots and thresholds before awaiting any of them, then validates every
+returned nonce against its own inputs using `validate_work`, and reports how many
+device bring-ups were observed. One bring-up across the four calls means the
+generator was reused; more than one means it is being rebuilt per call.
+
+The check is separate from the benchmark on purpose, because the benchmark
+serializes providers and would never exercise the concurrent path. It is
+disabled while a benchmark is running so it cannot perturb a measurement. Its
+thresholds sit in the easy dev band to keep it quick; the aliasing it guards
+against depends on which slot a call writes, not on how hard the work is.
+
+The same check is available on the browser demo as **Run shared-generator
+self-check** under Execution Diagnostics.
+
+## Refreshing the checked-in WebAssembly
+
+`nano_rspow_web.js` and `nano_rspow_web_bg.wasm` in this directory are a
+snapshot, not build output of `make`. After changing the `nano-rspow-web` crate,
+regenerate them or the page will keep benchmarking the old module:
+
+```bash
+cd nano-rspow-web && npm run build
+cp nano_rspow_web.js nano_rspow_web_bg.wasm benchmark-compare/
+cd benchmark-compare && npm run build
+```
+
 The **Start battle** control runs 42 searches per selected provider, cycling
 through them with a 200 ms cool-down between searches. With four providers that
 is 168 total searches. Each work value is eight bytes whereas the next input
