@@ -57,19 +57,42 @@ thread_local! {
 /// is deliberately a ticket queue of wakers rather than a dependency. It is
 /// built on `std::task::Waker` so the host test suite can drive it without a
 /// JavaScript event loop.
+///
+/// Each caller draws a ticket on its first poll and may enter only when that
+/// ticket is the one being served. Releasing advances the served ticket and
+/// wakes whoever is now next in line, so a newcomer cannot overtake a waiter
+/// that has already been released.
 struct Gate {
     state: Mutex<GateState>,
 }
 
 struct GateState {
+    /// Whether the served ticket is inside the critical section. Guards against
+    /// re-polling a future that has already completed.
     held: bool,
-    waiters: VecDeque<Waker>,
+    /// Ticket handed to the next caller to arrive.
+    next_ticket: u64,
+    /// The ticket permitted to enter, advanced when the holder leaves or when
+    /// its caller gives up while queued.
+    serving: u64,
+    /// Callers that arrived while the gate was held, in arrival order.
+    waiters: VecDeque<(u64, Waker)>,
 }
 
-/// Releases the gate when dropped, handing ownership straight to the next
-/// waiter so `held` never has to be cleared in between.
+impl GateState {
+    /// The ticket to serve once the current holder leaves or gives up: the oldest
+    /// live waiter, or `after` when nobody is waiting.
+    ///
+    /// Not simply `current + 1`, because a caller that abandoned its ticket
+    /// leaves a gap that has to be stepped over.
+    fn next_serving(&self, after: u64) -> u64 {
+        self.waiters.front().map(|(ticket, _)| *ticket).unwrap_or(after)
+    }
+}
+
 struct GateGuard<'a> {
     gate: &'a Gate,
+    ticket: u64,
 }
 
 impl Gate {
@@ -77,65 +100,112 @@ impl Gate {
         Self {
             state: Mutex::new(GateState {
                 held: false,
+                next_ticket: 0,
+                serving: 0,
                 waiters: VecDeque::new(),
             }),
         }
     }
 
     async fn lock(&self) -> GateGuard<'_> {
-        Acquire { gate: self }.await
+        Acquire {
+            gate: self,
+            ticket: None,
+        }
+        .await
+    }
+
+    fn state(&self) -> std::sync::MutexGuard<'_, GateState> {
+        self.state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
 struct Acquire<'a> {
     gate: &'a Gate,
+    ticket: Option<u64>,
 }
 
 impl<'a> Future for Acquire<'a> {
     type Output = GateGuard<'a>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut state = self
-            .gate
-            .state
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut state = self.gate.state();
 
-        if state.held {
-            // Queue at the back, but never enqueue one waker twice: a future
-            // may be re-polled while pending. Distinct waiters keep their
-            // arrival order, so the queue stays FIFO.
+        let ticket = match self.ticket {
+            Some(ticket) => ticket,
+            None => {
+                let ticket = state.next_ticket;
+                state.next_ticket += 1;
+                self.ticket = Some(ticket);
+                ticket
+            }
+        };
+
+        if state.held || ticket != state.serving {
+            // Keep one queue entry per caller: a pending future is re-polled, and
+            // re-polling must not enqueue it a second time.
             match state
                 .waiters
                 .iter_mut()
-                .find(|woken| woken.will_wake(cx.waker()))
+                .find(|(waiting, _)| *waiting == ticket)
             {
-                Some(woken) => *woken = cx.waker().clone(),
-                None => state.waiters.push_back(cx.waker().clone()),
+                Some((_, woken)) => *woken = cx.waker().clone(),
+                None => state.waiters.push_back((ticket, cx.waker().clone())),
             }
             return Poll::Pending;
         }
 
         state.held = true;
-        Poll::Ready(GateGuard { gate: self.gate })
+        if let Some(position) = state.waiters.iter().position(|(waiting, _)| *waiting == ticket)
+        {
+            state.waiters.remove(position);
+        }
+        Poll::Ready(GateGuard {
+            gate: self.gate,
+            ticket,
+        })
+    }
+}
+
+impl Drop for Acquire<'_> {
+    fn drop(&mut self) {
+        // A caller that gives up while queued must not stall the tickets behind
+        // it. A caller that already acquired has left the queue, and its guard
+        // owns the release.
+        let Some(ticket) = self.ticket else {
+            return;
+        };
+        let mut state = self.gate.state();
+        let Some(position) = state.waiters.iter().position(|(waiting, _)| *waiting == ticket) else {
+            return;
+        };
+        state.waiters.remove(position);
+
+        if ticket == state.serving {
+            let next = state.next_serving(ticket + 1);
+            state.serving = next;
+            let woken = state.waiters.front().map(|(_, waker)| waker.clone());
+            drop(state);
+            if let Some(woken) = woken {
+                woken.wake();
+            }
+        }
     }
 }
 
 impl Drop for GateGuard<'_> {
     fn drop(&mut self) {
-        let mut state = self
-            .gate
-            .state
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = self.gate.state();
+        state.held = false;
+        let next = state.next_serving(self.ticket + 1);
+        state.serving = next;
 
-        match state.waiters.pop_front() {
-            // Ownership passes directly to the next waiter; `held` stays true.
-            Some(woken) => {
-                drop(state);
-                woken.wake();
-            }
-            None => state.held = false,
+        let woken = state.waiters.front().map(|(_, waker)| waker.clone());
+        drop(state);
+        if let Some(woken) = woken {
+            woken.wake();
         }
     }
 }
@@ -173,6 +243,18 @@ async fn ensure_generator() -> Result<Rc<WgpuWebGenerator>, String> {
     Ok(generator)
 }
 
+/// Record a device-loss notification, ignoring one from a generator that has
+/// already been replaced. Returns whether the notification was accepted.
+///
+/// Kept free of logging so it stays unit-testable off the web.
+fn note_device_lost(epoch: u64) -> bool {
+    if EPOCH.with(Cell::get) != epoch {
+        return false;
+    }
+    DEVICE_LOST.with(|lost| lost.set(true));
+    true
+}
+
 /// Discard the cached generator once the current device is lost.
 ///
 /// Per-call construction used to paper over device loss by accident. With a
@@ -184,15 +266,13 @@ fn watch_device_lost(generator: &WgpuWebGenerator, epoch: u64) {
     generator
         .device
         .set_device_lost_callback(move |reason, message| {
-            if EPOCH.with(Cell::get) != epoch {
-                return;
+            if note_device_lost(epoch) {
+                console_log!(
+                    "[WebGPU] Device lost ({:?}): {}. Cached generator discarded.",
+                    reason,
+                    message
+                );
             }
-            DEVICE_LOST.with(|lost| lost.set(true));
-            console_log!(
-                "[WebGPU] Device lost ({:?}): {}. Cached generator discarded.",
-                reason,
-                message
-            );
         });
 }
 
@@ -520,5 +600,290 @@ impl WgpuWebGenerator {
 
             slot ^= 1;
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc as ThreadSafeArc;
+    use std::task::Wake;
+    use std::time::{Duration, Instant};
+
+    // The WebGPU paths need a real adapter, so they cannot run on the host. The
+    // gate is what makes a shared generator safe, and it is pure `std`, so it is
+    // tested here.
+    //
+    // `block_on` and `join2` stand in for the browser event loop. `join2`
+    // matters most: it drives two futures on one thread, which is exactly how two
+    // unawaited `generate_work` promises interleave in a browser.
+
+    struct ThreadWaker(std::thread::Thread);
+
+    impl Wake for ThreadWaker {
+        fn wake(self: ThreadSafeArc<Self>) {
+            self.0.unpark();
+        }
+    }
+
+    /// A waker that unparks the calling thread. `park` keeps a permit, so a wake
+    /// arriving between a poll and the park is not lost.
+    fn thread_waker() -> Waker {
+        Waker::from(ThreadSafeArc::new(ThreadWaker(std::thread::current())))
+    }
+
+    /// Give up rather than hang if a future stops making progress. A wedged gate
+    /// should read as a failed test, not a stuck CI job.
+    const STALL_LIMIT: Duration = Duration::from_secs(10);
+
+    fn wait_for_progress(stalled: &mut u32, started_at: Instant) {
+        *stalled += 1;
+        assert!(
+            started_at.elapsed() < STALL_LIMIT,
+            "no progress for {STALL_LIMIT:?}: the gate never released"
+        );
+        std::thread::park_timeout(Duration::from_millis(20));
+    }
+
+    /// Poll once, requiring the gate to be free.
+    fn acquire_now<F: Future>(future: &mut Pin<Box<F>>, cx: &mut Context<'_>) -> F::Output {
+        match future.as_mut().poll(cx) {
+            Poll::Ready(value) => value,
+            Poll::Pending => panic!("expected a free gate, but the acquire stayed pending"),
+        }
+    }
+
+    fn block_on<F: Future>(future: F) -> F::Output {
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+        let mut future = Box::pin(future);
+        let (started_at, mut stalled) = (Instant::now(), 0);
+
+        loop {
+            if let Poll::Ready(value) = future.as_mut().poll(&mut cx) {
+                return value;
+            }
+            wait_for_progress(&mut stalled, started_at);
+        }
+    }
+
+    /// Poll two futures on one thread until both complete.
+    fn join2<A: Future, B: Future>(first: A, second: B) -> (A::Output, B::Output) {
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+        let mut first = Box::pin(first);
+        let mut second = Box::pin(second);
+        let (started_at, mut stalled) = (Instant::now(), 0);
+        let (mut a, mut b) = (None, None);
+
+        while a.is_none() || b.is_none() {
+            // The `is_none` guards are load-bearing: a completed future must not
+            // be polled again, so the poll cannot be hoisted into the pattern.
+            #[allow(clippy::collapsible_if)]
+            if a.is_none() {
+                if let Poll::Ready(value) = first.as_mut().poll(&mut cx) {
+                    a = Some(value);
+                }
+            }
+            #[allow(clippy::collapsible_if)]
+            if b.is_none() {
+                if let Poll::Ready(value) = second.as_mut().poll(&mut cx) {
+                    b = Some(value);
+                }
+            }
+            if a.is_some() && b.is_some() {
+                break;
+            }
+            wait_for_progress(&mut stalled, started_at);
+        }
+
+        (a.unwrap(), b.unwrap())
+    }
+
+    /// Yields once, so a critical section containing it is a real await point
+    /// the other future can run into.
+    struct YieldOnce(bool);
+
+    impl Future for YieldOnce {
+        type Output = ();
+
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+            if self.0 {
+                return Poll::Ready(());
+            }
+            self.0 = true;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        }
+    }
+
+    /// Overlapping calls must never share the critical section, because that
+    /// section is all that stands between two `generate` calls and the shared
+    /// ping-pong buffers. Without the gate both enter before either yields, and
+    /// each reads back the other's nonce. This is the host-runnable equivalent
+    /// of firing concurrent `generate_work` calls and validating each result
+    /// against its own hash.
+    #[test]
+    fn gate_keeps_overlapping_calls_out_of_the_same_critical_section() {
+        let gate = Gate::new();
+        let trace: RefCell<Vec<&'static str>> = RefCell::new(Vec::new());
+
+        let first = async {
+            let _guard = gate.lock().await;
+            trace.borrow_mut().push("first-in");
+            YieldOnce(false).await;
+            trace.borrow_mut().push("first-out");
+        };
+        let second = async {
+            let _guard = gate.lock().await;
+            trace.borrow_mut().push("second-in");
+            YieldOnce(false).await;
+            trace.borrow_mut().push("second-out");
+        };
+
+        join2(first, second);
+
+        assert_eq!(
+            *trace.borrow(),
+            vec!["first-in", "first-out", "second-in", "second-out"],
+            "critical sections interleaved: overlapping calls would alias the ping-pong buffers"
+        );
+    }
+
+    #[test]
+    fn gate_admits_a_waiter_only_after_the_holder_releases() {
+        let gate = Gate::new();
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        let mut held = Box::pin(gate.lock());
+        let held_guard = acquire_now(&mut held, &mut cx);
+
+        let mut waited = Box::pin(gate.lock());
+        assert!(
+            waited.as_mut().poll(&mut cx).is_pending(),
+            "a second caller entered the critical section while it was held"
+        );
+
+        // Releasing hands ownership straight to the queued waiter.
+        drop(held_guard);
+        let waited_guard = acquire_now(&mut waited, &mut cx);
+        drop(waited_guard);
+    }
+
+    #[test]
+    fn gate_admits_waiters_in_arrival_order() {
+        let gate = Gate::new();
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        let mut held = Box::pin(gate.lock());
+        let held_guard = acquire_now(&mut held, &mut cx);
+
+        let mut first = Box::pin(gate.lock());
+        let mut second = Box::pin(gate.lock());
+        assert!(first.as_mut().poll(&mut cx).is_pending());
+        assert!(second.as_mut().poll(&mut cx).is_pending());
+
+        drop(held_guard);
+        let first_guard = acquire_now(&mut first, &mut cx);
+        assert!(
+            second.as_mut().poll(&mut cx).is_pending(),
+            "a later waiter jumped the queue"
+        );
+
+        drop(first_guard);
+        let second_guard = acquire_now(&mut second, &mut cx);
+        drop(second_guard);
+    }
+
+    #[test]
+    fn gate_queues_a_repolled_waiter_only_once() {
+        let gate = Gate::new();
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        let mut held = Box::pin(gate.lock());
+        let held_guard = acquire_now(&mut held, &mut cx);
+
+        // A pending future is normally re-polled by its executor.
+        let mut waited = Box::pin(gate.lock());
+        for _ in 0..3 {
+            assert!(waited.as_mut().poll(&mut cx).is_pending());
+        }
+
+        let waiters = gate
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .waiters
+            .len();
+        assert_eq!(waiters, 1, "re-polls enqueued duplicate waiters");
+
+        drop(held_guard);
+    }
+
+    #[test]
+    fn gate_is_reusable_across_sequential_callers() {
+        let gate = Gate::new();
+
+        block_on(async {
+            for _ in 0..3 {
+                let guard = gate.lock().await;
+                drop(guard);
+            }
+        });
+
+        // The gate must not be left permanently held by a departed caller.
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+        let mut acquire = Box::pin(gate.lock());
+        let guard = acquire_now(&mut acquire, &mut cx);
+        drop(guard);
+    }
+
+    /// A caller that gives up while queued must not strand the ticket behind it.
+    #[test]
+    fn gate_skips_a_waiter_that_gives_up() {
+        let gate = Gate::new();
+        let waker = thread_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        let mut held = Box::pin(gate.lock());
+        let held_guard = acquire_now(&mut held, &mut cx);
+
+        let mut abandoned = Box::pin(gate.lock());
+        assert!(abandoned.as_mut().poll(&mut cx).is_pending());
+
+        let mut waiting = Box::pin(gate.lock());
+        assert!(waiting.as_mut().poll(&mut cx).is_pending());
+
+        drop(abandoned);
+        drop(held_guard);
+
+        let waiting_guard = acquire_now(&mut waiting, &mut cx);
+        drop(waiting_guard);
+    }
+
+    #[test]
+    fn a_loss_notification_from_a_replaced_generator_is_ignored() {
+        // Thread-locals are per-thread, so the harness gives this test its own
+        // copy and it cannot disturb the others.
+        assert!(!DEVICE_LOST.with(Cell::get), "test began already lost");
+
+        let current = EPOCH.with(Cell::get);
+
+        assert!(
+            !note_device_lost(current + 1),
+            "a notification from a replaced generator was accepted"
+        );
+        assert!(!DEVICE_LOST.with(Cell::get));
+
+        assert!(note_device_lost(current));
+        assert!(
+            DEVICE_LOST.with(Cell::get),
+            "a loss on the current generator did not invalidate the cache"
+        );
     }
 }
