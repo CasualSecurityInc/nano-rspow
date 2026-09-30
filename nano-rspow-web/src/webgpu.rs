@@ -49,6 +49,7 @@ async fn map_readback_async(buf: &wgpu::Buffer, cancel: &CancelToken) -> bool {
 
 impl WgpuWebGenerator {
     pub async fn new() -> Result<Self, String> {
+        let started_at = js_sys::Date::now();
         console_log!("[WebGPU] Instantiating wgpu::Instance...");
         let instance = wgpu::Instance::default();
 
@@ -168,7 +169,10 @@ impl WgpuWebGenerator {
             })
         });
 
-        console_log!("[WebGPU] Initialization complete (double-buffered)!");
+        console_log!(
+            "[WebGPU] Initialization complete in {} ms (double-buffered)!",
+            js_sys::Date::now() - started_at
+        );
         Ok(Self {
             device,
             queue,
