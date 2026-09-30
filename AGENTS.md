@@ -47,6 +47,7 @@ Both dashboards compile `nano-rspow-web` to WebAssembly, so both need the
 |------|------|
 | Project overview | `README.md` |
 | Benchmark results | `PERFORMANCE_BENCHMARK.md` |
+| How to measure, and the three benchmarking surfaces | `PERFORMANCE_OBSERVATIONS.md` |
 
 ## Version Bumping Rules
 
@@ -80,3 +81,20 @@ AI commits MUST include:
 ```
 Co-Authored-By: <agent name and attribution>
 ```
+
+## Benchmarking
+There are **three separate benchmarking surfaces** and they are not
+interchangeable. See `PERFORMANCE_OBSERVATIONS.md` for the full taxonomy and
+comparison rules.
+
+1. **Core CLI** — the Rust crate only, in a terminal. The only surface whose
+   numbers belong in `PERFORMANCE_BENCHMARK.md`, and filing them there is a
+   manual step.
+2. **Browser-only page** — `nano-rspow-web` in one tab. Records nothing.
+3. **Head-to-head suite** — `nano-rspow-web` against `nano-pow`, the node addon
+   and the Rust work peer, behind a local dev server. Records nothing, and its
+   competitor list is data in `app.js` that a developer may edit per
+   investigation, so it is not guaranteed reproducible.
+
+Never file a surface 2 or 3 number in `PERFORMANCE_BENCHMARK.md`. No benchmark
+runs in CI.
