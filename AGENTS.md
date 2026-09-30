@@ -15,6 +15,32 @@ This file contains critical, unavoidable rules that all AI coding agents working
 | WASM web bench | `cargo run --release --package nano-rspow-web --example benchmark_web` |
 | Node native build | `npm run build` (in `nano-rspow-node/`) |
 | WASM web build | `npm run build` (in `nano-rspow-web/`) |
+| Web browser test | `npm run test:browser` (in `nano-rspow-web/`; needs Chrome, set `CHROME_PATH` if it is not found) |
+
+## Web Dashboards
+Both dashboards compile `nano-rspow-web` to WebAssembly, so both need the
+`wasm32-unknown-unknown` target and the `wasm-bindgen` CLI. All entry points are
+`make` targets at the repository root; run `make help` for the list.
+
+| Task | Command |
+|------|---------|
+| One-time prerequisites | `make web-prereqs` |
+| Verify toolchain, change nothing | `./scripts/setup-web-toolchain.sh --check` |
+| Browser-only dashboard | `make web-demo` (or `make web-demo-build` to skip the browser) |
+| Check the built dashboard | `make web-demo-check` |
+| Head-to-head dashboard | `make web-compare-run` (serves `:8080`, override with `PORT=`) |
+| Build both dashboards | `make web-all` |
+| Discard generated output | `make web-clean` |
+
+* **`browser-demo/index.html` is generated and gitignored.** Never commit it, and
+  never rely on a copy being present. `make web-demo-check` is what stands in for
+  the safety a committed artifact appeared to give.
+* The head-to-head dashboard additionally needs the `nano-rspow-node` native
+  addon, which `make web-prereqs` builds. CI does **not** build that dashboard,
+  only the browser-only one, because the addon is a platform-specific native
+  compile.
+* `cargo benchmark-web` still works and is a thin wrapper over the same
+  `build-demo.py`; prefer the `make` targets.
 
 ## External References
 | Need | File |

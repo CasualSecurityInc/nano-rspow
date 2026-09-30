@@ -52,9 +52,33 @@ See the [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow
 
 ### 3. Interactive Web Dashboard
 Build and open the self-contained browser dashboard. It tests WebGPU and a Web Worker CPU fallback:
+
 ```bash
-cargo benchmark-web
+make web-prereqs    # once, after cloning: wasm32 target, wasm-bindgen, npm deps
+make web-demo       # build the dashboard and open it
 ```
+
+`make web-prereqs` adds the `wasm32-unknown-unknown` Rust target, checks for the
+`wasm-bindgen` CLI and explains how to install it if absent, and installs the npm
+dependencies. It is safe to re-run. After that:
+
+```bash
+make web-demo-check   # is the built page present, complete and up to date?
+make web-clean        # discard the generated dashboard
+```
+
+The dashboard is written to `nano-rspow-web/browser-demo/index.html` as a single
+self-contained file — the WebAssembly, the wasm-bindgen glue and the WGSL shader
+are all inlined, so it runs straight from disk. It is **generated, not
+committed**, so a stale copy can never be opened by mistake; `make web-demo-check`
+tells you if the copy on disk is missing or older than the crate.
+
+There is also a head-to-head dashboard that compares this package against
+`nano-pow`, the `nano-rspow-node` addon and the Rust CLI work peer. It needs the
+native addon, so it is a separate target: `make web-compare-run` serves it on
+<http://localhost:8080/>. See the
+[nano-rspow-web README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-web/README.md)
+for the full set of options.
 
 ---
 
@@ -86,7 +110,7 @@ This monorepo is organized into specialized workspaces to deliver native perform
 ├── nano-rspow-go/           # Go module and nano-rspow-go streaming CLI
 ├── nano-rspow-node/        # High-performance Node.js & TypeScript native bindings (N-API)
 ├── nano-rspow-python/      # Native PyO3 bindings for Python environments
-└── nano-rspow-web/         # Web/WASM target crate & self-contained HTML benchmarking dashboard
+└── nano-rspow-web/         # Web/WASM target crate & the two HTML benchmarking dashboards
 ```
 
 ---

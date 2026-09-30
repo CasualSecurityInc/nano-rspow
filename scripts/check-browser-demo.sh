@@ -20,7 +20,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DASHBOARD="$REPO_ROOT/nano-rspow-web/browser-demo/index.html"
 DEMO_DIR="$REPO_ROOT/nano-rspow-web/browser-demo"
 QUIET=0
-[[ "${1:-}" == "--quiet" ]] && QUIET=1
+if [[ "${1:-}" == "--quiet" ]]; then
+  QUIET=1
+fi
 
 if [[ $QUIET -eq 1 ]]; then
   say() { :; }
@@ -77,7 +79,9 @@ check_inlined() {
 
         make web-demo-build"
   fi
-  [[ $QUIET -eq 0 ]] && ok "inlined: $1"
+  if [[ $QUIET -eq 0 ]]; then
+    ok "inlined: $1"
+  fi
 }
 
 check_inlined 'const wasmBase64'
@@ -107,5 +111,7 @@ if [[ -n $stale ]]; then
       make web-demo-build"
 fi
 
-[[ $QUIET -eq 0 ]] && ok "up to date with the crate, shader and demo sources"
-[[ $QUIET -eq 0 ]] && printf '\n\033[1mBrowser-only dashboard verified.\033[0m\n'
+if [[ $QUIET -eq 0 ]]; then
+  ok "up to date with the crate, shader and demo sources"
+  printf '\n\033[1mBrowser-only dashboard verified.\033[0m\n'
+fi

@@ -71,12 +71,20 @@ make web-prereqs
 That installs the `wasm32-unknown-unknown` Rust target, builds the
 `nano-rspow-node` native addon and installs the dashboard's npm dependencies,
 skipping whatever is already satisfied. It is safe to re-run. It needs `cargo`,
-`npm` and `python3` on your `PATH`, plus the `wasm-bindgen` CLI — if that is
-missing the script tells you how to install it, and the browser-only dashboard is
-the only thing you need it for on top of the rest.
+`npm` and `python3` on your `PATH`, plus the `wasm-bindgen` CLI, which it does
+*not* install for you — that compiles for several minutes, so the script prints
+the command instead and exits. Both dashboards need `wasm-bindgen`; the native
+addon is the only prerequisite that only the head-to-head dashboard needs, so
+`./scripts/setup-web-toolchain.sh --skip-addon` is enough for the browser-only
+one.
 
 Verify the toolchain without changing anything with
 `./scripts/setup-web-toolchain.sh --check`.
+
+`cargo benchmark-web` also builds and opens the browser-only dashboard. It is a
+thin wrapper around the same `build-demo.py`, kept because the root README has
+long pointed at it; prefer `make web-demo`, which is the same thing plus the
+prerequisite tooling.
 
 **Browser-only dashboard** — measures this package's WebGPU and WASM CPU
 backends, nothing else. No server, no addon:
