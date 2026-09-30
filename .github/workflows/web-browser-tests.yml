@@ -9,12 +9,21 @@ on:
       - 'nano-rspow/src/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      # This workflow cannot verify changes to itself or to the action it
+      # depends on unless it triggers on them. It was missed when the
+      # wasm-bindgen install moved into a composite action, which left a broken
+      # fix looking untested because the run never happened.
+      - '.github/workflows/web-browser-tests.yml'
+      - '.github/actions/**'
   pull_request:
     paths:
       - 'nano-rspow-web/**'
       - 'nano-rspow/src/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.github/workflows/web-browser-tests.yml'
+      - '.github/actions/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
