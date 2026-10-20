@@ -1,6 +1,5 @@
 /target
 **/*.rs.bk
-.DS_Store
 
 # Node.js
 node_modules/
@@ -9,7 +8,11 @@ worktrees/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 .npm/
+.pnp.*
+.nyc_output/
+coverage/
 
 # napi-rs artifacts
 artifacts/
@@ -17,9 +20,20 @@ nano-rspow-node/napi-generated.d.ts
 
 # Python
 __pycache__/
+*.py[cod]
+*$py.class
 *.egg-info/
 dist/
 .venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
 *.so
 *.pyd
 
@@ -27,6 +41,7 @@ dist/
 .DS_Store
 .DS_Store?
 ._*
+.AppleDouble
 .Spotlight-V100
 .Trashes
 ehthumbs.db
