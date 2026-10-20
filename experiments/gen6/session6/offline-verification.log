@@ -1,0 +1,6 @@
+ID DW4: CURBE length is in bits 16..31; 0x00020000 is offset 0, length 2
+Surface shifts from XML: {'Width': 6, 'Height': 19, 'Surface Pitch': 3, 'Depth': 21}
+PASS captured surface +0x0: 768 bytes; DW2=0x00000bc0 DW3=0x00000078
+PASS captured surface +0x20: 524288 bytes; DW2=0x07f81fc0 DW3=0x00000078
+PASS captured surface +0x40: 3648 bytes; DW2=0x000818c0 DW3=0x00000078
+OWord block controls in ref-vme/vme.inc: 0=16B low, 1=16B high, 2=32B, 3=64B, 4=128B

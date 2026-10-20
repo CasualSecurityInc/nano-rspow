@@ -1,0 +1,28 @@
+ls: cannot access '/etc/OpenCL/vendors': No such file or directory
+CLI /root/.cargo/bin/nano-rspow
+95f9289a9c3bd58fa63d76fee1de0b13f5ccb61d2786c6587126e5b1ea92a822  /root/.cargo/bin/nano-rspow
+345cbe0e1a5c2abc1a8e18f05ab8fd7a2818179985169019a0eaf35a460f8eb0  /usr/local/lib/snbcl/libsnbcl.so
+b83340eedfaf56030d4b196a733804e754b083b5471d4926d70018a3f81a09c7  /usr/local/lib/snbcl/m3-12-l16-pred.bin
+	linux-vdso.so.1 (0x00007ffe68549000)
+	libOpenCL.so.1 => /lib/x86_64-linux-gnu/libOpenCL.so.1 (0x00007b713448c000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007b713446c000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007b7133d20000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007b7133b3e000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007b71344ad000)
+snbcl: loaded pid=3987348; restricted pow_kernel ICD
+Backend  : opencl
+Hash     : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Threshold: 0xfffffe0000000000
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/usr/local/lib/snbcl/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MATCH (pow.cl only)
+Generating... Hash found!
+Nonce     : 723d20627034aadb  (the work value to submit)
+Difficulty: 0xffffff98b5c790c0
+Luck      : 4.9569×  (nonce was 4.96× above min threshold; avg ≈ 1×)
+Time      : 0.303s
+snbcl: NDRange base=0x723d20627034a94e count=65536 gpu=65520 cpu=2 HIT CPU-verified
+snbcl: summary enqueues=54 GPU_hashes=3538080 CPU_tail_hashes=850
+snb-engine: reset_start=7 reset_end=7

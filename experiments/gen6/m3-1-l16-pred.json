@@ -1,0 +1,9 @@
+{
+  "rounds": 1,
+  "instructions": 437,
+  "bytes": 6992,
+  "highest_grf": 87,
+  "record_layout": "two-adjacent-soa8-blocks",
+  "nonces_per_thread": 16,
+  "predicated_carry": true
+}

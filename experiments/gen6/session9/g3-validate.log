@@ -1,0 +1,6 @@
+PASS allocator: exact concurrent coverage, no overlaps, low-word/u64 boundaries, single published winner
+Hash      : 0000000000000000000000000000000000000000000000000000000000000001
+Work      : 0000000000000000
+Threshold : 0x0000000000000001
+Difficulty: 0x9f7babf206222889
+Valid     : ✓ YES

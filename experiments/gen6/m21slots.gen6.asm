@@ -1,0 +1,15 @@
+
+                                      
+mov (8) r4.0<1>:UD 0x00000000:UD {align1};
+mov (1) r4.20<1>:UB r0.20<0,1,0>:UB {align1};
+mov (1) r4.8<1>:UD 0x00000000:UD {align1};
+mov (8) r20.0<1>:UD r3.0<8,8,1>:UD {align1};
+mov (1) r20.12<1>:UD r0.20<0,1,0>:UD {align1};
+shl (1) r4.8<1>:UD r3.0<0,1,0>:UD 1:UD {align1};
+mov (8) m0.0<1>:UD r4.0<8,8,1>:UD {align1};
+mov (8) m1.0<1>:UD r20.0<8,8,1>:UD {align1};
+send (16) 0 r16 null data_port(5, 8, 2, 0, 1, 1) mlen 2 rlen 1 {align1};
+mov (8) r17.0<1>:UD r16.0<8,8,1>:UD {align1};
+mov (8) m0.0<1>:UD r0.0<8,8,1>:UD {align1};
+send (16) 0 acc0<1>UW null thread_spawner(0, 0, 1) mlen 1 rlen 0 {align1 EOT};
+

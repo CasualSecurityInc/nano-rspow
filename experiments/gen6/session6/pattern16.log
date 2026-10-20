@@ -1,0 +1,5 @@
+COMPLETE (reset-clean 7); X=0 payload after MEDIA_OBJECT dispatch:
+  dword[00] = 61000000
+  dword[01] = 61000001
+  dword[02] = 61000002
+  dword[03] = 61000003

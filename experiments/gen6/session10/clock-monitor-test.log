@@ -1,0 +1,8 @@
+MONITOR frequency=/sys/class/drm/card1/gt_act_freq_mhz sample_interval_s=0.2 start_temp_mC=94000
+BUCKET k=1 elapsed=0.501s rate=11.652 MH/s full=1 start_ns=5963018228862246 end_ns=5963018729417662
+BUCKET k=2 elapsed=1.001s rate=11.131 MH/s full=1 start_ns=5963018729417662 end_ns=5963019229850077
+BUCKET k=3 elapsed=1.202s rate=10.765 MH/s full=0 start_ns=5963019229850077 end_ns=5963019430750624
+BENCH: threads=4096 lanes=16 submissions=207 hashes=13565952 elapsed=1.201888s rate=11.287 MH/s loadavg=0.28 0.64 0.90
+MONITOR samples=8 max_temp_mC=97000 csv=session10/clock-monitor-test.csv
+RAW_RETENTION=0.955 gate=PASS
+CLOCK_NORMALIZED first_mean_MHz=1091.68 last_mean_MHz=1022.32 retention=1.020; sampled association, not causal attribution

@@ -1,0 +1,13 @@
+NO HIT mode=gpu
+STATS wall=0.101826s gpu=1000000 cpu=3 total=1000003 gpu_rate=9.821 cpu_rate=0.000 total_rate=9.821 MH/s
+NO HIT mode=cpu
+STATS wall=0.906974s gpu=0 cpu=1000003 total=1000003 gpu_rate=0.000 cpu_rate=1.103 total_rate=1.103 MH/s
+NO HIT mode=hybrid
+STATS wall=0.088936s gpu=905792 cpu=94211 total=1000003 gpu_rate=10.185 cpu_rate=1.059 total_rate=11.244 MH/s
+NO HIT mode=gpu
+STATS wall=0.015156s gpu=96 cpu=4 total=100 gpu_rate=0.006 cpu_rate=0.000 total_rate=0.007 MH/s
+NO HIT mode=hybrid
+STATS wall=0.015053s gpu=0 cpu=16 total=16 gpu_rate=0.000 cpu_rate=0.001 total_rate=0.001 MH/s
+ERROR mode=gpu
+STATS wall=0.000288s gpu=0 cpu=0 total=0 gpu_rate=0.000 cpu_rate=0.000 total_rate=0.000 MH/s
+kernel does not match the built 12-round engine/width; rebuild with build-m4.sh

@@ -1,0 +1,23 @@
+ 20:53:29 up 68 days,  9:51,  3 users,  load average: 25.92, 7.99, 3.01
+    PID COMMAND         S %CPU
+3142694 ps              R  204
+3142675 runc:[2:INIT]   R 42.8
+3142636 sshd            S 14.0
+3142644 runc            S 11.0
+3142692 bash            S  9.1
+3142523 runc:[2:INIT]   R  6.4
+3142069 node            Z  6.1
+   8845 java            S  4.8
+   8846 java            S  4.7
+3142695 head            S  4.5
+3142630 runc            R  4.1
+   1552 pvestatd        R  3.9
+   5359 node            S  3.9
+1048649 btop            R  2.4
+1868075 node            R  2.0
+some avg10=96.14 avg60=68.34 avg300=23.54 total=528394227032
+full avg10=0.00 avg60=0.00 avg300=0.00 total=0
+some avg10=20.82 avg60=21.35 avg300=13.64 total=108557555354
+full avg10=0.00 avg60=5.13 avg300=7.70 total=60426645441
+some avg10=0.00 avg60=0.00 avg300=0.00 total=63804343758
+full avg10=0.00 avg60=0.00 avg300=0.00 total=48084285775

@@ -1,0 +1,32 @@
+	linux-vdso.so.1 (0x00007ffc62fe2000)
+	libOpenCL.so.1 => /lib/x86_64-linux-gnu/libOpenCL.so.1 (0x000077e159503000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000077e1594e3000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000077e158d20000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000077e158b3e000)
+	/lib64/ld-linux-x86-64.so.2 (0x000077e159524000)
+nano-rspow benchmark
+  Hash    : 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2
+  Samples : 1 per backend per tier
+  Mode    : warm
+
+snbcl: loaded pid=3980351; restricted pow_kernel ICD
+
+## nano-rspow Benchmark Results
+
+| Backend | Mode | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |
+|---------|------|------|-----------|--------:|---------:|---------:|----------:|------------:|
+
+> Tiers benchmarked: `dev`, `receive`, `legacy_epoch1`, `send`.
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MISMATCH (pow.cl only)
+OpenCL GPU backend: unavailable — GPU backend initialization failed: 
+
+###################### OPENCL PROGRAM BUILD DEBUG OUTPUT ######################
+
+snbcl: source mismatch; only the embedded checkout pow.cl is supported
+###############################################################################
+
+

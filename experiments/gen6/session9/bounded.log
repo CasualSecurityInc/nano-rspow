@@ -1,0 +1,2 @@
+NO HIT mode=gpu
+STATS wall=0.122277s gpu=1000000 cpu=3 total=1000003 gpu_rate=8.178 cpu_rate=0.000 total_rate=8.178 MH/s

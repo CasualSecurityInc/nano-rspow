@@ -1,0 +1,123 @@
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=16 nonce=0x0000000000000000 h0=0x9f7babf206222889 threshold=0x0000000000000001 root=0000000000000000000000000000000000000000000000000000000000000001
+STATS wall=0.016361s gpu=16 cpu=0 total=16 gpu_rate=0.001 cpu_rate=0.000 total_rate=0.001 MH/s
+PASS blake8: 2004 C/hashlib comparisons, including root/nonce byte order
+PASS allocator: exact concurrent coverage, no overlaps, low-word/u64 boundaries, single published winner
+SOLVED mode=cpu by=cpu workers=3 lanes=16 nonce=0x0000000000000000 h0=0x9f7babf206222889 threshold=0x0000000000000001 root=0000000000000000000000000000000000000000000000000000000000000001
+STATS wall=0.000333s gpu=0 cpu=1 total=1 gpu_rate=0.000 cpu_rate=0.003 total_rate=0.003 MH/s
+PASS independent hashlib nonce=0000000000000000 h0=9f7babf206222889
+Hash      : 0000000000000000000000000000000000000000000000000000000000000001
+Work      : 0000000000000000
+Threshold : 0x0000000000000001
+Difficulty: 0x9f7babf206222889
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=16 nonce=0x0000000000000000 h0=0x9f7babf206222889 threshold=0x0000000000000001 root=0000000000000000000000000000000000000000000000000000000000000001
+STATS wall=0.071561s gpu=65536 cpu=0 total=65536 gpu_rate=0.916 cpu_rate=0.000 total_rate=0.916 MH/s
+PASS independent hashlib nonce=0000000000000000 h0=9f7babf206222889
+Hash      : 0000000000000000000000000000000000000000000000000000000000000001
+Work      : 0000000000000000
+Threshold : 0x0000000000000001
+Difficulty: 0x9f7babf206222889
+Valid     : ✓ YES
+SOLVED mode=hybrid by=cpu workers=3 lanes=16 nonce=0x0000000000000000 h0=0x9f7babf206222889 threshold=0x0000000000000001 root=0000000000000000000000000000000000000000000000000000000000000001
+STATS wall=0.000533s gpu=0 cpu=1 total=1 gpu_rate=0.000 cpu_rate=0.002 total_rate=0.002 MH/s
+PASS independent hashlib nonce=0000000000000000 h0=9f7babf206222889
+Hash      : 0000000000000000000000000000000000000000000000000000000000000001
+Work      : 0000000000000000
+Threshold : 0x0000000000000001
+Difficulty: 0x9f7babf206222889
+Valid     : ✓ YES
+NO HIT mode=gpu
+STATS wall=0.122277s gpu=1000000 cpu=3 total=1000003 gpu_rate=8.178 cpu_rate=0.000 total_rate=8.178 MH/s
+GPU reset_start=7 reset_end=7
+SOLVED mode=cpu by=cpu workers=3 lanes=16 nonce=0x0000000000068d1d h0=0xfffffff069a0f9c5 threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.214587s gpu=0 cpu=435084 total=435084 gpu_rate=0.000 cpu_rate=2.028 total_rate=2.028 MH/s
+PASS independent hashlib nonce=0000000000068d1d h0=fffffff069a0f9c5
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 0000000000068d1d
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffff069a0f9c5
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=16 nonce=0x0000000000068d1d h0=0xfffffff069a0f9c5 threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.064234s gpu=458752 cpu=0 total=458752 gpu_rate=7.142 cpu_rate=0.000 total_rate=7.142 MH/s
+PASS independent hashlib nonce=0000000000068d1d h0=fffffff069a0f9c5
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 0000000000068d1d
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffff069a0f9c5
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=gpu workers=3 lanes=16 nonce=0x0000000000068d1d h0=0xfffffff069a0f9c5 threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.089088s gpu=393216 cpu=107156 total=500372 gpu_rate=4.414 cpu_rate=1.203 total_rate=5.617 MH/s
+PASS independent hashlib nonce=0000000000068d1d h0=fffffff069a0f9c5
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 0000000000068d1d
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffff069a0f9c5
+Valid     : ✓ YES
+SOLVED mode=cpu by=cpu workers=3 lanes=16 nonce=0x000000001004ca83 h0=0xfffffe4c7dcd4fdd threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.198318s gpu=0 cpu=315176 total=315176 gpu_rate=0.000 cpu_rate=1.589 total_rate=1.589 MH/s
+PASS independent hashlib nonce=000000001004ca83 h0=fffffe4c7dcd4fdd
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 000000001004ca83
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffe4c7dcd4fdd
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=16 nonce=0x000000001004ca83 h0=0xfffffe4c7dcd4fdd threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.066895s gpu=327680 cpu=0 total=327680 gpu_rate=4.898 cpu_rate=0.000 total_rate=4.898 MH/s
+PASS independent hashlib nonce=000000001004ca83 h0=fffffe4c7dcd4fdd
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 000000001004ca83
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffe4c7dcd4fdd
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=gpu workers=3 lanes=16 nonce=0x000000001004ca83 h0=0xfffffe4c7dcd4fdd threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.069178s gpu=262144 cpu=77265 total=339409 gpu_rate=3.789 cpu_rate=1.117 total_rate=4.906 MH/s
+PASS independent hashlib nonce=000000001004ca83 h0=fffffe4c7dcd4fdd
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 000000001004ca83
+Threshold : 0xfffffe0000000000
+Difficulty: 0xfffffe4c7dcd4fdd
+Valid     : ✓ YES
+SOLVED mode=cpu by=cpu workers=3 lanes=16 nonce=0x00000000203a1eb7 h0=0xffffff019150808d threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=1.952955s gpu=0 cpu=3808655 total=3808655 gpu_rate=0.000 cpu_rate=1.950 total_rate=1.950 MH/s
+PASS independent hashlib nonce=00000000203a1eb7 h0=ffffff019150808d
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 00000000203a1eb7
+Threshold : 0xfffffe0000000000
+Difficulty: 0xffffff019150808d
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=16 nonce=0x00000000203a1eb7 h0=0xffffff019150808d threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.420170s gpu=3866624 cpu=0 total=3866624 gpu_rate=9.203 cpu_rate=0.000 total_rate=9.203 MH/s
+PASS independent hashlib nonce=00000000203a1eb7 h0=ffffff019150808d
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 00000000203a1eb7
+Threshold : 0xfffffe0000000000
+Difficulty: 0xffffff019150808d
+Valid     : ✓ YES
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=gpu workers=3 lanes=16 nonce=0x00000000203a1eb7 h0=0xffffff019150808d threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.515171s gpu=3014656 cpu=826107 total=3840763 gpu_rate=5.852 cpu_rate=1.604 total_rate=7.455 MH/s
+PASS independent hashlib nonce=00000000203a1eb7 h0=ffffff019150808d
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 00000000203a1eb7
+Threshold : 0xfffffe0000000000
+Difficulty: 0xffffff019150808d
+Valid     : ✓ YES
+PROGRESS gpu=28311552 cpu=7041024
+PROGRESS gpu=54919168 cpu=12980224
+PROGRESS gpu=79495168 cpu=16969728
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=cpu workers=3 lanes=16 nonce=0x000000000677f4a0 h0=0xfffffffe2a0ec659 threshold=0xfffffff800000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=17.485076s gpu=90308608 cpu=18214514 total=108523122 gpu_rate=5.165 cpu_rate=1.042 total_rate=6.207 MH/s
+PASS independent hashlib nonce=000000000677f4a0 h0=fffffffe2a0ec659
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 000000000677f4a0
+Threshold : 0xfffffff800000000
+Difficulty: 0xfffffffe2a0ec659
+Valid     : ✓ YES

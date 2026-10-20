@@ -1,0 +1,29 @@
+MONITOR frequency=/sys/class/drm/card1/gt_act_freq_mhz sample_interval_s=0.2 start_temp_mC=80000
+BUCKET k=1 elapsed=5.004s rate=13.555 MH/s full=1 start_ns=5985041483844877 end_ns=5985046487723212
+BUCKET k=2 elapsed=10.004s rate=13.591 MH/s full=1 start_ns=5985046487723212 end_ns=5985051488193924
+BUCKET k=3 elapsed=15.004s rate=12.648 MH/s full=1 start_ns=5985051488193924 end_ns=5985056488208853
+BUCKET k=4 elapsed=20.006s rate=11.650 MH/s full=1 start_ns=5985056488208853 end_ns=5985061489361156
+BUCKET k=5 elapsed=25.006s rate=10.773 MH/s full=1 start_ns=5985061489361156 end_ns=5985066489974657
+BUCKET k=6 elapsed=30.008s rate=10.102 MH/s full=1 start_ns=5985066489974657 end_ns=5985071491836567
+BUCKET k=7 elapsed=35.009s rate=9.592 MH/s full=1 start_ns=5985071491836567 end_ns=5985076493041410
+BUCKET k=8 elapsed=40.016s rate=9.084 MH/s full=1 start_ns=5985076493041410 end_ns=5985081499977448
+BUCKET k=9 elapsed=45.022s rate=8.614 MH/s full=1 start_ns=5985081499977448 end_ns=5985086506130663
+BUCKET k=10 elapsed=50.028s rate=8.497 MH/s full=1 start_ns=5985086506130663 end_ns=5985091511936483
+BUCKET k=11 elapsed=55.031s rate=8.436 MH/s full=1 start_ns=5985091511936483 end_ns=5985096514857530
+BUCKET k=12 elapsed=60.036s rate=8.223 MH/s full=1 start_ns=5985096514857530 end_ns=5985101519779937
+BUCKET k=13 elapsed=65.038s rate=8.149 MH/s full=1 start_ns=5985101519779937 end_ns=5985106522046382
+BUCKET k=14 elapsed=70.041s rate=7.938 MH/s full=1 start_ns=5985106522046382 end_ns=5985111525233610
+BUCKET k=15 elapsed=75.042s rate=7.797 MH/s full=1 start_ns=5985111525233610 end_ns=5985116526210289
+BUCKET k=16 elapsed=80.046s rate=7.753 MH/s full=1 start_ns=5985116526210289 end_ns=5985121530108069
+BUCKET k=17 elapsed=85.053s rate=7.605 MH/s full=1 start_ns=5985121530108069 end_ns=5985126537156362
+BUCKET k=18 elapsed=90.060s rate=7.645 MH/s full=1 start_ns=5985126537156362 end_ns=5985131543412297
+BUCKET k=19 elapsed=95.065s rate=7.620 MH/s full=1 start_ns=5985131543412297 end_ns=5985136548757138
+BUCKET k=20 elapsed=100.073s rate=7.643 MH/s full=1 start_ns=5985136548757138 end_ns=5985141556587536
+BUCKET k=21 elapsed=105.081s rate=7.577 MH/s full=1 start_ns=5985141556587536 end_ns=5985146564824036
+BUCKET k=22 elapsed=110.087s rate=7.528 MH/s full=1 start_ns=5985146564824036 end_ns=5985151570875511
+BUCKET k=23 elapsed=115.094s rate=7.434 MH/s full=1 start_ns=5985151570875511 end_ns=5985156578331335
+BUCKET k=24 elapsed=120.004s rate=7.288 MH/s full=0 start_ns=5985156578331335 end_ns=5985161487994101
+BENCH: threads=4096 lanes=16 submissions=16538 hashes=1083834368 elapsed=120.004149s rate=9.032 MH/s loadavg=0.36 0.34 0.31
+MONITOR samples=598 max_temp_mC=98000 csv=/tmp/nano-gen6-m3/session10/sustain-user-20261019.csv
+RAW_RETENTION=0.548 gate=FAIL
+CLOCK_NORMALIZED first_mean_MHz=1287.37 last_mean_MHz=718.91 retention=0.982; sampled association, not causal attribution

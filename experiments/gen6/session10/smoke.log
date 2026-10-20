@@ -1,0 +1,22 @@
+DEVICE Intel HD Graphics 3000 (snbcl pow_kernel)
+PASS contract: source refusal, split source, typed args, bounds, events/callback/profiling, existing winner, offset, wrap
+SMOKE SOLVED nonce=0x0000000000068d1d h0=0xfffffff069a0f9c5 enqueues=7
+=== loader linkage ===
+snbcl: loaded pid=3982825; restricted pow_kernel ICD
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MISMATCH (pow.cl only)
+snbcl: build source=MATCH (pow.cl only)
+snbcl: NDRange base=0x0000000000000000 count=64 gpu=64 cpu=0 HIT CPU-verified
+snbcl: NDRange base=0xfffffffffffffffd count=64 gpu=0 cpu=1 HIT CPU-verified
+snbcl: NDRange base=0x0000000000060003 count=65536 gpu=65520 cpu=13 HIT CPU-verified
+snbcl: summary enqueues=10 GPU_hashes=458768 CPU_tail_hashes=110
+snb-engine: reset_start=7 reset_end=7
+	linux-vdso.so.1 (0x00007fffdcde6000)
+	libOpenCL.so.1 => /lib/x86_64-linux-gnu/libOpenCL.so.1 (0x00007661361aa000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000076613618a000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007661360aa000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000076613581e000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007661361cb000)

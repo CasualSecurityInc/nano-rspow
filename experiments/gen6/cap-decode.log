@@ -1,0 +1,407 @@
+
+submission 001 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=11/27; relocations listed in sub-001.manifest
+  reloc 24 26 0; reloc 60 34 1; reloc 136 36 0; reloc 152 35 0; reloc 160 39 0
+
+submission 002 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/40; relocations listed in sub-002.manifest
+  reloc 24 26 0; reloc 60 45 1; reloc 136 47 0; reloc 152 46 0
+
+submission 004 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/40; relocations listed in sub-004.manifest
+  reloc 24 26 0; reloc 60 34 1; reloc 136 36 0; reloc 152 35 0; reloc 160 39 0
+
+submission 005 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-005.manifest
+  reloc 24 26 0; reloc 60 38 1; reloc 136 45 0; reloc 152 50 0
+
+submission 007 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/27; relocations listed in sub-007.manifest
+  reloc 24 26 0; reloc 60 47 1; reloc 136 35 0; reloc 152 34 0; reloc 160 36 0
+
+submission 008 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-008.manifest
+  reloc 24 26 0; reloc 60 44 1; reloc 136 38 0; reloc 152 46 0
+
+submission 010 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/55; relocations listed in sub-010.manifest
+  reloc 24 26 0; reloc 60 45 1; reloc 136 34 0; reloc 152 47 0; reloc 160 35 0
+
+submission 011 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-011.manifest
+  reloc 24 26 0; reloc 60 43 1; reloc 136 44 0; reloc 152 50 0
+
+submission 013 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/40; relocations listed in sub-013.manifest
+  reloc 24 26 0; reloc 60 38 1; reloc 136 47 0; reloc 152 45 0; reloc 160 34 0
+
+submission 014 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-014.manifest
+  reloc 24 26 0; reloc 60 42 1; reloc 136 43 0; reloc 152 46 0
+
+submission 016 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/27; relocations listed in sub-016.manifest
+  reloc 24 26 0; reloc 60 44 1; reloc 136 45 0; reloc 152 38 0; reloc 160 47 0
+
+submission 017 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-017.manifest
+  reloc 24 26 0; reloc 60 41 1; reloc 136 42 0; reloc 152 50 0
+
+submission 019 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/55; relocations listed in sub-019.manifest
+  reloc 24 26 0; reloc 60 43 1; reloc 136 38 0; reloc 152 44 0; reloc 160 45 0
+
+submission 020 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-020.manifest
+  reloc 24 26 0; reloc 60 39 1; reloc 136 41 0; reloc 152 46 0
+
+submission 022 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/40; relocations listed in sub-022.manifest
+  reloc 24 26 0; reloc 60 42 1; reloc 136 44 0; reloc 152 43 0; reloc 160 38 0
+
+submission 023 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-023.manifest
+  reloc 24 26 0; reloc 60 36 1; reloc 136 39 0; reloc 152 50 0
+
+submission 025 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/27; relocations listed in sub-025.manifest
+  reloc 24 26 0; reloc 60 41 1; reloc 136 43 0; reloc 152 42 0; reloc 160 44 0
+
+submission 026 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-026.manifest
+  reloc 24 26 0; reloc 60 35 1; reloc 136 36 0; reloc 152 46 0
+
+submission 028 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/55; relocations listed in sub-028.manifest
+  reloc 24 26 0; reloc 60 39 1; reloc 136 42 0; reloc 152 41 0; reloc 160 43 0
+
+submission 029 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-029.manifest
+  reloc 24 26 0; reloc 60 34 1; reloc 136 35 0; reloc 152 50 0
+
+submission 031 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/40; relocations listed in sub-031.manifest
+  reloc 24 26 0; reloc 60 36 1; reloc 136 41 0; reloc 152 39 0; reloc 160 42 0
+
+submission 032 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-032.manifest
+  reloc 24 26 0; reloc 60 47 1; reloc 136 34 0; reloc 152 46 0
+
+submission 034 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/27; relocations listed in sub-034.manifest
+  reloc 24 26 0; reloc 60 35 1; reloc 136 39 0; reloc 152 36 0; reloc 160 41 0
+
+submission 035 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-035.manifest
+  reloc 24 26 0; reloc 60 45 1; reloc 136 47 0; reloc 152 50 0
+
+submission 037 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/55; relocations listed in sub-037.manifest
+  reloc 24 26 0; reloc 60 34 1; reloc 136 36 0; reloc 152 35 0; reloc 160 39 0
+
+submission 038 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-038.manifest
+  reloc 24 26 0; reloc 60 38 1; reloc 136 45 0; reloc 152 46 0
+
+submission 040 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/40; relocations listed in sub-040.manifest
+  reloc 24 26 0; reloc 60 47 1; reloc 136 35 0; reloc 152 34 0; reloc 160 36 0
+
+submission 041 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-041.manifest
+  reloc 24 26 0; reloc 60 44 1; reloc 136 38 0; reloc 152 50 0
+
+submission 043 batch_len=168 commands=8
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  batch object=12/27; relocations listed in sub-043.manifest
+  reloc 24 26 0; reloc 60 45 1; reloc 136 34 0; reloc 152 47 0; reloc 160 35 0
+
+submission 044 batch_len=216 commands=9
+  dw  0 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  4 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw  8 0x7a000002 PIPE_CONTROL (4 dwords)
+  dw 12 0x69040001 PIPELINE_SELECT (1 dwords)
+  dw 13 0x61010008 STATE_BASE_ADDRESS (10 dwords)
+  dw 23 0x70000006 MEDIA_VFE_STATE (8 dwords)
+       scratch=0x00000000 max_threads=59 urb_entries=16 urb_entry_size=58 curbe_alloc=36
+  dw 31 0x70010002 MEDIA_CURBE_LOAD (4 dwords)
+  dw 35 0x70020002 MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dwords)
+  dw 39 0x7100000c MEDIA_OBJECT (14 dwords)
+  batch object=9/51; relocations listed in sub-044.manifest
+  reloc 24 26 0; reloc 60 43 1; reloc 136 44 0; reloc 152 46 0
+
+media batches=30; walker commands=0

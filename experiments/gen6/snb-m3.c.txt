@@ -1,0 +1,457 @@
+/*
+ * M3 Gen6 Blake2b harness. Uses the Session 6 proven media preamble and one
+ * captured 14-dword MEDIA_OBJECT per SIMD8 thread. Dry-run is the default.
+ *
+ * Build on lemox:
+ *   cc -O2 -Wall -Wextra -Werror $(pkg-config --cflags libdrm) -o snb-m3 snb-m3.c
+ * Examples:
+ *   ./snb-m3 --kernel m3.bin --root <64 hex> --base 0 --threads 1
+ *   ./snb-m3 --submit --kernel m3.bin --root <64 hex> --base 0 --threads 8 --dump r.bin
+ *   ./snb-m3 --submit --kernel m3.bin --root <64 hex> --base 0 --threads 60 --bench-ms 2000
+ */
+#include <i915_drm.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <time.h>
+#include <unistd.h>
+
+#define STATE_BYTES 8192u
+#define ST_CURBE 0x000u
+#define ST_ID 0x080u
+#define ST_BT 0x100u
+#define ST_SURF 0x140u
+#define GUARD_WORD 0xcdcdcdcdu
+#define MEDIA_OBJECT_HEADER 0x7100000cu
+#define MI_BATCH_BUFFER_END 0x05000000u
+#define PC_HEADER 0x7a000002u
+#define PC_CS_STALL_SCOREBOARD 0x00100002u
+#define PIPELINE_SELECT_MEDIA 0x69040001u
+#define SBA_HEADER 0x61010008u
+#define VFE_HEADER 0x70000006u
+#define CURBE_HEADER 0x70010002u
+#define ID_LOAD_HEADER 0x70020002u
+#define MAX_THREADS 4096u
+#define MAX_CODE_BYTES (1u << 20)
+
+#define CHECK(call) do { \
+    if ((call) < 0) { \
+        fprintf(stderr, "%s:%d: %s: %s\n", __FILE__, __LINE__, #call, strerror(errno)); \
+        exit(EXIT_FAILURE); \
+    } \
+} while (0)
+
+struct reloc_list {
+    struct drm_i915_gem_relocation_entry entries[8];
+    unsigned count;
+};
+
+static int drm_fd = -1;
+
+static int reset_count(uint32_t *value)
+{
+    struct drm_i915_reset_stats stats = { .ctx_id = 0 };
+    if (ioctl(drm_fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats) < 0)
+        return -1;
+    *value = stats.reset_count;
+    return 0;
+}
+
+static uint32_t gem_create(uint64_t size)
+{
+    struct drm_i915_gem_create request = { .size = size };
+    CHECK(ioctl(drm_fd, DRM_IOCTL_I915_GEM_CREATE, &request));
+    return request.handle;
+}
+
+static void *gem_map(uint32_t handle, uint64_t size, int write_enable)
+{
+    struct drm_i915_gem_set_domain domain = {
+        .handle = handle,
+        .read_domains = I915_GEM_DOMAIN_CPU,
+        .write_domain = write_enable ? I915_GEM_DOMAIN_CPU : 0,
+    };
+    CHECK(ioctl(drm_fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &domain));
+    struct drm_i915_gem_mmap request = { .handle = handle, .size = size };
+    CHECK(ioctl(drm_fd, DRM_IOCTL_I915_GEM_MMAP, &request));
+    return (void *)(uintptr_t)request.addr_ptr;
+}
+
+static void gem_close(uint32_t handle)
+{
+    struct drm_gem_close request = { .handle = handle };
+    CHECK(ioctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &request));
+}
+
+static uint64_t page_round(uint64_t size)
+{
+    return (size + 4095u) & ~UINT64_C(4095);
+}
+
+static double elapsed_seconds(struct timespec start, struct timespec end)
+{
+    return (double)(end.tv_sec - start.tv_sec) +
+           (double)(end.tv_nsec - start.tv_nsec) / 1e9;
+}
+
+static void add_reloc(struct reloc_list *list, uint32_t target, uint64_t delta,
+                      uint64_t offset, uint32_t read_domains, uint32_t write_domain)
+{
+    if (list->count >= sizeof(list->entries) / sizeof(list->entries[0])) {
+        fputs("internal error: relocation list full\n", stderr);
+        exit(2);
+    }
+    struct drm_i915_gem_relocation_entry *reloc = &list->entries[list->count++];
+    memset(reloc, 0, sizeof(*reloc));
+    reloc->target_handle = target;
+    reloc->delta = delta;
+    reloc->offset = offset;
+    reloc->read_domains = read_domains;
+    reloc->write_domain = write_domain;
+}
+
+static int parse_root(const char *text, uint8_t root[32])
+{
+    if (strlen(text) != 64)
+        return -1;
+    for (unsigned i = 0; i < 32; ++i) {
+        unsigned byte;
+        if (sscanf(text + 2 * i, "%2x", &byte) != 1)
+            return -1;
+        root[i] = (uint8_t)byte;
+    }
+    return 0;
+}
+
+static uint64_t parse_u64(const char *text, const char *what)
+{
+    char *end = NULL;
+    errno = 0;
+    unsigned long long value = strtoull(text, &end, 0);
+    if (errno || end == text || *end) {
+        fprintf(stderr, "invalid %s: %s\n", what, text);
+        exit(2);
+    }
+    return (uint64_t)value;
+}
+
+static size_t read_kernel(const char *path, uint8_t **data_out)
+{
+    FILE *file = fopen(path, "rb");
+    if (!file) { perror(path); exit(2); }
+    if (fseek(file, 0, SEEK_END) != 0) { perror("fseek"); exit(2); }
+    long size = ftell(file);
+    if (size <= 0 || (unsigned long)size > MAX_CODE_BYTES || (size & 15)) {
+        fprintf(stderr, "kernel must be 16-byte aligned and <= %u bytes\n", MAX_CODE_BYTES);
+        exit(2);
+    }
+    rewind(file);
+    uint8_t *data = malloc((size_t)size);
+    if (!data || fread(data, 1, (size_t)size, file) != (size_t)size) {
+        fputs("failed to read kernel\n", stderr); exit(2);
+    }
+    fclose(file);
+    *data_out = data;
+    return (size_t)size;
+}
+
+static void init_state(uint8_t *state, uint32_t code_handle, uint32_t results_handle,
+                       struct reloc_list *relocs, const uint8_t root[32],
+                       uint64_t threshold, uint64_t base, size_t result_bytes)
+{
+    memset(state, 0, STATE_BYTES);
+    uint32_t *curbe = (uint32_t *)(state + ST_CURBE);
+    for (unsigned i = 0; i < 8; ++i)
+        memcpy(&curbe[i], root + i * 4, 4);
+    curbe[8] = (uint32_t)threshold;
+    curbe[9] = (uint32_t)(threshold >> 32);
+    curbe[10] = (uint32_t)base;
+    curbe[11] = (uint32_t)(base >> 32);
+    for (unsigned i = 0; i < 4; ++i)
+        curbe[12 + i] = 0xc0de000cu + i;
+
+    uint32_t *id = (uint32_t *)(state + ST_ID);
+    id[0] = 0;
+    id[1] = 0;
+    id[2] = 0;
+    id[3] = 0x00000101u;
+    id[4] = 0x00020000u;
+    add_reloc(relocs, code_handle, 0, ST_ID, I915_GEM_DOMAIN_INSTRUCTION, 0);
+
+    *(uint32_t *)(state + ST_BT) = ST_SURF;
+    uint32_t *surf = (uint32_t *)(state + ST_SURF);
+    surf[0] = 0x80000100u;
+    unsigned entries_minus_one = (unsigned)(result_bytes / 16u - 1u);
+    surf[2] = ((entries_minus_one & 0x7fu) << 6) |
+              (((entries_minus_one >> 7) & 0x1fffu) << 19);
+    surf[3] = (((entries_minus_one >> 20) & 0x7fu) << 21) | (15u << 3);
+    add_reloc(relocs, results_handle, 0, ST_SURF + 4,
+              I915_GEM_DOMAIN_RENDER, I915_GEM_DOMAIN_RENDER);
+}
+
+static size_t build_batch(uint32_t *batch, size_t capacity_dwords,
+                          unsigned threads, uint32_t state_handle, uint32_t sync_handle,
+                          struct reloc_list *relocs)
+{
+    size_t n = 0;
+#define PUT(v) do { if (n >= capacity_dwords) { fputs("batch buffer overflow\n", stderr); exit(2); } batch[n++] = (v); } while (0)
+    PUT(PC_HEADER); PUT(PC_CS_STALL_SCOREBOARD); PUT(0); PUT(0);
+    PUT(PC_HEADER); PUT(0x00004000u);
+    size_t sync_address_dword = n;
+    PUT(0);
+    add_reloc(relocs, sync_handle, 0, 4u * sync_address_dword,
+              I915_GEM_DOMAIN_INSTRUCTION, I915_GEM_DOMAIN_INSTRUCTION);
+    PUT(0);
+    PUT(PC_HEADER); PUT(0x00001400u); PUT(0); PUT(0);
+    PUT(PIPELINE_SELECT_MEDIA);
+    PUT(SBA_HEADER); PUT(1);
+    size_t state_base_dword = n;
+    PUT(0);
+    add_reloc(relocs, state_handle, 1, 4u * state_base_dword,
+              I915_GEM_DOMAIN_INSTRUCTION, 0);
+    PUT(1); PUT(1); PUT(1); PUT(1); PUT(1); PUT(1); PUT(1);
+    PUT(VFE_HEADER); PUT(0); PUT(0x003b1000u); PUT(0); PUT(0x003a0024u); PUT(0); PUT(0); PUT(0);
+    PUT(CURBE_HEADER); PUT(0); PUT(64);
+    size_t curbe_address_dword = n;
+    PUT(0);
+    add_reloc(relocs, state_handle, 0, 4u * curbe_address_dword,
+              I915_GEM_DOMAIN_INSTRUCTION, 0);
+    PUT(ID_LOAD_HEADER); PUT(0); PUT(32);
+    size_t idrt_address_dword = n;
+    PUT(0);
+    add_reloc(relocs, state_handle, ST_ID, 4u * idrt_address_dword,
+              I915_GEM_DOMAIN_INSTRUCTION, 0);
+
+    for (unsigned t = 0; t < threads; ++t) {
+        PUT(MEDIA_OBJECT_HEADER);
+        PUT(0); PUT(0); PUT(0); PUT(0); PUT(0);
+        PUT(t); PUT(0); PUT(0); PUT(0); PUT(0); PUT(0); PUT(0); PUT(0);
+    }
+    PUT(MI_BATCH_BUFFER_END);
+    if (n & 1u) PUT(0);
+#undef PUT
+    return n;
+}
+
+static int submit_once(struct drm_i915_gem_exec_object2 *objects,
+                       unsigned object_count, size_t batch_bytes, uint32_t batch_handle,
+                       uint32_t resets_before)
+{
+    struct drm_i915_gem_execbuffer2 exec = {
+        .buffers_ptr = (uintptr_t)objects,
+        .buffer_count = object_count,
+        .batch_len = (uint32_t)batch_bytes,
+        .flags = I915_EXEC_RENDER,
+    };
+    if (ioctl(drm_fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &exec) < 0) {
+        perror("DRM_IOCTL_I915_GEM_EXECBUFFER2");
+        return -1;
+    }
+    struct drm_i915_gem_wait wait = {
+        .bo_handle = batch_handle,
+        .timeout_ns = INT64_C(60) * 1000 * 1000 * 1000,
+    };
+    if (ioctl(drm_fd, DRM_IOCTL_I915_GEM_WAIT, &wait) < 0) {
+        perror("DRM_IOCTL_I915_GEM_WAIT");
+        return -1;
+    }
+    uint32_t resets_after;
+    if (reset_count(&resets_after) < 0) { perror("reset stats"); return -1; }
+    if (resets_after != resets_before) {
+        fprintf(stderr, "INVALID RUN: i915 reset count changed %u -> %u\n",
+                resets_before, resets_after);
+        return -2;
+    }
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    int submit = 0, solve = 0;
+    const char *kernel_path = "m3.bin", *root_text = NULL, *dump_path = "m3-results.bin";
+    uint64_t base = 0, threshold = 0, max_hashes = 0;
+    unsigned threads = 1, bench_ms = 0;
+    int have_base = 0, have_threshold = 0;
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "--submit")) submit = 1;
+        else if (!strcmp(argv[i], "--solve")) { submit = 1; solve = 1; }
+        else if (!strcmp(argv[i], "--kernel") && i + 1 < argc) kernel_path = argv[++i];
+        else if (!strcmp(argv[i], "--root") && i + 1 < argc) root_text = argv[++i];
+        else if (!strcmp(argv[i], "--base") && i + 1 < argc) { base = parse_u64(argv[++i], "base"); have_base = 1; }
+        else if (!strcmp(argv[i], "--threshold") && i + 1 < argc) { threshold = parse_u64(argv[++i], "threshold"); have_threshold = 1; }
+        else if (!strcmp(argv[i], "--threads") && i + 1 < argc) threads = (unsigned)parse_u64(argv[++i], "threads");
+        else if (!strcmp(argv[i], "--bench-ms") && i + 1 < argc) bench_ms = (unsigned)parse_u64(argv[++i], "bench duration");
+        else if (!strcmp(argv[i], "--max-hashes") && i + 1 < argc) max_hashes = parse_u64(argv[++i], "maximum hashes");
+        else if (!strcmp(argv[i], "--dump") && i + 1 < argc) dump_path = argv[++i];
+        else { fprintf(stderr, "usage: %s [--submit|--solve] --kernel FILE --root HEX64 --base U64 --threads N [--threshold U64] [--max-hashes N] [--dump FILE] [--bench-ms MS]\n", argv[0]); return 2; }
+    }
+    if (!root_text || !have_base || !threads || threads > MAX_THREADS || (base & 7u) ||
+        (solve && (!have_threshold || bench_ms))) {
+        fputs("root/base required; threads must be 1..4096 and base 8-aligned\n", stderr); return 2;
+    }
+    if (base > UINT64_MAX - ((uint64_t)threads * 8u - 1u) ||
+        (uint32_t)base + (uint64_t)threads * 8u > (UINT64_C(1) << 32)) {
+        fputs("batch crosses a 32-bit nonce boundary or wraps u64; split it at the boundary\n", stderr); return 2;
+    }
+    uint8_t root[32];
+    if (parse_root(root_text, root) < 0) { fputs("root must be 64 hex digits\n", stderr); return 2; }
+    uint8_t *kernel = NULL;
+    size_t kernel_bytes = read_kernel(kernel_path, &kernel);
+    size_t logical_result_bytes = (size_t)threads * 128u;
+    /* Keep one full sentinel page beyond the logical surface, even when its
+     * payload is already page-aligned. The surface itself remains logical-sized. */
+    size_t results_bytes = (size_t)page_round(logical_result_bytes + 4096u);
+    size_t batch_dwords_capacity = 64u + (size_t)threads * 14u;
+    size_t batch_bytes = (size_t)page_round(batch_dwords_capacity * sizeof(uint32_t));
+    size_t code_bytes = (size_t)page_round(kernel_bytes);
+    if (results_bytes > (16u << 20) || batch_bytes > (4u << 20)) {
+        fputs("requested dispatch exceeds harness BO limit\n", stderr); return 2;
+    }
+
+    if (!submit) {
+        printf("dry run: kernel=%zu bytes, threads=%u, results=%zu bytes, batch capacity=%zu bytes; no GPU submission\n",
+               kernel_bytes, threads, logical_result_bytes, batch_bytes);
+        free(kernel);
+        return 0;
+    }
+    drm_fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
+    if (drm_fd < 0) { perror("/dev/dri/renderD128"); return 1; }
+
+    uint32_t results_h = gem_create(results_bytes), state_h = gem_create(STATE_BYTES);
+    uint32_t code_h = gem_create(code_bytes), sync_h = gem_create(4096), batch_h = gem_create(batch_bytes);
+    uint8_t *state = gem_map(state_h, STATE_BYTES, 1);
+    uint8_t *code = gem_map(code_h, code_bytes, 1);
+    uint8_t *sync = gem_map(sync_h, 4096, 1);
+    uint8_t *results = gem_map(results_h, results_bytes, 1);
+    uint32_t *batch = gem_map(batch_h, batch_bytes, 1);
+    memset(results, 0xcd, results_bytes);
+    memset(code, 0, code_bytes); memcpy(code, kernel, kernel_bytes);
+    memset(sync, 0, 4096); memset(batch, 0, batch_bytes);
+    free(kernel);
+
+    struct reloc_list state_relocs = {0}, batch_relocs = {0};
+    init_state(state, code_h, results_h, &state_relocs, root, threshold, base, logical_result_bytes);
+    size_t nwords = build_batch(batch, batch_bytes / 4, threads, state_h, sync_h, &batch_relocs);
+    CHECK(munmap(state, STATE_BYTES)); CHECK(munmap(code, code_bytes));
+    CHECK(munmap(sync, 4096)); CHECK(munmap(results, results_bytes)); CHECK(munmap(batch, batch_bytes));
+
+    struct drm_i915_gem_exec_object2 objects[5] = {
+        { .handle = results_h },
+        { .handle = state_h, .relocation_count = state_relocs.count,
+          .relocs_ptr = (uintptr_t)state_relocs.entries },
+        { .handle = code_h }, { .handle = sync_h },
+        { .handle = batch_h, .relocation_count = batch_relocs.count,
+          .relocs_ptr = (uintptr_t)batch_relocs.entries },
+    };
+    uint32_t handles[5] = { results_h, state_h, code_h, sync_h, batch_h };
+    (void)handles;
+
+    struct timespec start, now;
+    if (bench_ms) {
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        uint64_t submissions = 0;
+        do {
+            uint32_t before;
+            if (reset_count(&before) < 0) { perror("reset stats"); return 1; }
+            int rc = submit_once(objects, 5, nwords * 4u, batch_h, before);
+            if (rc) return rc == -2 ? 5 : 1;
+            submissions++;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+        } while (elapsed_seconds(start, now) * 1000.0 < bench_ms);
+        double elapsed = elapsed_seconds(start, now);
+        double hashes = (double)submissions * threads * 8.0;
+        printf("BENCH: threads=%u submissions=%" PRIu64 " hashes=%.0f elapsed=%.6fs rate=%.3f MH/s loadavg=",
+               threads, submissions, hashes, elapsed, hashes / elapsed / 1e6);
+        double loads[3];
+        if (getloadavg(loads, 3) == 3)
+            printf("%.2f %.2f %.2f\n", loads[0], loads[1], loads[2]);
+        else puts("unavailable");
+    } else if (solve) {
+        uint64_t tested = 0, batches = 0, current_base = base;
+        uint8_t *mapped_state;
+        uint8_t *mapped_results;
+        for (;;) {
+            mapped_state = gem_map(state_h, STATE_BYTES, 1);
+            uint32_t *curbe = (uint32_t *)(mapped_state + ST_CURBE);
+            curbe[10] = (uint32_t)current_base;
+            curbe[11] = (uint32_t)(current_base >> 32);
+            CHECK(munmap(mapped_state, STATE_BYTES));
+            mapped_results = gem_map(results_h, results_bytes, 1);
+            memset(mapped_results, 0xcd, results_bytes);
+            CHECK(munmap(mapped_results, results_bytes));
+            uint32_t before;
+            if (reset_count(&before) < 0) { perror("reset stats"); return 1; }
+            int rc = submit_once(objects, 5, nwords * 4u, batch_h, before);
+            if (rc) return rc == -2 ? 5 : 1;
+            batches++;
+            tested += (uint64_t)threads * 8u;
+            mapped_results = gem_map(results_h, results_bytes, 0);
+            uint32_t *words = (uint32_t *)mapped_results;
+            int found = 0;
+            uint64_t found_nonce = 0;
+            for (unsigned t = 0; t < threads && !found; ++t) {
+                for (unsigned lane = 0; lane < 8; ++lane) {
+                    if (words[(size_t)t * 32u + 24u + lane] & 1u) {
+                        found = 1;
+                        found_nonce = current_base + (uint64_t)t * 8u + lane;
+                        break;
+                    }
+                }
+            }
+            if (found) {
+                FILE *out = fopen(dump_path, "wb");
+                if (!out) { perror(dump_path); return 1; }
+                int ok = fwrite(mapped_results, 1, results_bytes, out) == results_bytes;
+                if (fclose(out) || !ok) { fputs("failed to write result dump\n", stderr); return 1; }
+                CHECK(munmap(mapped_results, results_bytes));
+                printf("SOLVED nonce=0x%016" PRIx64 " tested=%" PRIu64
+                       " batches=%" PRIu64 " output=%s root=", found_nonce, tested, batches, dump_path);
+                for (unsigned i = 0; i < 32; ++i) printf("%02x", root[i]);
+                printf(" threshold=0x%016" PRIx64 " base=0x%016" PRIx64 "\n",
+                       threshold, current_base);
+                break;
+            }
+            CHECK(munmap(mapped_results, results_bytes));
+            if (max_hashes && tested >= max_hashes) {
+                printf("NO HIT: tested=%" PRIu64 " batches=%" PRIu64 "\n", tested, batches);
+                return 3;
+            }
+            uint64_t advance = (uint64_t)threads * 8u;
+            if (current_base > UINT64_MAX - advance) {
+                fputs("nonce space exhausted\n", stderr); return 4;
+            }
+            current_base += advance;
+            if ((current_base & 0xffffffffu) + advance > (UINT64_C(1) << 32)) {
+                /* The batch itself may not straddle a high-word boundary.
+                 * An 8-aligned range can advance exactly to the next boundary. */
+                current_base = (current_base + 0xffffffffu) & ~UINT64_C(0xffffffff);
+            }
+            if (!(batches & 255u))
+                fprintf(stderr, "progress: tested=%" PRIu64 " next=0x%016" PRIx64 "\n", tested, current_base);
+        }
+    } else {
+        uint32_t before;
+        if (reset_count(&before) < 0) { perror("reset stats"); return 1; }
+        int rc = submit_once(objects, 5, nwords * 4u, batch_h, before);
+        if (rc) return rc == -2 ? 5 : 1;
+        results = gem_map(results_h, results_bytes, 0);
+        FILE *out = fopen(dump_path, "wb");
+        if (!out) { perror(dump_path); return 1; }
+        int ok = fwrite(results, 1, results_bytes, out) == results_bytes;
+        if (fclose(out) || !ok) { fputs("failed to write result dump\n", stderr); return 1; }
+        CHECK(munmap(results, results_bytes));
+        printf("COMPLETE (reset-clean): threads=%u hashes=%u output=%s bytes=%zu root=",
+               threads, threads * 8u, dump_path, results_bytes);
+        for (unsigned i = 0; i < 32; ++i) printf("%02x", root[i]);
+        printf(" base=0x%016" PRIx64 " threshold=0x%016" PRIx64 "\n", base, threshold);
+    }
+    gem_close(batch_h); gem_close(sync_h); gem_close(code_h); gem_close(state_h); gem_close(results_h);
+    CHECK(close(drm_fd));
+    return 0;
+}

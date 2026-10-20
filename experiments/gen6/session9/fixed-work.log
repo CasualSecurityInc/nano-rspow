@@ -1,0 +1,30 @@
+FIXED round=1 mode=gpu workers=0 loadavg=5.96 6.20 2.90 2/1462 3144505
+GPU reset_start=7 reset_end=7
+NO HIT mode=gpu
+STATS wall=0.866160s gpu=8388608 cpu=0 total=8388608 gpu_rate=9.685 cpu_rate=0.000 total_rate=9.685 MH/s
+FIXED round=1 mode=cpu workers=3 loadavg=5.96 6.20 2.90 1/1457 3144521
+NO HIT mode=cpu
+STATS wall=4.175849s gpu=0 cpu=8388608 total=8388608 gpu_rate=0.000 cpu_rate=2.009 total_rate=2.009 MH/s
+FIXED round=1 mode=hybrid workers=3 loadavg=5.72 6.15 2.90 1/1458 3144610
+GPU reset_start=7 reset_end=7
+NO HIT mode=hybrid
+STATS wall=1.030355s gpu=6365184 cpu=2023424 total=8388608 gpu_rate=6.178 cpu_rate=1.964 total_rate=8.141 MH/s
+FIXED round=1 mode=hybrid workers=1 loadavg=5.72 6.15 2.90 4/1458 3144617
+GPU reset_start=7 reset_end=7
+NO HIT mode=hybrid
+STATS wall=0.844452s gpu=7331840 cpu=1056768 total=8388608 gpu_rate=8.682 cpu_rate=1.251 total_rate=9.934 MH/s
+FIXED round=2 mode=hybrid workers=1 loadavg=5.72 6.15 2.90 1/1458 3144620
+GPU reset_start=7 reset_end=7
+NO HIT mode=hybrid
+STATS wall=0.928155s gpu=7540736 cpu=847872 total=8388608 gpu_rate=8.124 cpu_rate=0.914 total_rate=9.038 MH/s
+FIXED round=2 mode=hybrid workers=3 loadavg=5.42 6.08 2.90 1/1458 3144623
+GPU reset_start=7 reset_end=7
+NO HIT mode=hybrid
+STATS wall=1.127871s gpu=6619136 cpu=1769472 total=8388608 gpu_rate=5.869 cpu_rate=1.569 total_rate=7.438 MH/s
+FIXED round=2 mode=cpu workers=3 loadavg=5.42 6.08 2.90 1/1458 3144646
+NO HIT mode=cpu
+STATS wall=4.820013s gpu=0 cpu=8388608 total=8388608 gpu_rate=0.000 cpu_rate=1.740 total_rate=1.740 MH/s
+FIXED round=2 mode=gpu workers=0 loadavg=5.23 6.03 2.90 2/1458 3144726
+GPU reset_start=7 reset_end=7
+NO HIT mode=gpu
+STATS wall=0.979489s gpu=8388608 cpu=0 total=8388608 gpu_rate=8.564 cpu_rate=0.000 total_rate=8.564 MH/s

@@ -1,0 +1,12 @@
+a0: PASS a0: all defined output words and remaining guard bytes match; sha256=4ad49eb22a5b47725b16b27095ecc7920ca73ce4c4249dd0a61327718684d373
+a0magic: PASS a0magic: all defined output words and remaining guard bytes match; sha256=10a80cad02102070805027211d6048e8eecae6705297c3f7b490cfa4ff666b8b
+a1: PASS a1: all defined output words and remaining guard bytes match; sha256=ab005f87c42ba5fa470cb51ed4f0f4e1452a3de40c2a01fd59f211c06b85461a
+arith: PASS arith: all defined output words and remaining guard bytes match; sha256=4c851717f0ed75be2d242422ad7852fcaf67e2d369d8f7903d89e219bf32cdb2
+eot: PASS ctl: all defined output words and remaining guard bytes match; sha256=769bd186841c10e5b1106b55986206c0e87fc05a7f565fdee01b5abcaff6ae78
+lane: PASS lane: all defined output words and remaining guard bytes match; sha256=9e708407821422e1b97e70a78ba64cf869f88551f26d90e7f31e05d30ec59060
+nodispatch: PASS ctl: all defined output words and remaining guard bytes match; sha256=769bd186841c10e5b1106b55986206c0e87fc05a7f565fdee01b5abcaff6ae78
+pattern128: PASS pattern128: all defined output words and remaining guard bytes match; sha256=08b56c8d93036b738795c20eb56dd0e57b2911d0c83c4cce196bb5959fd7d864
+pattern16: PASS pattern16: all defined output words and remaining guard bytes match; sha256=b55b68ea72516cb47a767e6d8fa7f8bb3a8fd03c11f26b6215ee2788b641362e
+pattern256: PASS pattern256: all defined output words and remaining guard bytes match; sha256=8ee5d9beb77509ddaf731a8ec0bbca8cb6244970c1c52e22d1830b2ddd67c3dc
+slots4: PASS slots4: all defined output words and remaining guard bytes match; sha256=4fdd20a484cf8b3b0417764c71fdd5cbcaf115c7fdc0cfd682e0aaa3b97d19c2
+slots60: PASS slots60: all defined output words and remaining guard bytes match; sha256=38a6f2f83bf5ab122164aeff74b269801a0684163a461482c52920a4ef64abf8

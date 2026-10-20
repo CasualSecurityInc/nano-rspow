@@ -1,0 +1,12 @@
+snbcl: loaded pid=3986313; restricted pow_kernel ICD
+snbcl: engine unavailable: i915 ioctl 0xc0106446: Inappropriate ioctl for device
+Backend  : cpu
+Hash     : 0000000000000000000000000000000000000000000000000000000000000001
+Threshold: 0x0000000000000001
+Generating... Hash found!
+Nonce     : 604a30da1e897846  (the work value to submit)
+Difficulty: 0x83ca0090c469c470
+Luck      : 2.0610×  (nonce was 2.06× above min threshold; avg ≈ 1×)
+Time      : 0.000s
+OpenCL unavailable (GPU backend initialization failed: No OpenCL platforms available), falling back to CPU
+snbcl: summary enqueues=0 GPU_hashes=0 CPU_tail_hashes=0

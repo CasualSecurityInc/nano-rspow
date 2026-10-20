@@ -1,0 +1,12 @@
+seq 1 ring 1 batch_len 232 batch_off 0 count 5
+obj 0 1 4096 0 0 0 0
+obj 1 2 8192 2 0 0 0
+reloc 128 3 0 16 0
+reloc 324 1 0 2 2
+obj 2 3 4096 0 0 0 0
+obj 3 4 4096 0 0 0 0
+obj 4 5 4096 4 0 0 0
+reloc 24 4 0 16 16
+reloc 60 2 1 16 0
+reloc 136 2 0 16 0
+reloc 152 2 128 16 0

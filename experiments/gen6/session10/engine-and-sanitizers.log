@@ -1,0 +1,20 @@
+snb-engine: open PCI=0126 SIMD8 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l8-pred.bin
+snb-engine: reset_start=7 reset_end=7
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snb-engine: reset_start=7 reset_end=7
+PASS engine: both widths, first hit, arbitrary alignment, exact tails, low-word and u64 wrap, bad blob refusal
+snbcl: loaded pid=3983824; restricted pow_kernel ICD
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MISMATCH (pow.cl only)
+snbcl: build source=MATCH (pow.cl only)
+snbcl: NDRange base=0x0000000000000000 count=64 gpu=64 cpu=0 HIT CPU-verified
+snbcl: NDRange base=0xfffffffffffffffd count=64 gpu=0 cpu=1 HIT CPU-verified
+snbcl: NDRange base=0x0000000000060003 count=65536 gpu=65520 cpu=13 HIT CPU-verified
+snbcl: summary enqueues=10 GPU_hashes=458768 CPU_tail_hashes=110
+snb-engine: reset_start=7 reset_end=7
+DEVICE Intel HD Graphics 3000 (snbcl pow_kernel)
+PASS contract: source refusal, split source, typed args, bounds, events/callback/profiling, existing winner, offset, wrap
+SMOKE SOLVED nonce=0x0000000000068d1d h0=0xfffffff069a0f9c5 enqueues=7

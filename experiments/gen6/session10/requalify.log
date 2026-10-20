@@ -1,0 +1,140 @@
+WINDOW attempt=1 time=2026-10-19T11:32:10+07:00
+load=0.56 CPU_pressure_avg10=1.41% max_temp_mC=96000
+WINDOW attempt=2 time=2026-10-19T11:37:10+07:00
+load=0.22 CPU_pressure_avg10=1.53% max_temp_mC=96000
+WINDOW attempt=3 time=2026-10-19T11:42:10+07:00
+load=1.02 CPU_pressure_avg10=1.66% max_temp_mC=98000
+WINDOW attempt=4 time=2026-10-19T11:47:10+07:00
+load=0.10 CPU_pressure_avg10=1.90% max_temp_mC=96000
+WINDOW attempt=5 time=2026-10-19T11:52:10+07:00
+load=0.31 CPU_pressure_avg10=1.32% max_temp_mC=94000
+WINDOW attempt=6 time=2026-10-19T11:57:10+07:00
+load=0.33 CPU_pressure_avg10=1.44% max_temp_mC=97000
+WINDOW attempt=7 time=2026-10-19T12:02:10+07:00
+load=0.48 CPU_pressure_avg10=1.30% max_temp_mC=97000
+WINDOW attempt=8 time=2026-10-19T12:07:10+07:00
+load=0.44 CPU_pressure_avg10=1.31% max_temp_mC=91000
+WINDOW attempt=9 time=2026-10-19T12:12:10+07:00
+load=0.42 CPU_pressure_avg10=1.57% max_temp_mC=95000
+WINDOW attempt=10 time=2026-10-19T12:17:10+07:00
+load=1.26 CPU_pressure_avg10=1.29% max_temp_mC=94000
+WINDOW attempt=11 time=2026-10-19T12:22:10+07:00
+load=1.24 CPU_pressure_avg10=1.54% max_temp_mC=94000
+WINDOW attempt=12 time=2026-10-19T12:27:10+07:00
+load=0.48 CPU_pressure_avg10=1.81% max_temp_mC=91000
+WINDOW attempt=13 time=2026-10-19T12:32:10+07:00
+load=0.50 CPU_pressure_avg10=1.12% max_temp_mC=98000
+WINDOW attempt=14 time=2026-10-19T12:37:10+07:00
+load=0.73 CPU_pressure_avg10=1.26% max_temp_mC=94000
+WINDOW attempt=15 time=2026-10-19T12:42:10+07:00
+load=1.23 CPU_pressure_avg10=1.63% max_temp_mC=94000
+WINDOW attempt=16 time=2026-10-19T12:47:10+07:00
+load=0.63 CPU_pressure_avg10=1.51% max_temp_mC=93000
+WINDOW attempt=17 time=2026-10-19T12:52:10+07:00
+load=0.79 CPU_pressure_avg10=1.33% max_temp_mC=90000
+WINDOW attempt=18 time=2026-10-19T12:57:10+07:00
+load=0.59 CPU_pressure_avg10=1.28% max_temp_mC=88000
+WINDOW attempt=19 time=2026-10-19T13:02:11+07:00
+load=0.79 CPU_pressure_avg10=1.29% max_temp_mC=93000
+WINDOW attempt=20 time=2026-10-19T13:07:11+07:00
+load=1.15 CPU_pressure_avg10=1.38% max_temp_mC=97000
+WINDOW attempt=21 time=2026-10-19T13:12:11+07:00
+load=0.68 CPU_pressure_avg10=1.70% max_temp_mC=96000
+WINDOW attempt=22 time=2026-10-19T13:17:11+07:00
+load=0.38 CPU_pressure_avg10=1.59% max_temp_mC=90000
+WINDOW attempt=23 time=2026-10-19T13:22:11+07:00
+load=1.49 CPU_pressure_avg10=1.73% max_temp_mC=96000
+WINDOW attempt=24 time=2026-10-19T13:27:11+07:00
+load=0.67 CPU_pressure_avg10=1.94% max_temp_mC=96000
+WINDOW attempt=25 time=2026-10-19T13:32:11+07:00
+load=0.73 CPU_pressure_avg10=1.49% max_temp_mC=94000
+WINDOW attempt=26 time=2026-10-19T13:37:11+07:00
+load=0.35 CPU_pressure_avg10=1.46% max_temp_mC=92000
+WINDOW attempt=27 time=2026-10-19T13:42:11+07:00
+load=0.95 CPU_pressure_avg10=3.14% max_temp_mC=96000
+WINDOW attempt=28 time=2026-10-19T13:47:11+07:00
+load=0.35 CPU_pressure_avg10=1.40% max_temp_mC=93000
+WINDOW attempt=29 time=2026-10-19T13:52:11+07:00
+load=0.22 CPU_pressure_avg10=1.23% max_temp_mC=90000
+WINDOW attempt=30 time=2026-10-19T13:57:11+07:00
+load=0.58 CPU_pressure_avg10=1.34% max_temp_mC=91000
+WINDOW attempt=31 time=2026-10-19T14:02:11+07:00
+load=0.39 CPU_pressure_avg10=1.10% max_temp_mC=93000
+WINDOW attempt=32 time=2026-10-19T14:07:11+07:00
+load=0.37 CPU_pressure_avg10=1.34% max_temp_mC=92000
+WINDOW attempt=33 time=2026-10-19T14:12:11+07:00
+load=0.41 CPU_pressure_avg10=1.66% max_temp_mC=90000
+WINDOW attempt=34 time=2026-10-19T14:17:11+07:00
+load=0.43 CPU_pressure_avg10=1.47% max_temp_mC=91000
+WINDOW attempt=35 time=2026-10-19T14:22:11+07:00
+load=0.31 CPU_pressure_avg10=1.17% max_temp_mC=96000
+WINDOW attempt=36 time=2026-10-19T14:27:11+07:00
+load=0.38 CPU_pressure_avg10=1.73% max_temp_mC=92000
+WINDOW attempt=37 time=2026-10-19T14:32:11+07:00
+load=0.46 CPU_pressure_avg10=1.37% max_temp_mC=89000
+WINDOW attempt=38 time=2026-10-19T14:37:11+07:00
+load=0.13 CPU_pressure_avg10=1.55% max_temp_mC=90000
+WINDOW attempt=39 time=2026-10-19T14:42:11+07:00
+load=0.05 CPU_pressure_avg10=1.43% max_temp_mC=91000
+WINDOW attempt=40 time=2026-10-19T14:47:11+07:00
+load=0.53 CPU_pressure_avg10=1.38% max_temp_mC=86000
+WINDOW attempt=41 time=2026-10-19T14:52:12+07:00
+load=0.46 CPU_pressure_avg10=1.45% max_temp_mC=83000
+WINDOW attempt=42 time=2026-10-19T14:57:12+07:00
+load=0.18 CPU_pressure_avg10=1.44% max_temp_mC=79000
+HOST idle-gate=PASS load=0.18
+HOST affinity=cpu3 loadavg=0.16 0.40 0.38 1/1475 2794
+SAMPLE round=1 lanes=16 loadavg=0.16 0.40 0.38 2/1475 2795
+BENCH: threads=4096 lanes=16 submissions=619 hashes=40566784 elapsed=3.004447s rate=13.502 MH/s loadavg=0.16 0.40 0.38
+SAMPLE round=1 lanes=8 loadavg=0.16 0.40 0.38 2/1471 2859
+BENCH: threads=4096 lanes=8 submissions=864 hashes=28311552 elapsed=3.002815s rate=9.428 MH/s loadavg=0.15 0.40 0.38
+SAMPLE round=2 lanes=8 loadavg=0.15 0.40 0.38 1/1469 2936
+BENCH: threads=4096 lanes=8 submissions=864 hashes=28311552 elapsed=3.001072s rate=9.434 MH/s loadavg=0.14 0.39 0.37
+SAMPLE round=2 lanes=16 loadavg=0.14 0.39 0.37 1/1470 3003
+BENCH: threads=4096 lanes=16 submissions=616 hashes=40370176 elapsed=3.001282s rate=13.451 MH/s loadavg=0.29 0.42 0.38
+SAMPLE round=3 lanes=16 loadavg=0.29 0.42 0.38 1/1470 3027
+BENCH: threads=4096 lanes=16 submissions=585 hashes=38338560 elapsed=3.004116s rate=12.762 MH/s loadavg=0.26 0.41 0.38
+SAMPLE round=3 lanes=8 loadavg=0.26 0.41 0.38 1/1471 3131
+BENCH: threads=4096 lanes=8 submissions=813 hashes=26640384 elapsed=3.002672s rate=8.872 MH/s loadavg=0.26 0.41 0.38
+SAMPLE round=4 lanes=8 loadavg=0.32 0.42 0.38 1/1470 3158
+BENCH: threads=4096 lanes=8 submissions=773 hashes=25329664 elapsed=3.001986s rate=8.438 MH/s loadavg=0.32 0.42 0.38
+SAMPLE round=4 lanes=16 loadavg=0.32 0.42 0.38 1/1469 3277
+BENCH: threads=4096 lanes=16 submissions=523 hashes=34275328 elapsed=3.004451s rate=11.408 MH/s loadavg=0.30 0.41 0.38
+SAMPLE round=5 lanes=16 loadavg=0.30 0.41 0.38 5/1470 3345
+BENCH: threads=4096 lanes=16 submissions=500 hashes=32768000 elapsed=3.000798s rate=10.920 MH/s loadavg=0.27 0.41 0.38
+SAMPLE round=5 lanes=8 loadavg=0.27 0.41 0.38 1/1470 3387
+BENCH: threads=4096 lanes=8 submissions=702 hashes=23003136 elapsed=3.003422s rate=7.659 MH/s loadavg=0.25 0.40 0.38
+SIMD8-pred n=5 median=8.872 min=7.659 max=9.434 MH/s
+SIMD16-pred n=5 median=12.762 min=10.920 max=13.502 MH/s
+width gain=1.438x; illustrative cost ratio k=0.722
+illustrative a/b=12.730 lane-times; two throughput medians do not identify physical issue/decode costs
+MONITOR frequency=/sys/class/drm/card1/gt_act_freq_mhz sample_interval_s=0.2 start_temp_mC=96000
+BUCKET k=1 elapsed=5.005s rate=10.110 MH/s full=1 start_ns=5975746264677378 end_ns=5975751269245280
+BUCKET k=2 elapsed=10.007s rate=9.419 MH/s full=1 start_ns=5975751269245280 end_ns=5975756271787639
+BUCKET k=3 elapsed=15.012s rate=8.944 MH/s full=1 start_ns=5975756271787639 end_ns=5975761276445823
+BUCKET k=4 elapsed=20.018s rate=8.483 MH/s full=1 start_ns=5975761276445823 end_ns=5975766282431225
+BUCKET k=5 elapsed=25.026s rate=8.245 MH/s full=1 start_ns=5975766282431225 end_ns=5975771290251281
+BUCKET k=6 elapsed=30.027s rate=8.163 MH/s full=1 start_ns=5975771290251281 end_ns=5975776291974988
+BUCKET k=7 elapsed=35.032s rate=8.132 MH/s full=1 start_ns=5975776291974988 end_ns=5975781296877421
+BUCKET k=8 elapsed=40.037s rate=8.105 MH/s full=1 start_ns=5975781296877421 end_ns=5975786301872575
+BUCKET k=9 elapsed=45.038s rate=8.165 MH/s full=1 start_ns=5975786301872575 end_ns=5975791302553496
+BUCKET k=10 elapsed=50.038s rate=8.008 MH/s full=1 start_ns=5975791302553496 end_ns=5975796302906664
+BUCKET k=11 elapsed=55.044s rate=7.960 MH/s full=1 start_ns=5975796302906664 end_ns=5975801308507693
+BUCKET k=12 elapsed=60.046s rate=7.769 MH/s full=1 start_ns=5975801308507693 end_ns=5975806310780094
+BUCKET k=13 elapsed=65.049s rate=7.677 MH/s full=1 start_ns=5975806310780094 end_ns=5975811313232027
+BUCKET k=14 elapsed=70.052s rate=7.780 MH/s full=1 start_ns=5975811313232027 end_ns=5975816317032889
+BUCKET k=15 elapsed=75.055s rate=7.782 MH/s full=1 start_ns=5975816317032889 end_ns=5975821319335299
+BUCKET k=16 elapsed=80.063s rate=7.746 MH/s full=1 start_ns=5975821319335299 end_ns=5975826327723072
+BUCKET k=17 elapsed=85.067s rate=7.701 MH/s full=1 start_ns=5975826327723072 end_ns=5975831331896621
+BUCKET k=18 elapsed=90.067s rate=7.510 MH/s full=1 start_ns=5975831331896621 end_ns=5975836332170092
+BUCKET k=19 elapsed=95.071s rate=7.440 MH/s full=1 start_ns=5975836332170092 end_ns=5975841335639388
+BUCKET k=20 elapsed=100.074s rate=7.349 MH/s full=1 start_ns=5975841335639388 end_ns=5975846338276431
+BUCKET k=21 elapsed=105.079s rate=7.529 MH/s full=1 start_ns=5975846338276431 end_ns=5975851343535400
+BUCKET k=22 elapsed=110.087s rate=7.655 MH/s full=1 start_ns=5975851343535400 end_ns=5975856351702817
+BUCKET k=23 elapsed=115.094s rate=7.539 MH/s full=1 start_ns=5975856351702817 end_ns=5975861358880950
+BUCKET k=24 elapsed=120.004s rate=7.434 MH/s full=0 start_ns=5975861358880950 end_ns=5975866269089910
+BENCH: threads=4096 lanes=16 submissions=14699 hashes=963313664 elapsed=120.004413s rate=8.027 MH/s loadavg=0.31 0.37 0.36
+MONITOR samples=597 max_temp_mC=99000 csv=session10/requalify-clocks-20261019-145712.csv
+RAW_RETENTION=0.746 gate=FAIL
+CLOCK_NORMALIZED first_mean_MHz=979.20 last_mean_MHz=729.72 retention=1.001; sampled association, not causal attribution
+DONE time=2026-10-19T14:59:53+07:00

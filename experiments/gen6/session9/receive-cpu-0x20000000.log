@@ -1,0 +1,2 @@
+SOLVED mode=cpu by=cpu workers=3 lanes=16 nonce=0x00000000203a1eb7 h0=0xffffff019150808d threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=1.952955s gpu=0 cpu=3808655 total=3808655 gpu_rate=0.000 cpu_rate=1.950 total_rate=1.950 MH/s

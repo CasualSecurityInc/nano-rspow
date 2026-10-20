@@ -1,0 +1,6 @@
+PROGRESS gpu=28311552 cpu=7041024
+PROGRESS gpu=54919168 cpu=12980224
+PROGRESS gpu=79495168 cpu=16969728
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=cpu workers=3 lanes=16 nonce=0x000000000677f4a0 h0=0xfffffffe2a0ec659 threshold=0xfffffff800000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=17.485076s gpu=90308608 cpu=18214514 total=108523122 gpu_rate=5.165 cpu_rate=1.042 total_rate=6.207 MH/s

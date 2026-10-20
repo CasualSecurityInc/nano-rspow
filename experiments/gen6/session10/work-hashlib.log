@@ -1,0 +1,6 @@
+PASS hashlib nonce=723d20627034aadb h0=ffffff98b5c790c0 threshold=fffffe0000000000
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 723d20627034aadb
+Threshold : 0xfffffe0000000000
+Difficulty: 0xffffff98b5c790c0
+Valid     : ✓ YES

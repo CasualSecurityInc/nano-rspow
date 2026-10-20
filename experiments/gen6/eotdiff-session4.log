@@ -1,0 +1,10 @@
+ours: 2 instructions; tail:
+  00600001 20000022 008d0000 00000000
+  07800031 24001cc8 00000000 82000010
+experiments/gen6/ref-vme/intra_frame.g6b:
+  ref : 07800031 24001cc8 00000000 82000010
+  MATCH
+experiments/gen6/ref-vme/inter_frame.g6b:
+  ref : 07800031 24001cc8 00000000 82000010
+  MATCH
+VERDICT: EOT matches a shipped kernel

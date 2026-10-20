@@ -1,0 +1,4 @@
+SIMD8-pred n=5 median=6.060 min=5.551 max=7.467 MH/s
+SIMD16-pred n=5 median=8.891 min=7.740 max=11.215 MH/s
+width gain=1.467x; illustrative cost ratio k=0.736
+illustrative a/b=14.297 lane-times; two throughput medians do not identify physical issue/decode costs

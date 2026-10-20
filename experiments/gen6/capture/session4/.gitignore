@@ -1,0 +1,7 @@
+# Keep the one complete, relocation-aware VAAPI submission used by the replay
+# and offline packing checks. The remaining per-submission BO dumps are bulky
+# local capture output; cap-decode.log preserves their command-level summary.
+*
+!.gitignore
+!sub-002.manifest
+!bo-002-*.bin

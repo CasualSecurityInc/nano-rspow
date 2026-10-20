@@ -1,0 +1,1 @@
+SOLVED nonce=0x0000000000068d1d tested=458752 batches=14 output=m3-results/solve-receive.bin root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2 threshold=0xfffffe0000000000 base=0x0000000000068000

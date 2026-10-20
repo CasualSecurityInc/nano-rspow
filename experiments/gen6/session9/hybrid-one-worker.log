@@ -1,0 +1,3 @@
+GPU reset_start=7 reset_end=7
+SOLVED mode=hybrid by=gpu workers=1 lanes=16 nonce=0x00000000203a1eb7 h0=0xffffff019150808d threshold=0xfffffe0000000000 root=718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+STATS wall=0.322829s gpu=3407872 cpu=450351 total=3858223 gpu_rate=10.556 cpu_rate=1.395 total_rate=11.951 MH/s

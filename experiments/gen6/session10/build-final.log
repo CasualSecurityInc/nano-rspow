@@ -1,0 +1,10 @@
+m3-12-l16-pred.g6b: 17412 dwords -> m3-12-l16-pred.bin
+dry run: kernel=69648 bytes, threads=1 lanes=16, results=256 bytes, batch capacity=4096 bytes; no GPU submission
+4353 instructions, 69648 bytes, highest GRF r87, 12 rounds, lanes=16; SoA record; predicated_carry=True
+m3-12-l8-pred.g6b: 17356 dwords -> m3-12-l8-pred.bin
+dry run: kernel=69424 bytes, threads=1 lanes=8, results=128 bytes, batch capacity=4096 bytes; no GPU submission
+4339 instructions, 69424 bytes, highest GRF r48, 12 rounds, lanes=8; SoA record; predicated_carry=True
+PASS blake8: 2004 C/hashlib comparisons, including root/nonce byte order
+PASS allocator: exact concurrent coverage, no overlaps, low-word/u64 boundaries, single published winner
+pow.cl 3395 normalized bytes sha256=1cc6245d56a927b24f99e5dec245256f4f66ef4c1efa3c47ef20444aaa741859
+PASS engine: both widths, first hit, arbitrary alignment, exact tails, low-word and u64 wrap, bad blob refusal

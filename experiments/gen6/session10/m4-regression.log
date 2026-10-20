@@ -1,0 +1,13 @@
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snb-engine: reset_start=7 reset_end=7
+NO HIT mode=gpu
+STATS wall=0.098807s gpu=1000000 cpu=3 total=1000003 gpu_rate=10.121 cpu_rate=0.000 total_rate=10.121 MH/s
+NO HIT mode=cpu
+STATS wall=0.377734s gpu=0 cpu=1000003 total=1000003 gpu_rate=0.000 cpu_rate=2.647 total_rate=2.647 MH/s
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snb-engine: reset_start=7 reset_end=7
+NO HIT mode=hybrid
+STATS wall=0.101595s gpu=864832 cpu=135171 total=1000003 gpu_rate=8.513 cpu_rate=1.330 total_rate=9.843 MH/s
+ERROR mode=gpu
+STATS wall=0.000104s gpu=0 cpu=0 total=0 gpu_rate=0.000 cpu_rate=0.000 total_rate=0.000 MH/s
+kernel checksum/width mismatch: /dev/null

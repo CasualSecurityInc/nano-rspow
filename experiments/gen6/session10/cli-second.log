@@ -1,0 +1,205 @@
+nano-rspow benchmark
+  Hash    : 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2
+  Samples : 1 per backend per tier
+  Mode    : warm
+
+snbcl: loaded pid=3981131; restricted pow_kernel ICD
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MATCH (pow.cl only)
+OpenCL GPU backend:
+snbcl: NDRange base=0x65affcd83a617194 count=65536 gpu=65520 cpu=12 HIT CPU-verified
+  warm 1 × receive ... snbcl: NDRange base=0xcb8519b0fd38c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd39c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd3fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd40c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd41c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd42c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd43c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd44c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd45c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd46c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd47c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd48c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd49c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd4fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd50c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd51c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd52c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd53c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd54c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd55c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd56c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd57c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd58c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd59c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd5fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd60c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd61c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd62c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd63c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd64c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd65c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd66c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd67c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd68c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd69c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd6fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd70c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd71c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd72c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd73c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd74c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd75c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd76c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd77c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd78c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd79c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd7fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd80c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd81c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd82c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd83c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd84c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd85c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd86c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd87c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd88c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd89c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd8fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd90c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd91c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd92c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd93c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd94c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd95c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd96c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd97c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd98c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd99c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9ac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9bc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9cc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9dc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9ec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fd9fc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda0c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda1c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda2c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda3c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda4c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda5c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda6c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda7c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda8c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fda9c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdaac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdabc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdacc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdadc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdaec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdafc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb0c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb1c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb2c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb3c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb4c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb5c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb6c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb7c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb8c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdb9c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbbc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbcc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbdc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdbfc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc0c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc1c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc2c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc3c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc4c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc5c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc6c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc7c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc8c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdc9c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdcac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdcbc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdccc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdcdc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdcec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdcfc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd0c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd1c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd2c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd3c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd4c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd5c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd6c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd7c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd8c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdd9c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fddac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fddbc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fddcc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdddc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fddec3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fddfc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde0c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde1c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde2c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde3c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde4c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde5c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde6c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde7c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde8c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fde9c3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdeac3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdebc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdecc3be count=65536 gpu=65520 cpu=16 miss
+snbcl: NDRange base=0xcb8519b0fdedc3be count=65536 gpu=65520 cpu=16 miss
+
+## nano-rspow Benchmark Results
+
+| Backend | Mode | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |
+|---------|------|------|-----------|--------:|---------:|---------:|----------:|------------:|
+| `opencl` | `warm` | `receive` | `0xfffffe0000000000` | 1 | 1227.4 | 1227.4 | 1227.4 | 1227.4 |
+
+> Tiers benchmarked: `dev`, `receive`, `legacy_epoch1`, `send`.
+snbcl: NDRange base=0xcb8519b0fdeec3be count=65536 gpu=65520 cpu=2 HIT CPU-verified
+done (median 1227.4ms)

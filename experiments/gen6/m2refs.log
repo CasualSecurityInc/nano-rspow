@@ -1,0 +1,282 @@
+
+===== Mesa genxml references =====
+curl: (22) The requested URL returned error: 404
+FETCH FAILED: gen6.xml
+curl: (22) The requested URL returned error: 404
+FETCH FAILED: gen7.xml
+STATE_BASE_ADDRESS: gen6=  gen7=MEDIA_VFE_STATE: gen6=  gen7=MEDIA_CURBE_LOAD: gen6=  gen7=MEDIA_INTERFACE_DESCRIPTOR_LOAD: gen6=  gen7=MEDIA_STATE_POINTERS: gen6=  gen7=MEDIA_OBJECT_WALKER: gen6=  gen7=INTERFACE_DESCRIPTOR_DATA: gen6=  gen7=PIPELINE_SELECT: gen6=  gen7=PIPE_CONTROL: gen6=  gen7=
+===== Mesa compiler scratch references =====
+curl: (22) The requested URL returned error: 404
+FETCH FAILED: brw_eu_defines.h
+curl: (22) The requested URL returned error: 404
+FETCH FAILED: brw_fs.cpp
+
+===== intel-vaapi-driver references =====
+Cloning into '/root/experiments/gen6/ref/intel-vaapi-driver'...
+HEAD: fd727a4
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen75_vme.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_vme.h
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_mfd.h
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_yuv_gen6.g4i
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme75_mpeg2.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme7.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme75.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme8.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme7_mpeg2.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/vme/vme.inc
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen7_vme.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_mfc.h
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_mfc_common.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen9_vme.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen8_vme.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_mfc.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_mfd.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_vme.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_gpe_utils.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen8_post_processing.c
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_post_processing.c
+45:#define BINDING_TABLE_OFFSET(index)             (SURFACE_STATE_OFFSET(MAX_MEDIA_SURFACES_GEN6) + sizeof(unsigned int) * index)
+46-
+47:#define CURBE_ALLOCATION_SIZE   37              /* in 256-bit */
+48:#define CURBE_TOTAL_DATA_LENGTH (4 * 32)        /* in byte, it should be less than or equal to CURBE_ALLOCATION_SIZE * 32 */
+49:#define CURBE_URB_ENTRY_LENGTH  4               /* in 256-bit, it should be less than or equal to CURBE_TOTAL_DATA_LENGTH / 32 */
+50-
+51-enum VIDEO_CODING_TYPE {
+52-    VIDEO_CODING_AVC = 0,
+53-    VIDEO_CODING_SUM
+54-};
+55-
+56-enum AVC_VME_KERNEL_TYPE {
+57-    AVC_VME_INTRA_SHADER = 0,
+58-    AVC_VME_INTER_SHADER,
+59-    AVC_VME_BATCHBUFFER,
+60-    AVC_VME_KERNEL_SUM
+61-};
+62-
+63-static const uint32_t gen6_vme_intra_frame[][4] = {
+64-#include "shaders/vme/intra_frame.g6b"
+65-};
+66-
+67-static const uint32_t gen6_vme_inter_frame[][4] = {
+--
+111:                                    BINDING_TABLE_OFFSET(index),
+112-                                    SURFACE_STATE_OFFSET(index));
+113-}
+114-
+115-static void
+116-gen6_vme_media_source_surface_state(VADriverContextP ctx,
+117-                                    int index,
+118-                                    struct object_surface *obj_surface,
+119-                                    struct intel_encoder_context *encoder_context)
+120-{
+121-    struct gen6_vme_context *vme_context = encoder_context->vme_context;
+122-
+123-    vme_context->vme_media_rw_surface_setup(ctx,
+124-                                            &vme_context->gpe_context,
+125-                                            obj_surface,
+126:                                            BINDING_TABLE_OFFSET(index),
+127-                                            SURFACE_STATE_OFFSET(index),
+128-                                            0);
+129-}
+130-
+131-static void
+132-gen6_vme_output_buffer_setup(VADriverContextP ctx,
+133-                             struct encode_state *encode_state,
+134-                             int index,
+135-                             struct intel_encoder_context *encoder_context)
+136-
+137-{
+138-    struct i965_driver_data *i965 = i965_driver_data(ctx);
+139-    struct gen6_vme_context *vme_context = encoder_context->vme_context;
+140-    VAEncSequenceParameterBufferH264 *pSequenceParameter = (VAEncSequenceParameterBufferH264 *)encode_state->seq_param_ext->buffer;
+141-    VAEncSliceParameterBufferH264 *pSliceParameter = (VAEncSliceParameterBufferH264 *)encode_state->slice_params_ext[0]->buffer;
+142-    int is_intra = pSliceParameter->slice_type == SLICE_TYPE_I;
+143-    int width_in_mbs = pSequenceParameter->picture_width_in_mbs;
+144-    int height_in_mbs = pSequenceParameter->picture_height_in_mbs;
+--
+162:                                         BINDING_TABLE_OFFSET(index),
+163-                                         SURFACE_STATE_OFFSET(index));
+164-}
+165-
+166-static void
+167-gen6_vme_output_vme_batchbuffer_setup(VADriverContextP ctx,
+168-                                      struct encode_state *encode_state,
+169-                                      int index,
+170-                                      struct intel_encoder_context *encoder_context)
+171-
+172-{
+173-    struct i965_driver_data *i965 = i965_driver_data(ctx);
+174-    struct gen6_vme_context *vme_context = encoder_context->vme_context;
+175-    VAEncSequenceParameterBufferH264 *pSequenceParameter = (VAEncSequenceParameterBufferH264 *)encode_state->seq_param_ext->buffer;
+176-    int width_in_mbs = pSequenceParameter->picture_width_in_mbs;
+177-    int height_in_mbs = pSequenceParameter->picture_height_in_mbs;
+178-
+179-    vme_context->vme_batchbuffer.num_blocks = width_in_mbs * height_in_mbs + 1;
+180-    vme_context->vme_batchbuffer.size_block = 32; /* 2 OWORDs */
+--
+189:                                         BINDING_TABLE_OFFSET(index),
+190-                                         SURFACE_STATE_OFFSET(index));
+191-}
+192-
+193-static VAStatus
+194-gen6_vme_surface_setup(VADriverContextP ctx,
+195-                       struct encode_state *encode_state,
+196-                       int is_intra,
+197-                       struct intel_encoder_context *encoder_context)
+198-{
+199-    struct object_surface *obj_surface;
+200-
+201-    /*Setup surfaces state*/
+202-    /* current picture for encoding */
+203-    obj_surface = encode_state->input_yuv_object;
+204-    gen6_vme_source_surface_state(ctx, 0, obj_surface, encoder_context);
+205-    gen6_vme_media_source_surface_state(ctx, 4, obj_surface, encoder_context);
+206-
+207-    if (!is_intra) {
+--
+251:        desc->desc3.binding_table_pointer = (BINDING_TABLE_OFFSET(0) >> 5);
+252-        desc->desc4.constant_urb_entry_read_offset = 0;
+253:        desc->desc4.constant_urb_entry_read_length = CURBE_URB_ENTRY_LENGTH;
+254-
+255-        /*kernel start*/
+256-        dri_bo_emit_reloc(bo,
+257-                          I915_GEM_DOMAIN_INSTRUCTION, 0,
+258-                          0,
+259-                          i * sizeof(*desc) + offsetof(struct gen6_interface_descriptor_data, desc0),
+260-                          kernel->bo);
+261-        /*Sampler State(VME state pointer)*/
+262-        dri_bo_emit_reloc(bo,
+263-                          I915_GEM_DOMAIN_INSTRUCTION, 0,
+264-                          (1 << 2),                                 //
+265-                          i * sizeof(*desc) + offsetof(struct gen6_interface_descriptor_data, desc2),
+266-                          vme_context->vme_state.bo);
+267-        desc++;
+268-    }
+269-    dri_bo_unmap(bo);
+270-
+271-    return VA_STATUS_SUCCESS;
+--
+652:    vme_context->gpe_context.curbe.length = CURBE_TOTAL_DATA_LENGTH;
+653-
+654-    vme_context->gpe_context.vfe_state.max_num_threads = 60 - 1;
+655-    vme_context->gpe_context.vfe_state.num_urb_entries = 16;
+656-    vme_context->gpe_context.vfe_state.gpgpu_mode = 0;
+657-    vme_context->gpe_context.vfe_state.urb_entry_size = 59 - 1;
+658:    vme_context->gpe_context.vfe_state.curbe_allocation_size = CURBE_ALLOCATION_SIZE - 1;
+659-
+660-    vme_context->video_coding_type = VIDEO_CODING_AVC;
+661-    vme_context->vme_kernel_sum = AVC_VME_KERNEL_SUM;
+662-    i965_gpe_load_kernels(ctx,
+663-                          &vme_context->gpe_context,
+664-                          gen6_vme_kernels,
+665-                          vme_context->vme_kernel_sum);
+666-
+667-    encoder_context->vme_pipeline = gen6_vme_pipeline;
+668-    vme_context->vme_surface2_setup = i965_gpe_surface2_setup;
+669-    vme_context->vme_media_rw_surface_setup = i965_gpe_media_rw_surface_setup;
+670-    vme_context->vme_buffer_suface_setup = i965_gpe_buffer_suface_setup;
+671-
+672-    encoder_context->vme_context = vme_context;
+673-    encoder_context->vme_context_destroy = gen6_vme_context_destroy;
+674-
+675-    return True;
+676-}
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen6_vme.h:45:#define MAX_MEDIA_SURFACES_GEN6         34
+/root/experiments/gen6/ref/intel-vaapi-driver/src/gen9_hevc_encoder.h:279:#define GEN9_HEVC_MEDIA_WALKER_MAX_COLORS        16
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:16:#define CMD_PIPELINE_SELECT                     CMD(1, 1, 4)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:19:#define CMD_MEDIA_STATE_POINTERS                CMD(2, 0, 0)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:20:#define CMD_MEDIA_VFE_STATE                     CMD(2, 0, 0)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:21:#define CMD_MEDIA_CURBE_LOAD                    CMD(2, 0, 1)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:22:#define CMD_MEDIA_INTERFACE_LOAD                CMD(2, 0, 2)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:23:#define CMD_MEDIA_OBJECT                        CMD(2, 1, 0)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:24:#define CMD_MEDIA_OBJECT_EX                     CMD(2, 1, 1)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:33:#define CMD_MEDIA_VFE_STATE                     CMD(2, 0, 0)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:34:#define CMD_MEDIA_CURBE_LOAD                    CMD(2, 0, 1)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:35:#define CMD_MEDIA_INTERFACE_DESCRIPTOR_LOAD     CMD(2, 0, 2)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:36:#define CMD_MEDIA_GATEWAY_STATE                 CMD(2, 0, 3)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:37:#define CMD_MEDIA_STATE_FLUSH                   CMD(2, 0, 4)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:38:#define CMD_MEDIA_OBJECT_WALKER                 CMD(2, 1, 3)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:448:#define PIPELINE_SELECT_3D              0
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:449:#define PIPELINE_SELECT_MEDIA           1
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:895:#define GEN9_PIPELINE_SELECTION_MASK        (0x3 << 8)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:896:#define GEN9_FORCE_MEDIA_AWAKE_MASK         (1 << 13)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:897:#define GEN9_FORCE_MEDIA_AWAKE_ON           (1 << 5)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:898:#define GEN9_FORCE_MEDIA_AWAKE_OFF          (0 << 5)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:900:#define GEN9_MEDIA_DOP_GATE_MASK            (1 << 12)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:901:#define GEN9_MEDIA_DOP_GATE_ON              (1 << 4)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_defines.h:902:#define GEN9_MEDIA_DOP_GATE_OFF             (0 << 4)
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_media.h:31:#define _I965_MEDIA_H_
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_media.h:41:#define MAX_MEDIA_SURFACES      34
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_media_h264.h:2:#define _I965_MEDIA_H264_H_
+/root/experiments/gen6/ref/intel-vaapi-driver/src/i965_media_mpeg2.h:31:#define _I965_MEDIA_MPEG2_H_
+/root/experiments/gen6/ref/intel-vaapi-driver/src/intel_media.h:26:#define INTEL_MEDIA_H
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_src_sample_planar.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_xy.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_src_sample_argb.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_src_affine.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_write.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_yuv_rgb.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_wm_yuv_color_balance.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/render/exa_sf.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_frame_pred_forward.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_field_pred_bidirect.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/field_bidirect_16x8.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/field_backward_16x8.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_frame_pred_bidirect.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_field_pred_forward.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/field_backward.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_intra.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/frame_field_pred_backward.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/field_bidirect.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/field_intra.g4b
+/root/experiments/gen6/ref/intel-vaapi-driver/src/shaders/mpeg2/vld/lib.g4b
+57:    send (1) uwAVS_RESPONSE(0)<1>   mAVS_8x8_HDR    udDUMMY_NULL    nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y
+64:    send (1) uwAVS_RESPONSE(4)<1>   mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_U+nBI_CURRENT_SRC_U
+68:    mov (1)  rAVS_8x8_HDR.2:ud      nAVS_RED_CHANNEL_ONLY:ud     // Dummy instruction just in order to avoid back-2-back send instructions!
+70:    send (1) uwAVS_RESPONSE(8)<1>   mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_V+nBI_CURRENT_SRC_V
+80:    send (1) uwAVS_RESPONSE(12)<1>  mAVS_8x8_HDR   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y 
+57:    send (1) uwAVS_RESPONSE(0)<1>   mAVS_8x8_HDR   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y
+71:    send (1) uwAVS_RESPONSE(4)<1> mAVS_8x8_HDR_UV   udDUMMY_NULL  nSMPL_ENGINE    nAVS_MSG_DSC_2CH+nSI_SRC_UV+nBI_CURRENT_SRC_UV
+82:    send (1) uwAVS_RESPONSE_2(0)<1>    mAVS_8x8_HDR    udDUMMY_NULL    nSMPL_ENGINE    nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y 
+77:	send (16)	SCALE_RESPONSE_YW(0)<1>		MSGHDR_SCALE	udDUMMY_NULL	nSMPL_ENGINE SMPLR_MSG_DSC+nSI_SRC_SIMD16_RGB+nBI_CURRENT_SRC_RGB
+70:    send (8)    dNULLREG               mMSGHDR_STMM              udDUMMY_NULL    nDATAPORT_WRITE     nDPMW_MSGDSC+nDPMW_MSG_LEN_STMM+nBI_STMM_HISTORY_OUTPUT:ud      
+108:    send (8)    dNULLREG    mMSGHDR_DN   udDUMMY_NULL    nDATAPORT_WRITE    nDPMW_MSGDSC+nDPMW_MSG_LEN_PL_DN_DI+nBI_DESTINATION_Y:ud
+87:    send (8)    dNULLREG               mMSGHDR_STMM              udDUMMY_NULL    nDATAPORT_WRITE     nDPMW_MSGDSC+nDPMW_MSG_LEN_STMM+nBI_STMM_HISTORY_OUTPUT:ud      
+114:    send (8)    dNULLREG    mMSGHDR_DN   udDUMMY_NULL    nDATAPORT_WRITE    nDPMW_MSGDSC+nDPMW_MSG_LEN_PL_DN_DI+nBI_DESTINATION_Y:ud
+122:    send (8) udBOT_U_IO(0)<1>     mMSGHDR_DN    udDUMMY_NULL    nDATAPORT_READ    nDPMR_MSGDSC+nRESLEN_2+nBI_CURRENT_SRC_UV:ud
+130:    send (8)    dNULLREG    mMSGHDR_DN   udDUMMY_NULL    nDATAPORT_WRITE    nDPMW_MSGDSC+nDPMW_MSG_LEN_PL_DN_DI+nBI_DESTINATION_UV:ud
+76:	send (16)	SCALE_RESPONSE_YW(0)<1>		MSGHDR_SCALE	udDUMMY_NULL	nSMPL_ENGINE SMPLR_MSG_DSC+nSI_SRC_SIMD16_Y+nBI_CURRENT_SRC_Y
+77:	send (16)	SCALE_RESPONSE_UW(0)<1>		MSGHDR_SCALE	udDUMMY_NULL	nSMPL_ENGINE SMPLR_MSG_DSC+nSI_SRC_SIMD16_UV+nBI_CURRENT_SRC_UV
+57:    send (1) uwAVS_RESPONSE(0)<1>   mAVS_8x8_HDR    udDUMMY_NULL    nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y
+64:    send (1) uwAVS_RESPONSE(4)<1>   mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_U+nBI_CURRENT_SRC_U
+68:    mov (1)  rAVS_8x8_HDR.2:ud      nAVS_RED_CHANNEL_ONLY:ud     // Dummy instruction just in order to avoid back-2-back send instructions!
+70:    send (1) uwAVS_RESPONSE(8)<1>   mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_V+nBI_CURRENT_SRC_V
+80:    send (1) uwAVS_RESPONSE(12)<1>  mAVS_8x8_HDR   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y 
+88:    send (8)    dNULLREG               mMSGHDR_STMM              udDUMMY_NULL    nDATAPORT_WRITE     nDPMW_MSGDSC+nDPMW_MSG_LEN_STMM+nBI_STMM_HISTORY_OUTPUT:ud      
+162:    send (8)    dNULLREG    mMSGHDR_DN   udDUMMY_NULL    nDATAPORT_WRITE    nDPMW_MSGDSC+nDPMW_MSG_LEN_PA_DN_DI+nBI_DESTINATION_YUV:ud
+50:send (8)   dNULLREG    mMSGHDR_HIST    udDUMMY_NULL    nDATAPORT_WRITE    nDPMW_MSGDSC+nDPMW_MSG_LEN_HIST+nBI_STMM_HISTORY_OUTPUT:ud
+57:    send (1) uwAVS_RESPONSE(0)<1>  mAVS_8x8_HDR    udDUMMY_NULL    nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y
+63:    send (1) uwAVS_RESPONSE(4)<1>     mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_U+nBI_CURRENT_SRC_U
+67:    mov  (1) rAVS_8x8_HDR.2:ud      nAVS_RED_CHANNEL_ONLY:ud     // Dummy instruction to avoid back-2-back send instructions
+69:    send (1) uwAVS_RESPONSE(8)<1>     mAVS_8x8_HDR_UV   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_V+nBI_CURRENT_SRC_V
+78:    send (1) uwAVS_RESPONSE_2(0)<1>   mAVS_8x8_HDR   udDUMMY_NULL      nSMPL_ENGINE        nAVS_MSG_DSC_1CH+nSI_SRC_Y+nBI_CURRENT_SRC_Y 
+
+===== Beignet media walker references =====
+Cloning into '/root/experiments/gen6/ref/beignet'...
+warning: redirecting to https://gitlab.freedesktop.org/beignet/beignet.git/
+HEAD: fc5f430
+
+===== assembler =====
+/usr/bin/intel-gen4asm: unrecognized option '--help'
+usage: intel-gen4asm [options] inputfile
+OPTIONS:
+	-a, --advanced                       Set advanced flag
+	-b, --binary                         C style binary output
+	-e, --export {exportfile}            Export label file
+	-l, --input_list {entrytablefile}    Input entry_table_list file
+	-o, --output {outputfile}            Specify output file
+	-g, --gen <4|5|6|7|8|9>              Specify GPU generation
+
+===== done =====

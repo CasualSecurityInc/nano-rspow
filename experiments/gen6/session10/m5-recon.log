@@ -1,0 +1,306 @@
+=== authoritative source and Rust enqueue contract ===
+1cc6245d56a927b24f99e5dec245256f4f66ef4c1efa3c47ef20444aaa741859  nano-rspow/src/opencl_backend/pow.cl
+4c7d0da4d3b4fe2bbc95d90fbf11b4b5a3c68cd50a0b59ca38e1b1d3c2697148  nano-rspow/src/opencl_backend/mod.rs
+db16e8dccb0a10994e8408eeb21c58c59ab707475c25e3621306ae4a6cd5caf9  Cargo.lock
+015bbed14583e4f8bd8628a8866bd1abb8de90d4
+use crate::{Backend, CancelToken, GeneratorDiagnostics, WorkError};
+use ocl::{Buffer, ProQue, SpatialDims, flags};
+use std::sync::Mutex;
+
+const SHADER: &str = include_str!("pow.cl");
+
+const WORKGROUP_SIZE: usize = 64;
+const DISPATCH_X: usize = 1024;
+const BATCH_SIZE: usize = WORKGROUP_SIZE * DISPATCH_X;
+
+#[derive(Default, Clone, Debug)]
+pub struct OpenClConfig {
+    // We can add specific platform/device selection here in the future
+}
+
+pub(crate) struct OpenClBackend {
+    session: Mutex<OpenClSession>,
+}
+
+struct OpenClSession {
+    result_nonce: Buffer<u64>,
+    result_found: Buffer<u32>,
+    kernel: ocl::Kernel,
+}
+
+impl OpenClBackend {
+    pub fn new(_config: OpenClConfig) -> Result<Self, WorkError> {
+        let platforms = ocl::core::get_platform_ids();
+        if platforms.is_err() || platforms.as_ref().map(|p| p.is_empty()).unwrap_or(true) {
+            return Err(WorkError::GpuInit(
+                "No OpenCL platforms available".to_string(),
+            ));
+        }
+
+        let pro_que = ProQue::builder()
+            .src(SHADER)
+            .dims(SpatialDims::One(BATCH_SIZE))
+            .build()
+            .map_err(|e| WorkError::GpuInit(e.to_string()))?;
+
+        let result_nonce = Buffer::<u64>::builder()
+            .queue(pro_que.queue().clone())
+            .flags(flags::MEM_READ_WRITE)
+            .len(1)
+            .build()
+            .map_err(|e| WorkError::GpuInit(e.to_string()))?;
+
+        let result_found = Buffer::<u32>::builder()
+            .queue(pro_que.queue().clone())
+            .flags(flags::MEM_READ_WRITE)
+            .len(1)
+            .build()
+            .map_err(|e| WorkError::GpuInit(e.to_string()))?;
+
+        let kernel = pro_que
+            .kernel_builder("pow_kernel")
+            .arg(0u64)
+            .arg(0u64)
+            .arg(0u64)
+            .arg(0u64)
+            .arg(0u64)
+            .arg(0u64)
+            .arg(&result_nonce)
+            .arg(&result_found)
+            .build()
+            .map_err(|e| WorkError::GpuInit(e.to_string()))?;
+
+        Ok(Self {
+            session: Mutex::new(OpenClSession {
+                result_nonce,
+                result_found,
+                kernel,
+            }),
+        })
+    }
+}
+
+impl Backend for OpenClBackend {
+    fn name(&self) -> &'static str {
+        "opencl"
+    }
+
+    fn generate(&self, hash: &[u8; 32], threshold: u64, cancel: &CancelToken) -> Option<u64> {
+        let session = self.session.lock().ok()?;
+
+        // Convert the 32-byte hash into 4 x u64 (little-endian)
+        let mut h = [0u64; 4];
+        for (output, chunk) in h.iter_mut().zip(hash.as_chunks::<8>().0) {
+            *output = u64::from_le_bytes(*chunk);
+        }
+
+        let mut base_nonce: u64 = rand::random();
+
+        session.kernel.set_arg(0, h[0]).ok()?;
+        session.kernel.set_arg(1, h[1]).ok()?;
+        session.kernel.set_arg(2, h[2]).ok()?;
+        session.kernel.set_arg(3, h[3]).ok()?;
+        session.kernel.set_arg(5, threshold).ok()?;
+
+        loop {
+            if cancel.is_cancelled() {
+                return None;
+            }
+
+            session.result_found.write(&[0u32][..]).enq().ok()?;
+
+            session.kernel.set_arg(4, base_nonce).ok()?;
+
+            unsafe {
+                session.kernel.enq().ok()?;
+            }
+
+            let mut found_arr = [0u32; 1];
+            session.result_found.read(&mut found_arr[..]).enq().ok()?;
+
+            if found_arr[0] != 0 {
+                let mut nonce_arr = [0u64; 1];
+                session.result_nonce.read(&mut nonce_arr[..]).enq().ok()?;
+                return Some(nonce_arr[0]);
+            }
+
+            base_nonce = base_nonce.wrapping_add(BATCH_SIZE as u64);
+        }
+    }
+
+    fn diagnostics(&self) -> GeneratorDiagnostics {
+        GeneratorDiagnostics {
+            backend: "opencl".to_string(),
+            gpu: None,
+        }
+    }
+}
+__kernel void pow_kernel(
+    ulong hash0,
+    ulong hash1,
+    ulong hash2,
+    ulong hash3,
+    ulong base_nonce,
+    ulong threshold,
+    __global ulong* result_nonce,
+    __global volatile uint* result_found
+) {
+    uint gid = get_global_id(0);
+    if (*result_found) {
+        return;
+    }
+
+    ulong nonce = base_nonce + gid;
+    ulong diff = blake2b_8(nonce, hash0, hash1, hash2, hash3);
+
+    if (diff >= threshold) {
+        if (atomic_cmpxchg(result_found, 0, 1) == 0) {
+            *result_nonce = nonce;
+        }
+    }
+}
+=== features ===
+nano-rspow/Cargo.toml:13:default = ["wgpu-backend"]
+nano-rspow/Cargo.toml:14:wgpu-backend = ["dep:wgpu", "dep:pollster", "dep:bytemuck"]
+nano-rspow/Cargo.toml:15:# Exposes the shared wgpu shader constants and Uniforms type for WASM builds
+nano-rspow/Cargo.toml:16:# that compile wgpu separately (e.g. nano-rspow-web).  Only requires bytemuck.
+nano-rspow/Cargo.toml:17:wgpu-types = ["dep:bytemuck"]
+nano-rspow/Cargo.toml:18:opencl = ["dep:ocl"]
+nano-rspow/Cargo.toml:28:# wgpu backend (default — Vulkan/Metal/DX12)
+nano-rspow/Cargo.toml:29:wgpu = { version = "29.0.3", optional = true, default-features = false, features = ["wgsl", "metal", "vulkan", "vulkan-portability", "dx12"] }
+nano-rspow/Cargo.toml:34:ocl = { version = "0.19", optional = true }
+nano-rspow-cli/Cargo.toml:2:name = "nano-rspow-cli"
+nano-rspow-cli/Cargo.toml:16:default = ["wgpu-backend"]
+nano-rspow-cli/Cargo.toml:17:wgpu-backend = ["nano-rspow/wgpu-backend"]
+nano-rspow-cli/Cargo.toml:18:opencl = ["nano-rspow/opencl"]
+nano-rspow-cli/Cargo.toml:21:nano-rspow = { path = "../nano-rspow", version = "0.17.2", features = ["wgpu-backend"] }
+CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_PROFILE_RELEASE_STRIP=debuginfo CARGO_INCREMENTAL=0 cargo build --release --locked -p nano-rspow-cli --features opencl -j 2
+=== CLI fallback and benchmark verification ===
+        "opencl" => {
+            #[cfg(feature = "opencl")]
+            {
+                match WorkGenerator::opencl(Default::default()) {
+                    Ok(g) => g,
+                    Err(e) => {
+                        eprintln!("OpenCL unavailable ({e}), falling back to CPU");
+                        WorkGenerator::cpu()
+                    }
+                }
+            }
+            #[cfg(not(feature = "opencl"))]
+            {
+                eprintln!("opencl not compiled; using CPU");
+                WorkGenerator::cpu()
+            }
+        }
+        _ => {
+    count: usize,
+    mode: BenchMode,
+    backend: BenchBackend,
+    tier: BenchTier,
+    thresholds: BenchmarkThresholds,
+    backends: Vec<BackendBenchReport>,
+    rows: Vec<BenchRow>,
+}
+
+fn run_backend_bench_warm(
+    generator: &WorkGenerator,
+    hash: &[u8; 32],
+    threshold: u64,
+    count: usize,
+    threshold_name: &'static str,
+) -> BenchRow {
+    let mut timings: Vec<f64> = Vec::with_capacity(count);
+    eprint!("  warm {} × {} ... ", count, threshold_name);
+    for _ in 0..count {
+        let t0 = Instant::now();
+        generator
+            .generate(hash, threshold)
+            .expect("generation must succeed");
+        timings.push(t0.elapsed().as_secs_f64() * 1000.0);
+    }
+    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let min = timings.first().copied().unwrap_or(0.0);
+    let max = timings.last().copied().unwrap_or(0.0);
+    let mean = timings.iter().sum::<f64>() / timings.len() as f64;
+    let median = timings[timings.len() / 2];
+
+    eprintln!("done (median {median:.1}ms)");
+
+    BenchRow {
+        backend: generator.backend_name(),
+        mode: "warm",
+        threshold_name,
+        threshold,
+        samples: count,
+        min_ms: min,
+        max_ms: max,
+        mean_ms: mean,
+        median_ms: median,
+    }
+}
+
+fn run_backend_bench_cold(
+    backend_label: &'static str,
+    make_generator: impl Fn() -> Option<WorkGenerator>,
+=== lemox release linkage, linked OpenCL imports, loader controls ===
+ 11:22:17 up 69 days, 20 min,  3 users,  load average: 0.28, 0.92, 1.04
+cargo 1.98.0 (797e8a9bc 2026-08-05)
+	linux-vdso.so.1 (0x00007ffc8eba0000)
+	libOpenCL.so.1 => /lib/x86_64-linux-gnu/libOpenCL.so.1 (0x000072c54c5b6000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000072c54c596000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000072c54c4b6000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000072c54bc1e000)
+	/lib64/ld-linux-x86-64.so.2 (0x000072c54c5d7000)
+                 U clBuildProgram@OPENCL_1.0
+                 U clCreateBuffer@OPENCL_1.0
+                 U clCreateCommandQueue@OPENCL_1.0
+                 U clCreateContext@OPENCL_1.0
+                 U clCreateKernel@OPENCL_1.0
+                 U clCreateProgramWithSource@OPENCL_1.0
+                 U clEnqueueAcquireGLObjects@OPENCL_1.0
+                 U clEnqueueCopyBuffer@OPENCL_1.0
+                 U clEnqueueCopyBufferRect@OPENCL_1.1
+                 U clEnqueueCopyBufferToImage@OPENCL_1.0
+                 U clEnqueueFillBuffer@OPENCL_1.2
+                 U clEnqueueNDRangeKernel@OPENCL_1.0
+                 U clEnqueueReadBuffer@OPENCL_1.0
+                 U clEnqueueReadBufferRect@OPENCL_1.1
+                 U clEnqueueReleaseGLObjects@OPENCL_1.0
+                 U clEnqueueWriteBuffer@OPENCL_1.0
+                 U clEnqueueWriteBufferRect@OPENCL_1.1
+                 U clGetCommandQueueInfo@OPENCL_1.0
+                 U clGetContextInfo@OPENCL_1.0
+                 U clGetDeviceIDs@OPENCL_1.0
+                 U clGetDeviceInfo@OPENCL_1.0
+                 U clGetEventInfo@OPENCL_1.0
+                 U clGetKernelArgInfo@OPENCL_1.2
+                 U clGetKernelInfo@OPENCL_1.0
+                 U clGetPlatformIDs@OPENCL_1.0
+                 U clGetProgramBuildInfo@OPENCL_1.0
+                 U clGetProgramInfo@OPENCL_1.0
+                 U clReleaseCommandQueue@OPENCL_1.0
+                 U clReleaseContext@OPENCL_1.0
+                 U clReleaseEvent@OPENCL_1.0
+                 U clReleaseKernel@OPENCL_1.0
+                 U clReleaseMemObject@OPENCL_1.0
+                 U clReleaseProgram@OPENCL_1.0
+                 U clRetainCommandQueue@OPENCL_1.0
+                 U clRetainContext@OPENCL_1.0
+                 U clRetainEvent@OPENCL_1.0
+                 U clRetainMemObject@OPENCL_1.0
+                 U clRetainProgram@OPENCL_1.0
+                 U clSetEventCallback@OPENCL_1.1
+                 U clSetKernelArg@OPENCL_1.0
+                 U clSetUserEventStatus@OPENCL_1.1
+                 U clWaitForEvents@OPENCL_1.0
+                 U clock_gettime@GLIBC_2.17
+                 U clock_nanosleep@GLIBC_2.17
+                 U close@GLIBC_2.2.5
+OCL_ICD_ASSUME_ICD_EXTENSION
+OCL_ICD_VENDORS
+OCL_ICD_PLATFORM_SORT
+OCL_ICD_DEFAULT_PLATFORM
+-rw-r--r-- 1 root root 81567 Feb  1  2023 /usr/include/CL/cl.h
+-rw-r--r-- 1 root root 52278 Feb  1  2023 /usr/include/CL/cl_icd.h

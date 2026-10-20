@@ -1,0 +1,8 @@
+{
+  "full_buckets": 23,
+  "first_rate_mhs": 9.163,
+  "last_full_bucket_rate_mhs": 5.037,
+  "last_full_bucket_end_s": 115.162,
+  "retained_fraction": 0.5497107934082723,
+  "gate_pass": false
+}

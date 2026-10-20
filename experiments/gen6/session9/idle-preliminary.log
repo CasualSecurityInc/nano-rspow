@@ -1,0 +1,22 @@
+HOST idle-gate=PASS load=0.29
+HOST affinity=cpu3 loadavg=0.29 0.38 0.33 2/1453 3136398
+SAMPLE round=1 lanes=16 loadavg=0.29 0.38 0.33 1/1453 3136399
+BENCH: threads=4096 lanes=16 submissions=540 hashes=35389440 elapsed=3.005544s rate=11.775 MH/s loadavg=0.27 0.38 0.32
+SAMPLE round=1 lanes=8 loadavg=0.27 0.38 0.32 1/1453 3136433
+BENCH: threads=4096 lanes=8 submissions=731 hashes=23953408 elapsed=3.001383s rate=7.981 MH/s loadavg=0.24 0.37 0.32
+SAMPLE round=2 lanes=8 loadavg=0.24 0.37 0.32 1/1452 3136491
+BENCH: threads=4096 lanes=8 submissions=672 hashes=22020096 elapsed=3.000120s rate=7.340 MH/s loadavg=0.30 0.38 0.33
+SAMPLE round=2 lanes=16 loadavg=0.30 0.38 0.33 2/1455 3136547
+BENCH: threads=4096 lanes=16 submissions=430 hashes=28180480 elapsed=3.007182s rate=9.371 MH/s loadavg=0.30 0.38 0.33
+SAMPLE round=3 lanes=16 loadavg=0.28 0.37 0.32 1/1455 3136573
+BENCH: threads=4096 lanes=16 submissions=424 hashes=27787264 elapsed=3.000473s rate=9.261 MH/s loadavg=0.28 0.37 0.32
+SAMPLE round=3 lanes=8 loadavg=0.28 0.37 0.32 1/1455 3136662
+BENCH: threads=4096 lanes=8 submissions=576 hashes=18874368 elapsed=3.006237s rate=6.278 MH/s loadavg=0.26 0.37 0.32
+SAMPLE round=4 lanes=8 loadavg=0.26 0.37 0.32 1/1455 3136708
+BENCH: threads=4096 lanes=8 submissions=534 hashes=17498112 elapsed=3.004946s rate=5.823 MH/s loadavg=0.48 0.41 0.34
+SAMPLE round=4 lanes=16 loadavg=0.48 0.41 0.34 2/1460 3136868
+BENCH: threads=4096 lanes=16 submissions=365 hashes=23920640 elapsed=3.004579s rate=7.961 MH/s loadavg=0.52 0.42 0.34
+SAMPLE round=5 lanes=16 loadavg=0.52 0.42 0.34 1/1455 3136953
+BENCH: threads=4096 lanes=16 submissions=362 hashes=23724032 elapsed=3.005579s rate=7.893 MH/s loadavg=0.52 0.42 0.34
+SAMPLE round=5 lanes=8 loadavg=0.56 0.43 0.35 1/1453 3137031
+BENCH: threads=4096 lanes=8 submissions=510 hashes=16711680 elapsed=3.003337s rate=5.564 MH/s loadavg=0.56 0.43 0.35

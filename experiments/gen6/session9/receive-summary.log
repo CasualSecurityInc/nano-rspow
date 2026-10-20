@@ -1,0 +1,14 @@
+receive-cpu-0.log: wall=0.214587s hashes=435084 rate=2.028 MH/s
+receive-cpu-0x10000000.log: wall=0.198318s hashes=315176 rate=1.589 MH/s
+receive-cpu-0x20000000.log: wall=1.952955s hashes=3808655 rate=1.950 MH/s
+cpu: n=3 median=0.214587s
+receive-gpu-0.log: wall=0.064234s hashes=458752 rate=7.142 MH/s
+receive-gpu-0x10000000.log: wall=0.066895s hashes=327680 rate=4.898 MH/s
+receive-gpu-0x20000000.log: wall=0.420170s hashes=3866624 rate=9.203 MH/s
+gpu: n=3 median=0.066895s
+receive-hybrid-0.log: wall=0.089088s hashes=500372 rate=5.617 MH/s
+receive-hybrid-0x10000000.log: wall=0.069178s hashes=339409 rate=4.906 MH/s
+receive-hybrid-0x20000000.log: wall=0.515171s hashes=3840763 rate=7.455 MH/s
+hybrid: n=3 median=0.089088s
+fastest receive median: gpu
+Small deterministic matched-range sample; use fixed work to assess throughput separately.

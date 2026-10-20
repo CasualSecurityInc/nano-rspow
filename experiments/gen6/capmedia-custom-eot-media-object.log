@@ -1,0 +1,92 @@
+
+===== sub-001 ring=1 batch_len=184 batch_off=0 objects=5 *** MEDIA *** =====
+[   0] PIPE_CONTROL (4 dw)
+      DW0  0x7a000002
+      DW1  0x00100002
+      DW2  0x00000000
+      DW3  0x00000000
+[   4] PIPE_CONTROL (4 dw)
+      DW0  0x7a000002
+      DW1  0x00004000
+      DW2  0x00000000 -> handle 4 +0x0 read=0x10 write=0x10
+      DW3  0x00000000
+[   8] PIPE_CONTROL (4 dw)
+      DW0  0x7a000002
+      DW1  0x00001400
+      DW2  0x00000000
+      DW3  0x00000000
+[  12] PIPELINE_SELECT (1 dw)
+      DW0  0x69040001
+[  13] STATE_BASE_ADDRESS (10 dw)
+      DW0  0x61010008
+      DW1  0x00000001
+      DW2  0x00000000 -> handle 2 +0x1 read=0x10 write=0x0
+      DW3  0x00000001
+      DW4  0x00000001
+      DW5  0x00000001
+      DW6  0x00000001
+      DW7  0x00000001
+      DW8  0x00000001
+      DW9  0x00000001
+[  23] MEDIA_VFE_STATE (8 dw)
+      DW0  0x70000006
+      DW1  0x00000000
+      DW2  0x003b1000
+      DW3  0x00000000
+      DW4  0x003a0024
+      DW5  0x00000000
+      DW6  0x00000000
+      DW7  0x00000000
+[  31] MEDIA_CURBE_LOAD (4 dw)
+      DW0  0x70010002
+      DW1  0x00000000
+      DW2  0x00000040
+      DW3  0x00000000 -> handle 2 +0x0 read=0x10 write=0x0
+    CURBE: obj[1] handle=2 size=8192 data+0x0
+      DW0  0xc0de0000
+      DW1  0xc0de0001
+      DW2  0xc0de0002
+      DW3  0xc0de0003
+      DW4  0xc0de0004
+      DW5  0xc0de0005
+      DW6  0xc0de0006
+      DW7  0xc0de0007
+      DW8  0xc0de0008
+      DW9  0xc0de0009
+      DW10 0xc0de000a
+      DW11 0xc0de000b
+      DW12 0xc0de000c
+      DW13 0xc0de000d
+      DW14 0xc0de000e
+      DW15 0xc0de000f
+[  35] MEDIA_INTERFACE_DESCRIPTOR_LOAD (4 dw)
+      DW0  0x70020002
+      DW1  0x00000000
+      DW2  0x00000020
+      DW3  0x00000000 -> handle 2 +0x80 read=0x10 write=0x0
+    IDRT: obj[1] handle=2 size=8192 data+0x80
+      DW0  0x00000000 -> handle 3 +0x0 read=0x10 write=0x0
+      DW1  0x00000000
+      DW2  0x00000000
+      DW3  0x00000101
+      DW4  0x00020000
+      DW5  0x00000000
+      DW6  0x00000000
+      DW7  0x00000000
+      DW8  0x00000000
+      DW9  0x00000000
+      DW10 0x00000000
+      DW11 0x00000000
+      DW12 0x00000000
+      DW13 0x00000000
+      DW14 0x00000000
+      DW15 0x00000000
+    kernel BO: obj[2] handle=3 +0x0
+[  39] MEDIA_OBJECT (6 dw)
+      DW0  0x71000004
+      DW1  0x00000000
+      DW2  0x00000000
+      DW3  0x00000000
+      DW4  0x00000000
+      DW5  0x00000000
+[  45] MI_BATCH_BUFFER_END

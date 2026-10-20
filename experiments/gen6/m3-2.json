@@ -1,0 +1,8 @@
+{
+  "rounds": 2,
+  "instructions": 853,
+  "bytes": 13648,
+  "highest_grf": 48,
+  "record_layout": "soa-8x4-u32",
+  "nonces_per_thread": 8
+}

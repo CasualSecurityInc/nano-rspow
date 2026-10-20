@@ -1,0 +1,8 @@
+experiments/gen6/payload-a0.bin: 64 dwords, 2 nonzero
+  output DW 2, byte   8: 0x000f0001 captured packet DW8
+  output DW 3, byte  12: 0x00300007 captured packet DW9
+experiments/gen6/payload-a1.bin: 64 dwords, 4 nonzero
+  output DW 0, byte   0: 0xa722c924 
+  output DW 1, byte   4: 0x21a95601 
+  output DW 2, byte   8: 0x662909e4 
+  output DW 3, byte  12: 0x9114485c 

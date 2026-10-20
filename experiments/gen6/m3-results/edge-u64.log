@@ -1,0 +1,1 @@
+COMPLETE (reset-clean): threads=2 hashes=16 output=m3-results/edge-u64.bin bytes=4096 root=0000000000000000000000000000000000000000000000000000000000000001 base=0xffffffffffffff80 threshold=0x0000000000000000

@@ -1,0 +1,61 @@
+snb-pow --root HEX64 --threshold U64 [--mode gpu|cpu|hybrid]
+  --kernel FILE       built 12-round predicated kernel (default SIMD16)
+  --lanes 8|16        kernel width; must match the built blob
+  --base U64          aligned first nonce (default 0)
+  --threads 1..4096   GPU media packets per batch (default 4096)
+  --cpu-workers 1..8  CPU workers (default min(3, online-1), at least 1)
+  --max-hashes N      exact global work limit; 0 means unbounded
+Exit 0: CPU-verified work; 3: no hit/exhausted; 5: GPU reset; 1/2: error.
+A final partial GPU vector is searched on the CPU and counted separately.
+GPU reset_start=7 reset_end=7
+SOLVED mode=gpu by=gpu workers=0 lanes=8 nonce=0x0000000000000000 h0=0x9f7babf206222889 threshold=0x0000000000000001 root=0000000000000000000000000000000000000000000000000000000000000001
+STATS wall=0.044612s gpu=32768 cpu=0 total=32768 gpu_rate=0.735 cpu_rate=0.000 total_rate=0.735 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=91000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=0.56 0.51 0.39 1/1453 3141227
+BUCKET k=1 elapsed=5.007s rate=9.163 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=94000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=800 loadavg=0.67 0.54 0.40 1/1456 3141286
+BUCKET k=2 elapsed=10.012s rate=8.262 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=96000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=750 loadavg=0.62 0.53 0.40 7/1465 3141438
+BUCKET k=3 elapsed=15.019s rate=7.644 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=750 loadavg=0.57 0.52 0.40 2/1454 3141502
+BUCKET k=4 elapsed=20.028s rate=7.288 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=96000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=0.68 0.54 0.41 2/1458 3141591
+BUCKET k=5 elapsed=25.029s rate=6.985 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=700 loadavg=0.63 0.53 0.41 3/1457 3141647
+BUCKET k=6 elapsed=30.035s rate=6.872 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=750 loadavg=0.82 0.58 0.42 1/1455 3141715
+BUCKET k=7 elapsed=35.043s rate=6.818 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=750 loadavg=0.75 0.57 0.42 1/1455 3141775
+BUCKET k=8 elapsed=40.049s rate=6.481 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=96000 /sys/class/drm/card1/gt_cur_freq_mhz=800 /sys/class/drm/card1/gt_act_freq_mhz=800 loadavg=1.17 0.66 0.45 16/1480 3141877
+BUCKET k=9 elapsed=45.059s rate=6.214 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=3.88 1.23 0.63 57/1506 3141959
+BUCKET k=10 elapsed=50.066s rate=6.138 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=98000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=7.01 1.92 0.86 42/1506 3142016
+BUCKET k=11 elapsed=55.067s rate=5.857 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=7.97 2.20 0.96 19/1466 3142083
+BUCKET k=12 elapsed=60.077s rate=5.717 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=600 loadavg=9.02 2.52 1.07 22/1482 3142140
+BUCKET k=13 elapsed=65.087s rate=5.651 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=9.50 2.72 1.14 11/1464 3142168
+BUCKET k=14 elapsed=70.093s rate=5.512 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=9.30 2.79 1.17 20/1481 3142234
+BUCKET k=15 elapsed=75.099s rate=5.799 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=98000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=10.39 3.13 1.29 18/1460 3142272
+BUCKET k=16 elapsed=80.109s rate=5.350 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=96000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=11.40 3.46 1.41 16/1478 3142323
+BUCKET k=17 elapsed=85.117s rate=5.182 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=98000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=600 loadavg=12.97 3.92 1.57 17/1492 3142393
+BUCKET k=18 elapsed=90.122s rate=5.055 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=13.94 4.27 1.69 38/1483 3142431
+BUCKET k=19 elapsed=95.130s rate=5.444 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=14.74 4.60 1.81 30/1481 3142484
+BUCKET k=20 elapsed=100.139s rate=5.168 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1300 /sys/class/drm/card1/gt_act_freq_mhz=550 loadavg=15.00 4.82 1.90 29/1496 3142557
+BUCKET k=21 elapsed=105.149s rate=5.442 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=1050 /sys/class/drm/card1/gt_act_freq_mhz=550 loadavg=17.17 5.44 2.12 85/1499 3142592
+BUCKET k=22 elapsed=110.152s rate=5.331 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=450 loadavg=21.72 6.57 2.50 68/1496 3142612
+BUCKET k=23 elapsed=115.162s rate=5.037 MH/s
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=500 loadavg=24.86 7.48 2.82 39/1492 3142667
+BENCH: threads=4096 lanes=16 submissions=11269 hashes=738525184 elapsed=120.010563s rate=6.154 MH/s loadavg=25.92 7.99 3.01
+TELEMETRY /sys/class/thermal/thermal_zone0/temp=97000 /sys/class/thermal/thermal_zone1/temp=97000 /sys/class/drm/card1/gt_cur_freq_mhz=650 /sys/class/drm/card1/gt_act_freq_mhz=650 loadavg=25.92 7.99 3.01 33/1498 3142714

@@ -1,0 +1,10 @@
+PASS independent hashlib nonce=00000000203a1eb7 h0=ffffff019150808d
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 00000000203a1eb7
+Threshold : 0xfffffe0000000000
+Difficulty: 0xffffff019150808d
+Valid     : ✓ YES
+-rwxr-xr-x 1 root root 26K Oct 18 20:56 snb-pow
+936627ccba29fec7ad71be8f310ca138def0fd5f4166815bae723d69bb11110c  snb-pow
+b83340eedfaf56030d4b196a733804e754b083b5471d4926d70018a3f81a09c7  m3-12-l16-pred.bin
+9af406bfb43c7f0447b3e5b2fbee808299e9f396c2b3c9296569ec4eb95fe201  m3-12-l8-pred.bin

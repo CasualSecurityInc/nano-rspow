@@ -1,0 +1,47 @@
+
+=== render node and permissions ===
+total 0
+drwxr-xr-x 2 root root         80 Aug 11 11:03 by-path
+crw-rw---- 1 root video  226,   1 Aug 11 11:03 card1
+crw-rw---- 1 root render 226, 128 Aug 11 11:03 renderD128
+uid=0(root) gid=0(root) groups=0(root)
+OK: renderD128 is readable and writable
+
+=== kernel and i915 ===
+Linux lemox 6.8.12-29-pve #1 SMP PREEMPT_DYNAMIC PMX 6.8.12-29 (2026-05-29T17:48Z) x86_64 GNU/Linux
+i915 3932160 2 - Live 0xffffffffc15de000
+
+=== GPU identity ===
+00:02.0 VGA compatible controller [0300]: Intel Corporation 2nd Generation Core Processor Family Integrated Graphics Controller [8086:0126] (rev 09)
+	Subsystem: Lenovo 2nd Generation Core Processor Family Integrated Graphics Controller [17aa:21da]
+	Kernel driver in use: i915
+	Kernel modules: i915
+
+=== build headers and tools ===
+gcc (Debian 12.2.0-14+deb12u1) 12.2.0
+Python 3.11.2
+2.4.114
+/usr/include/libdrm/i915_drm.h
+/usr/src/linux-headers-6.8.12-8-pve/include/drm/i915_drm.h
+/usr/src/linux-headers-6.8.12-8-pve/include/uapi/drm/i915_drm.h
+/usr/src/linux-headers-6.1.10-1-pve/include/drm/i915_drm.h
+/usr/src/linux-headers-6.1.10-1-pve/include/uapi/drm/i915_drm.h
+
+=== network ===
+network access to GitLab: OK
+
+=== installed nano-rspow binary ===
+binary: /root/.cargo/bin/nano-rspow
+/root/.cargo/bin/nano-rspow: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=0efa571c640293d260a6b454778314e7cb2b0299, not stripped
+OpenCL API symbol strings: 0
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.5/src/portable.rs
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.5/src/lib.rs
+called `Result::unwrap()` on an `Err` valueblake2b returned 8 bytesCli0.17.2Hybrid CPU/GPU Nano (XNO) Proof of Work 
+Benchmark was cancelledWork generation was cancelleddifficulty must be 16 hexadecimal charactersmultiplier must be a numberdifficulty must be a 64-bit hexadecimal valuecalled `Result::unwrap()` on an `Err` valuenano-rspow-work-peerwork queue is fullserver is shutting downqueue lock poisonedblake2b returned 8 bytes0xhash must be 64 hexadecimal charactersaction01generate jobs have a hash
+0.17.2// Blake2b PoW compute shader for Nano (XNO) work generation.
+binary is not managed by dpkg
+nano-rspow-cli v0.17.2:
+    nano-rspow
+
+=== Nano PoW kernel source locations in the checkout ===
+Run from the repository root: rg -n "__kernel void pow_kernel|BATCH_SIZE|WORKGROUP_SIZE" nano-rspow/src/opencl_backend

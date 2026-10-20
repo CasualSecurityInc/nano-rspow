@@ -1,0 +1,92 @@
+Generate work for a 32-byte block hash (hex encoded)
+
+Usage: nano-rspow generate [OPTIONS] [HASH]
+
+Arguments:
+  [HASH]
+          Block root hash (64 hex chars). Optional if --stream is used
+
+Options:
+      --stream
+          Run in stdio streaming mode.
+          
+          Reads newline-delimited requests from stdin and writes results to stdout. Empty lines are ignored.
+          
+          INPUT  (one request per line, threshold is optional): <hash_hex>:<threshold_hex>   — per-request threshold (0x prefix required) <hash_hex>                   — uses --threshold (or the default)
+          
+          OUTPUT (one result per line, same order): <hash_hex>:<threshold_hex>:<nonce_hex> e.g.  718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2:0xfffffff800000000:2bf29ef00786a6bc
+          
+          ERRORS are written to stderr; the offending line is skipped and processing continues. Cancellation also goes to stderr.
+          
+          NOTES: - Per-line <threshold_hex> must include the 0x prefix. - The process exits cleanly when stdin is closed (EOF).
+
+  -t, --threshold <THRESHOLD>
+          Difficulty threshold (hex, default: current send/change)
+          
+          [default: fffffff800000000]
+
+  -b, --backend <BACKEND>
+          Backend to use: cpu, gpu, opencl
+          
+          [default: gpu]
+
+      --retune
+          For GPU backend: bypass cache and run dispatch tuning probe
+
+  -h, --help
+          Print help (see a summary with '-h')
+ 11:21:32 up 69 days, 19 min,  3 users,  load average: 0.30, 1.04, 1.08
+nano-rspow benchmark
+  Hash    : 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2
+  Samples : 3 per backend per tier
+  Mode    : warm
+
+snbcl: loaded pid=3984793; restricted pow_kernel ICD
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MATCH (pow.cl only)
+OpenCL GPU backend:
+snbcl: NDRange base=0x653b7edefbc722aa count=65536 gpu=65520 cpu=6 HIT CPU-verified
+  warm 3 × receive ... snbcl: NDRange base=0xccb1d10f57037d94 count=65536 gpu=65520 cpu=12 HIT CPU-verified
+snbcl: NDRange base=0x9cfdbeb56c538cbe count=65536 gpu=65520 cpu=2 HIT CPU-verified
+
+## nano-rspow Benchmark Results
+
+| Backend | Mode | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |
+|---------|------|------|-----------|--------:|---------:|---------:|----------:|------------:|
+| `opencl` | `warm` | `receive` | `0xfffffe0000000000` | 3 | 441.9 | 1470.9 | 846.3 | 626.1 |
+
+> Tiers benchmarked: `dev`, `receive`, `legacy_epoch1`, `send`.
+snbcl: NDRange base=0xcaa774d2d733e23c count=65536 gpu=65520 cpu=4 HIT CPU-verified
+done (median 626.1ms)
+snbcl: summary enqueues=400 GPU_hashes=26208000 CPU_tail_hashes=6360
+snb-engine: reset_start=7 reset_end=7
+ 11:21:35 up 69 days, 19 min,  3 users,  load average: 0.27, 1.02, 1.08
+nano-rspow benchmark
+  Hash    : 718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2
+  Samples : 1 per backend per tier
+  Mode    : warm
+
+snbcl: loaded pid=3984832; restricted pow_kernel ICD
+snb-engine: open PCI=0126 SIMD16 resets=7 kernel=/tmp/nano-gen6-m3/m3-12-l16-pred.bin
+snbcl: engine ready
+snbcl: platform snbcl selected
+snbcl: platform snbcl selected
+snbcl: build source=MATCH (pow.cl only)
+OpenCL GPU backend:
+snbcl: NDRange base=0xdca04080acfdea8d count=65536 gpu=65520 cpu=3 HIT CPU-verified
+  warm 1 × send ... 
+## nano-rspow Benchmark Results
+
+| Backend | Mode | Tier | Threshold | Samples | Min (ms) | Max (ms) | Mean (ms) | Median (ms) |
+|---------|------|------|-----------|--------:|---------:|---------:|----------:|------------:|
+| `opencl` | `warm` | `send` | `0xfffffff800000000` | 1 | 17155.9 | 17155.9 | 17155.9 | 17155.9 |
+
+> Tiers benchmarked: `dev`, `receive`, `legacy_epoch1`, `send`.
+snbcl: NDRange base=0x058634b8c77a0e8c count=65536 gpu=65520 cpu=4 HIT CPU-verified
+done (median 17155.9ms)
+snbcl: summary enqueues=2131 GPU_hashes=139623120 CPU_tail_hashes=34071
+snb-engine: reset_start=7 reset_end=7
+ 11:21:52 up 69 days, 19 min,  3 users,  load average: 0.21, 0.97, 1.06

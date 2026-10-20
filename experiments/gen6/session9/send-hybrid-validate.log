@@ -1,0 +1,6 @@
+PASS independent hashlib nonce=000000000677f4a0 h0=fffffffe2a0ec659
+Hash      : 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2
+Work      : 000000000677f4a0
+Threshold : 0xfffffff800000000
+Difficulty: 0xfffffffe2a0ec659
+Valid     : ✓ YES
