@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "nano_rspow",
+  "project_id": "dd0b20db-f028-48a6-9130-5228f3c43661"
+}
