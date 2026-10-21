@@ -106,7 +106,13 @@ impl CpuBackend {
 
                     match cmd {
                         WorkCommand::Stop => return,
-                        WorkCommand::Search { hash, threshold, done, cancel, result_tx } => {
+                        WorkCommand::Search {
+                            hash,
+                            threshold,
+                            done,
+                            cancel,
+                            result_tx,
+                        } => {
                             const BATCH: usize = 256;
 
                             loop {
@@ -242,7 +248,9 @@ mod tests {
         let hash = [0u8; 32];
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
-        let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+        let nonce = backend
+            .generate(&hash, thresholds::testing::DEV, &cancel)
+            .unwrap();
         let diff = difficulty::compute(&hash, nonce);
         assert!(
             diff >= thresholds::testing::DEV,
@@ -275,7 +283,9 @@ mod tests {
 
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
-        let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+        let nonce = backend
+            .generate(&hash, thresholds::testing::DEV, &cancel)
+            .unwrap();
         let diff = difficulty::compute(&hash, nonce);
         assert!(diff >= thresholds::testing::DEV);
     }
@@ -288,7 +298,9 @@ mod tests {
 
         // Multiple calls on the same backend should all produce valid work
         for _ in 0..5 {
-            let nonce = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+            let nonce = backend
+                .generate(&hash, thresholds::testing::DEV, &cancel)
+                .unwrap();
             let diff = difficulty::compute(&hash, nonce);
             assert!(
                 diff >= thresholds::testing::DEV,
@@ -312,9 +324,7 @@ mod tests {
             .map(|_| {
                 let backend = Arc::clone(&backend);
                 let cancel = cancel.clone();
-                thread::spawn(move || {
-                    backend.generate(&hash, thresholds::testing::DEV, &cancel)
-                })
+                thread::spawn(move || backend.generate(&hash, thresholds::testing::DEV, &cancel))
             })
             .collect();
 
@@ -344,9 +354,7 @@ mod tests {
         let cancel = CancelToken::new();
 
         let cancel_clone = cancel.clone();
-        let handle = thread::spawn(move || {
-            backend.generate(&hash, u64::MAX, &cancel_clone)
-        });
+        let handle = thread::spawn(move || backend.generate(&hash, u64::MAX, &cancel_clone));
 
         thread::sleep(std::time::Duration::from_millis(100));
         cancel.cancel();
@@ -365,9 +373,15 @@ mod tests {
         let backend = CpuBackend::new();
         let cancel = CancelToken::new();
 
-        let nonce1 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
-        let nonce2 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
-        let nonce3 = backend.generate(&hash, thresholds::testing::DEV, &cancel).unwrap();
+        let nonce1 = backend
+            .generate(&hash, thresholds::testing::DEV, &cancel)
+            .unwrap();
+        let nonce2 = backend
+            .generate(&hash, thresholds::testing::DEV, &cancel)
+            .unwrap();
+        let nonce3 = backend
+            .generate(&hash, thresholds::testing::DEV, &cancel)
+            .unwrap();
 
         // Three nonces from a seeded RNG with 2^64 space should all be distinct.
         assert_ne!(nonce1, nonce2, "same nonce on consecutive generate calls");

@@ -210,17 +210,17 @@ pub fn recommend_local_pow() -> bool {
                 hashes += 1;
             }
         }
-        
+
         let elapsed_secs = start.elapsed().as_secs_f64();
         let hashes_per_sec = hashes as f64 / elapsed_secs;
-        
+
         #[cfg(not(target_arch = "wasm32"))]
         let core_count = rayon::current_num_threads() as f64;
         #[cfg(target_arch = "wasm32")]
         let core_count = 1.0;
 
         let estimated_total_hps = hashes_per_sec * core_count;
-        
+
         // Target: ~15 MH/s minimum for reasonable current send-threshold speed.
         estimated_total_hps >= 15_000_000.0
     };

@@ -16,7 +16,10 @@ fn main() {
         std::process::exit(1);
     });
 
-    println!("Building the browser-only dashboard via {}", script.display());
+    println!(
+        "Building the browser-only dashboard via {}",
+        script.display()
+    );
 
     let status = Command::new("python3")
         .arg(&script)

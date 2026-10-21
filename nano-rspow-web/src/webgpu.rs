@@ -86,7 +86,10 @@ impl GateState {
     /// Not simply `current + 1`, because a caller that abandoned its ticket
     /// leaves a gap that has to be stepped over.
     fn next_serving(&self, after: u64) -> u64 {
-        self.waiters.front().map(|(ticket, _)| *ticket).unwrap_or(after)
+        self.waiters
+            .front()
+            .map(|(ticket, _)| *ticket)
+            .unwrap_or(after)
     }
 }
 
@@ -158,7 +161,10 @@ impl<'a> Future for Acquire<'a> {
         }
 
         state.held = true;
-        if let Some(position) = state.waiters.iter().position(|(waiting, _)| *waiting == ticket)
+        if let Some(position) = state
+            .waiters
+            .iter()
+            .position(|(waiting, _)| *waiting == ticket)
         {
             state.waiters.remove(position);
         }
@@ -178,7 +184,11 @@ impl Drop for Acquire<'_> {
             return;
         };
         let mut state = self.gate.state();
-        let Some(position) = state.waiters.iter().position(|(waiting, _)| *waiting == ticket) else {
+        let Some(position) = state
+            .waiters
+            .iter()
+            .position(|(waiting, _)| *waiting == ticket)
+        else {
             return;
         };
         state.waiters.remove(position);
@@ -602,7 +612,6 @@ impl WgpuWebGenerator {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

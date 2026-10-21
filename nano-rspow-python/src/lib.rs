@@ -298,9 +298,7 @@ fn parse_cli_request(line: &str) -> Result<(String, [u8; 32], u64), String> {
     let hash = parse_hash(&hash_text).map_err(|error| error.to_string())?;
     let threshold = if let Some(threshold_text) = parts.get(1).map(|part| part.trim()) {
         if !threshold_text.starts_with("0x") {
-            return Err(format!(
-                "threshold {threshold_text:?} must start with 0x"
-            ));
+            return Err(format!("threshold {threshold_text:?} must start with 0x"));
         }
         u64::from_str_radix(&threshold_text[2..], 16)
             .map_err(|error| format!("invalid threshold {threshold_text:?}: {error}"))?

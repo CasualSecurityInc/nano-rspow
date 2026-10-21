@@ -73,10 +73,12 @@ pub fn generate_cpu_batch(hash: &[u8; 32], threshold: u64, max_nonces: u32) -> O
 
 /// Synchronously generate Proof of Work (legacy — blocks until found).
 pub fn generate_cpu(hash: &[u8; 32], threshold: u64) -> u64 {
-    with_rng(|rng| loop {
-        let nonce = rng.next();
-        if difficulty::compute(hash, nonce) >= threshold {
-            return nonce;
+    with_rng(|rng| {
+        loop {
+            let nonce = rng.next();
+            if difficulty::compute(hash, nonce) >= threshold {
+                return nonce;
+            }
         }
     })
 }
@@ -115,7 +117,10 @@ mod tests {
         // 1M nonces is more than enough for DEV threshold
         let result = generate_cpu_batch(&hash, thresholds::testing::DEV, 1_000_000);
 
-        assert!(result.is_some(), "batch should find a nonce at DEV threshold");
+        assert!(
+            result.is_some(),
+            "batch should find a nonce at DEV threshold"
+        );
         let diff = difficulty::compute(&hash, result.unwrap());
         assert!(diff >= thresholds::testing::DEV);
     }

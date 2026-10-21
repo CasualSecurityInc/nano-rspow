@@ -41,7 +41,11 @@ fn bench_cpu_generation(c: &mut Criterion) {
     // Only dev threshold: higher tiers take 1-2 s per sample.
     group.bench_function("dev", |b| {
         let generator = nano_rspow::WorkGenerator::cpu();
-        b.iter(|| generator.generate(&BENCH_HASH, thresholds::testing::DEV).unwrap());
+        b.iter(|| {
+            generator
+                .generate(&BENCH_HASH, thresholds::testing::DEV)
+                .unwrap()
+        });
     });
 
     group.finish();
@@ -65,7 +69,11 @@ fn bench_gpu_generation(c: &mut Criterion) {
         group.throughput(Throughput::Elements(1));
 
         group.bench_function("dev", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::testing::DEV).unwrap());
+            b.iter(|| {
+                generator
+                    .generate(&BENCH_HASH, thresholds::testing::DEV)
+                    .unwrap()
+            });
         });
 
         group.bench_function("receive", |b| {
@@ -88,7 +96,11 @@ fn bench_gpu_generation(c: &mut Criterion) {
         group.sampling_mode(SamplingMode::Flat);
 
         group.bench_function("legacy_epoch1", |b| {
-            b.iter(|| generator.generate(&BENCH_HASH, thresholds::legacy::EPOCH1).unwrap());
+            b.iter(|| {
+                generator
+                    .generate(&BENCH_HASH, thresholds::legacy::EPOCH1)
+                    .unwrap()
+            });
         });
 
         group.bench_function("send", |b| {
