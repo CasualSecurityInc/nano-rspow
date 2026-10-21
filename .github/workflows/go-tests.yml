@@ -1,0 +1,89 @@
+name: Go Bindings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nano-rspow-go/**'
+      - 'nano-rspow-ffi/**'
+      - 'nano-rspow/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/go-tests.yml'
+  pull_request:
+    paths:
+      - 'nano-rspow-go/**'
+      - 'nano-rspow-ffi/**'
+      - 'nano-rspow/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/go-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Go ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        # Pinned for the same reason as in rust-ci.yml: a new stable release
+        # must not be able to change the outcome of this job on its own.
+        uses: dtolnay/rust-toolchain@1.98.0
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nano-rspow -> .
+            nano-rspow-ffi -> .
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: nano-rspow-go/go.mod
+
+      - name: Build the native engine
+        # The cgo directives in nano-rspow-go/nano_rspow.go look for the
+        # static library in ../target/debug, which is exactly where this
+        # writes it, so no CGO_LDFLAGS override is needed. The default
+        # features are used on purpose: this builds the configuration that
+        # would actually ship, including the wgpu backend.
+        run: cargo build -p nano-rspow-ffi
+
+      - name: Check formatting
+        working-directory: nano-rspow-go
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        working-directory: nano-rspow-go
+        run: go vet ./...
+
+      - name: Test
+        working-directory: nano-rspow-go
+        run: CGO_ENABLED=1 go test ./...
+
+      - name: Smoke test the streaming CLI
+        working-directory: nano-rspow-go
+        run: |
+          echo "718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2:0xfe00000000000000" \
+            | CGO_ENABLED=1 go run ./cmd/nano-rspow-go
