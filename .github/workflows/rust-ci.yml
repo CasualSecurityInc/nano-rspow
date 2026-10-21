@@ -1,0 +1,100 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
+      - 'nano-rspow/**'
+      - 'nano-rspow-cli/**'
+      - 'nano-rspow-ffi/**'
+      - 'nano-rspow-node/**'
+      - 'nano-rspow-python/**'
+      - 'nano-rspow-web/**'
+      - '.github/workflows/rust-ci.yml'
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
+      - 'nano-rspow/**'
+      - 'nano-rspow-cli/**'
+      - 'nano-rspow-ffi/**'
+      - 'nano-rspow-node/**'
+      - 'nano-rspow-python/**'
+      - 'nano-rspow-web/**'
+      - '.github/workflows/rust-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Format and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        # Pinned on purpose. A new stable release can add lints or change
+        # rustfmt output, which would turn this job red without any change to
+        # the code. The pin is bumped deliberately, alongside a local run of
+        # the same commands.
+        uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nano-rspow -> .
+            nano-rspow-cli -> .
+            nano-rspow-ffi -> .
+            nano-rspow-node -> .
+            nano-rspow-python -> .
+            nano-rspow-web -> .
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@1.98.0
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            nano-rspow -> .
+            nano-rspow-cli -> .
+            nano-rspow-ffi -> .
+            nano-rspow-node -> .
+            nano-rspow-python -> .
+            nano-rspow-web -> .
+
+      - name: Test
+        # The Python binding is excluded because it is a cdylib built against
+        # `pyo3/extension-module`, which does not link libpython. macOS
+        # tolerates the resulting undefined symbols, Linux does not, so the
+        # test harness fails to link there. The crate is still checked below,
+        # and python-tests.yml covers it properly through maturin and pytest.
+        run: cargo test --workspace --exclude nano-rspow-python
+
+      - name: Check the Python binding crate
+        run: cargo check -p nano-rspow-python --all-targets
