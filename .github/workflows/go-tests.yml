@@ -55,6 +55,10 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: nano-rspow-go/go.mod
+          # The module has no external dependencies, so there is no go.sum to
+          # key a module cache on. Without this, setup-go logs a cache restore
+          # failure on every run.
+          cache: false
 
       - name: Build the native engine
         # The cgo directives in nano-rspow-go/nano_rspow.go look for the
