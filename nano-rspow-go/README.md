@@ -16,16 +16,23 @@ CGO_ENABLED=1 go test ./...
 ```
 
 The default cgo directives look for the header in
-`../nano-rspow-ffi/include` and the debug native library in `../target/debug`.
-To use a release build or an externally installed native artifact, add the
-corresponding include and library paths with `CGO_CFLAGS` and `CGO_LDFLAGS`.
-For example:
+`../nano-rspow-ffi/include` and link the static native library at
+`../target/debug/libnano_rspow_ffi.a`. The static library is linked on every
+platform, so the resulting Go binary carries the engine with it and needs no
+shared library at runtime. Linking the shared library instead would be a
+silent trap: `nano-rspow-ffi` produces a `staticlib` and a `cdylib` with the
+same base name in the same directory, and a plain `-l` picks the shared one,
+which then has to be found again at run time.
+
+To use a release build or an externally installed native artifact, point
+`CGO_CFLAGS` at the header and `CGO_LDFLAGS` at the archive to link. The
+environment flags come first, so they take precedence over the defaults:
 
 ```sh
 cargo build --release -p nano-rspow-ffi
 CGO_ENABLED=1 \
   CGO_CFLAGS="-I$PWD/../nano-rspow-ffi/include" \
-  CGO_LDFLAGS="-L$PWD/../target/release" \
+  CGO_LDFLAGS="$PWD/../target/release/libnano_rspow_ffi.a" \
   go test ./...
 ```
 
@@ -46,6 +53,11 @@ The initial release matrix should follow the existing native bindings:
 | macOS arm64/x86_64 | `staticlib` plus `cdylib` | Metal when available, CPU fallback |
 | Linux arm64/x86_64 | `staticlib` plus `cdylib` | Vulkan when available, CPU fallback |
 | Windows x86_64 | `staticlib` plus `cdylib` | DX12 when available, CPU fallback |
+
+The Rust crate still produces both a `staticlib` and a `cdylib`. The Go
+binding links the static library, which is what makes a released Go binary
+self-contained. A published shared library remains available for consumers
+that want one, but nothing in this module depends on it.
 
 Published Go releases must ship the header and one native artifact set per
 target, selected by the normal Go build tags or cgo target variables. The

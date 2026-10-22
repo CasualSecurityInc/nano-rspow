@@ -8,9 +8,6 @@ package nanorspow
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../nano-rspow-ffi/include
-#cgo LDFLAGS: -L${SRCDIR}/../target/debug -lnano_rspow_ffi
-#cgo linux LDFLAGS: -ldl -lm -lpthread
-#cgo darwin LDFLAGS: -framework Metal -framework QuartzCore -framework CoreGraphics -framework IOKit -framework Foundation
 #include "nano_rspow_ffi.h"
 */
 import "C"
