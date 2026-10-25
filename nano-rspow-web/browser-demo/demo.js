@@ -351,30 +351,57 @@ function generateWorkCpuWorker(hash, threshold, workerCount = CPU_WORKER_COUNT) 
     });
 }
 
-// Timeout-protected WebGPU runner
+// Keep GPU initialization and searches off the Window thread, including forced mode.
+let gpuWorker;
 async function generateWorkGpuWithTimeout(hash, threshold, timeoutMs = 30000) {
-    activeGpuCancelToken = new globalThis.WasmCancelToken();
+    if (!gpuWorker) {
+        const glue = document.getElementById('wasm-glue-script');
+        if (!glue) throw new Error('WASM glue script tag not found');
+        const code = glue.textContent + `
+            self.onmessage = async ({ data }) => {
+                let token;
+                try {
+                    await globalThis.init();
+                    token = new globalThis.WasmCancelToken();
+                    const result = await globalThis.generate_work_gpu(data.hash, data.threshold, token);
+                    try {
+                        self.postMessage({ result: { nonce: result.nonce, is_gpu: true } });
+                    } finally { result.free(); }
+                } catch (error) {
+                    self.postMessage({ error: String(error?.message ?? error) });
+                } finally { if (token) token.free(); }
+            };
+        `;
+        const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+        try { gpuWorker = new Worker(url); } finally { URL.revokeObjectURL(url); }
+    }
     let timeoutId;
-    const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-            if (activeGpuCancelToken) activeGpuCancelToken.cancel();
-            const err = new Error("WebGPU execution timed out");
-            err.isGpuTimeout = true;
-            reject(err);
-        }, timeoutMs);
-    });
-    
     try {
-        const result = await Promise.race([
-            globalThis.generate_work_gpu(hash, threshold, activeGpuCancelToken),
-            timeoutPromise
-        ]);
-        clearTimeout(timeoutId);
-        return result;
-    } catch (err) {
-        clearTimeout(timeoutId);
-        throw err;
+        return await new Promise((resolve, reject) => {
+            const fail = (error) => {
+                gpuWorker.terminate();
+                gpuWorker = undefined;
+                reject(error);
+            };
+            gpuWorker.onmessage = ({ data }) => {
+                if (data.error) fail(new Error(data.error));
+                else resolve(data.result);
+            };
+            gpuWorker.onerror = (event) => fail(new Error(event.message || 'WebGPU Worker failed'));
+            activeGpuCancelToken = { cancel() {
+                const error = new Error('Work generation cancelled');
+                error.isCancelled = true;
+                fail(error);
+            } };
+            if (timeoutMs !== null) timeoutId = setTimeout(() => {
+                const error = new Error('WebGPU execution timed out');
+                error.isGpuTimeout = true;
+                fail(error);
+            }, timeoutMs);
+            gpuWorker.postMessage({ hash, threshold });
+        });
     } finally {
+        clearTimeout(timeoutId);
         activeGpuCancelToken = null;
     }
 }
@@ -527,12 +554,7 @@ elBtnRun.addEventListener('click', async () => {
             }
             log('WebGPU', 'Forcing WebGPU. Instantiating GPU pipeline...');
             // No timeout — user explicitly wants GPU; cancel button is the only abort.
-            activeGpuCancelToken = new globalThis.WasmCancelToken();
-            try {
-                result = await globalThis.generate_work_gpu(hash, threshold, activeGpuCancelToken);
-            } finally {
-                activeGpuCancelToken = null;
-            }
+            result = await generateWorkGpuWithTimeout(hash, threshold, null);
         } else {
             log('CPU', `Forcing WASM CPU. Spawning ${CPU_WORKER_COUNT} parallel Web Workers...`);
             result = await generateWorkCpuWorker(hash, threshold);

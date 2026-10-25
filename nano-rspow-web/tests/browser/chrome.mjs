@@ -154,7 +154,11 @@ export async function openPage(url) {
     } catch {
       // The socket may already be gone if Chrome exited.
     }
-    if (child.exitCode === null) child.kill('SIGKILL');
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = new Promise((resolveExit) => child.once('exit', resolveExit));
+      child.kill('SIGKILL');
+      await Promise.race([exited, delay(5_000)]);
+    }
     rmSync(userDataDirectory, { recursive: true, force: true });
   };
 

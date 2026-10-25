@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import initNanoRspow, { generate_work as generateNanoRspow } from './nano_rspow_web.js';
+import initNanoRspow, { generateWork as generateNanoRspow } from './rspow-client.js';
 import { validateWork } from 'nanocurrency';
 import * as NanoPowModule from 'nano-pow';
 

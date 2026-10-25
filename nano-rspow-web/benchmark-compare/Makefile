@@ -4,11 +4,11 @@
 # incremental, so the Rust sources must invalidate the cache too — comparing
 # directory timestamps would not, because editing a file inside a directory
 # leaves the directory's mtime alone.
-JS_SOURCES := $(wildcard Makefile app.js bridge.mjs build.mjs index.html package.json package-lock.json styles.css)
+JS_SOURCES := $(wildcard Makefile app.js rspow-client.js rspow-worker.js bridge.mjs build.mjs index.html package.json package-lock.json styles.css)
 RUST_SOURCES := $(shell find ../../nano-rspow/src -name '*.rs' 2>/dev/null) \
 	$(wildcard ../src/lib.rs ../../Cargo.toml ../../Cargo.lock)
 SOURCES := $(JS_SOURCES) $(RUST_SOURCES)
-DIST_FILES := $(wildcard dist/app.js dist/index.html dist/nano_rspow_web_bg.wasm dist/styles.css)
+DIST_FILES := $(wildcard dist/app.js dist/rspow-worker.js dist/index.html dist/nano_rspow_web_bg.wasm dist/styles.css)
 
 PORT ?= 8080
 WORK_PEER_PORT ?= 7076
@@ -42,7 +42,7 @@ node-addon:
 # build.mjs compiles nano-rspow-web to wasm32 itself, so this needs the wasm
 # target and wasm-bindgen. It reports both clearly if they are missing.
 build: node-addon
-	@if test ! -d node_modules/esbuild || test "$(words $(DIST_FILES))" -ne 4 || find $(SOURCES) -newer dist/app.js -print -quit | grep -q .; then npm ci && npm run build; fi
+	@if test ! -d node_modules/esbuild || test "$(words $(DIST_FILES))" -ne 5 || find $(SOURCES) -newer dist/app.js -print -quit | grep -q .; then npm ci && npm run build; fi
 
 # Start the work peer and the proxy. Foreground; Ctrl-C once stops both.
 run: build

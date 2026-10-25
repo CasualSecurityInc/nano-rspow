@@ -9,6 +9,19 @@ macro_rules! console_log {
     )
 }
 
+/// Refuse PoW entrypoints in a browser Window. The JavaScript API routes work
+/// through a dedicated Worker; this Rust boundary protects direct/raw exports.
+fn ensure_not_window() -> Result<(), JsValue> {
+    let has_document =
+        js_sys::Reflect::has(&js_sys::global(), &JsValue::from_str("document")).unwrap_or(false);
+    if has_document {
+        return Err(JsValue::from_str(
+            "Local proof-of-work requires a dedicated Worker; Window execution is disabled",
+        ));
+    }
+    Ok(())
+}
+
 /// A cancellation handle that can be passed to `generate_work_gpu` and
 /// called from JavaScript to stop the GPU batch loop.
 #[wasm_bindgen]
@@ -42,6 +55,7 @@ pub fn generate_work_cpu_batch(
     threshold_hex: &str,
     max_nonces: u32,
 ) -> Result<JsValue, JsValue> {
+    ensure_not_window()?;
     let hash_bytes = hex::decode(hash_hex)
         .map_err(|e| JsValue::from_str(&format!("Invalid hash hex: {}", e)))?;
     let hash: [u8; 32] = hash_bytes
@@ -81,6 +95,9 @@ impl GenerateResult {
 /// used by the native recommendation before it is recommended.
 #[wasm_bindgen]
 pub async fn probe_local_pow() -> bool {
+    if ensure_not_window().is_err() {
+        return false;
+    }
     // Warming the shared generator answers the capability question with the
     // same full construction a real work call needs, and leaves the device and
     // pipeline ready for the first `generate_work` instead of throwing them
@@ -109,6 +126,7 @@ pub async fn probe_local_pow() -> bool {
 /// Tries WebGPU first, then falls back to single-threaded CPU WASM.
 #[wasm_bindgen]
 pub async fn generate_work(hash_hex: &str, threshold_hex: &str) -> Result<GenerateResult, JsValue> {
+    ensure_not_window()?;
     console_log!(
         "[WASM] generate_work called. hash: {}, threshold: {}",
         hash_hex,
@@ -174,6 +192,7 @@ pub async fn generate_work_gpu(
     threshold_hex: &str,
     cancel_token: &WasmCancelToken,
 ) -> Result<GenerateResult, JsValue> {
+    ensure_not_window()?;
     console_log!(
         "[WASM] generate_work_gpu called. hash: {}, threshold: {}",
         hash_hex,
@@ -217,6 +236,7 @@ pub async fn generate_work_gpu(
 /// single-threaded WASM CPU execution.
 #[wasm_bindgen]
 pub fn generate_work_cpu(hash_hex: &str, threshold_hex: &str) -> Result<GenerateResult, JsValue> {
+    ensure_not_window()?;
     console_log!(
         "[WASM] generate_work_cpu called. hash: {}, threshold: {}",
         hash_hex,

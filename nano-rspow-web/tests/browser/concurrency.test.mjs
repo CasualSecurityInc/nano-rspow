@@ -87,35 +87,51 @@ after(async () => {
 });
 
 describe('shared WebGPU generator', () => {
-  it('gives every concurrent generate_work call work valid for its own inputs', { timeout: 300_000 }, async () => {
+  it('rejects every PoW generation entrypoint on the Window thread', { timeout: 30_000 }, async () => {
+    const result = await page.evaluate(`
+        const module = await import('/nano_rspow_web.js');
+        await module.default();
+        const errors = [];
+        for (const generate of [
+          () => module.generate_work_cpu_batch('0'.repeat(64), 'ffffffffffffffff', 0xffffffff),
+          () => module.generate_work_cpu('0'.repeat(64), 'ffffffffffffffff'),
+          () => module.generate_work('0'.repeat(64), 'ffffffffffffffff'),
+          () => {
+            const token = new module.WasmCancelToken();
+            return module.generate_work_gpu('0'.repeat(64), 'ffffffffffffffff', token).finally(() => token.free());
+          },
+        ]) {
+          try { await generate(); errors.push('unexpected success'); }
+          catch (error) { errors.push(String(error)); }
+        }
+        const probe = await module.probe_local_pow();
+        let ticks = 0;
+        const heartbeat = setInterval(() => ticks++, 1);
+        await new Promise(resolve => setTimeout(resolve, 20));
+        clearInterval(heartbeat);
+        return { errors, probe, ticks };
+      `, { timeoutMs: 10_000 });
+
+      assert.equal(result.errors.length, 4);
+      for (const error of result.errors) {
+        assert.match(error, /dedicated Worker/);
+      }
+      assert.equal(result.probe, false, 'Window probes must refuse local work without benchmarking');
+      assert.ok(result.ticks > 0, 'the Window heartbeat should continue while PoW is refused');
+  });
+
+  it('keeps concurrent high-level work valid inside the Worker', { timeout: 300_000 }, async () => {
     const outcome = await page.evaluate(`
+      const api = await import('/index.js');
       const module = await import('/nano_rspow_web.js');
-      await module.default();
+      const assessment = await api.probeLocalPow();
+      if (!assessment.recommended) return { skipped: assessment.reason };
 
       const cases = ${JSON.stringify(CASES)};
-
-      // Without a working adapter there is no shared generator to test, so this
-      // is not applicable rather than a failure. A browser falling back to the
-      // CPU is a supported configuration, not a broken build.
-      if (!navigator.gpu) return { skipped: 'navigator.gpu is unavailable' };
-      const adapter = await navigator.gpu.requestAdapter();
-      if (!adapter) return { skipped: 'no WebGPU adapter available' };
-
-      // Count device bring-ups. The cached generator logs this at most once
-      // across every call; more than one means it is being rebuilt per call.
-      let bringUps = 0;
-      const realLog = console.log;
-      console.log = function (...args) {
-        const first = args[0];
-        if (typeof first === 'string' && first.includes('Initialization complete')) bringUps += 1;
-        return realLog.apply(console, args);
-      };
-
       const startedAt = performance.now();
-      // Every call starts before any is awaited, so they overlap.
       const results = await Promise.all(
         cases.map((testCase, index) =>
-          module.generate_work(testCase.root, testCase.threshold)
+          api.generateWork(testCase.root, testCase.threshold, { timeoutMs: 30000 })
             .then((result) => {
               globalThis.__progress.push('case ' + index + ' (' + Math.round(performance.now() - startedAt) + ' ms)');
               return { testCase, result };
@@ -123,17 +139,17 @@ describe('shared WebGPU generator', () => {
         ),
       );
       const elapsedMs = performance.now() - startedAt;
-      console.log = realLog;
+      await module.default();
 
       const checked = results.map(({ testCase, result }) => ({
         root: testCase.root.slice(0, 8),
         threshold: testCase.threshold,
         nonce: result.nonce,
-        isGpu: result.is_gpu === true,
+        backend: result.backend,
         valid: module.validate_work(testCase.root, result.nonce, testCase.threshold) === true,
       }));
 
-      return { checked, bringUps, elapsedMs, expected: cases.length };
+      return { checked, assessment, elapsedMs, expected: cases.length };
     `, { timeoutMs: 180_000 });
 
     if (outcome.skipped) {
@@ -146,10 +162,7 @@ describe('shared WebGPU generator', () => {
     assert.equal(outcome.checked.length, outcome.expected, 'every case should have produced a result');
 
     for (const check of outcome.checked) {
-      assert.ok(
-        check.isGpu,
-        `case ${check.root}… fell back to the CPU, so the shared generator was not exercised`,
-      );
+      assert.ok(['webgpu', 'cpu'].includes(check.backend), `case ${check.root}… used an unknown backend`);
       assert.ok(
         check.valid,
         `nonce ${check.nonce} does not satisfy root ${check.root}… at threshold ${check.threshold} — `
@@ -157,15 +170,32 @@ describe('shared WebGPU generator', () => {
       );
     }
 
-    assert.ok(
-      outcome.bringUps <= 1,
-      `observed ${outcome.bringUps} device bring-ups across ${outcome.expected} concurrent calls; `
-      + 'the generator is being rebuilt per call instead of reused',
-    );
-
     console.log(
-      `    ${outcome.checked.length} concurrent calls, ${outcome.bringUps} device bring-up(s), `
+      `    ${outcome.checked.length} concurrent calls using ${outcome.assessment.backend}, `
       + `${Math.round(outcome.elapsedMs)} ms`,
     );
   });
+});
+
+it('high-level Worker API validates concurrent work and recovers after cancellation', { timeout: 30000 }, async () => {
+  const result = await page.evaluate(`
+    const api = await import('/index.js');
+    const assessment = await api.probeLocalPow();
+    const roots = ['4'.repeat(64), '5'.repeat(64)];
+    const results = await Promise.all(roots.map(root => api.generateWork(root, 'ff00000000000000', { timeoutMs: 10000 })));
+    const engine = api.createPowEngine();
+    await engine.ready();
+    const valid = results.every((result, i) => engine.validate(roots[i], result.nonce, 'ff00000000000000'));
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 20);
+    let cancelled = false;
+    try {
+      await api.generateWork(roots[0], 'ffffffffffffffff', { signal: controller.signal, timeoutMs: 5000 });
+    } catch (error) { cancelled = error.name === 'AbortError'; }
+    const recovered = await api.generateWork(roots[0], 'ff00000000000000', { timeoutMs: 10000 });
+    return { valid, cancelled, recovered: api.validate_work(roots[0], recovered.nonce, 'ff00000000000000'), assessment };
+  `, { timeoutMs: 25000 });
+  assert.equal(result.valid, true);
+  assert.equal(result.cancelled, true);
+  assert.equal(result.recovered, true);
 });

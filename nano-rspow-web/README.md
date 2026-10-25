@@ -4,7 +4,10 @@ If you are looking for the same functionality on the server side, see the [nano-
 
 Nano (XNO) proof-of-work generation for browsers using WebAssembly and WebGPU.
 
-Tries WebGPU first, then automatically falls back to single-threaded CPU WebAssembly if WebGPU is unavailable.
+The high-level API runs all probing and generation in a dedicated Worker. If Worker creation is blocked,
+or local work is not recommended for the device, it refuses local work so the application can use its
+server route. A WebGPU failure falls back to CPU only after the Worker measures adequate CPU throughput.
+Raw WASM generation exports reject calls from a browser Window as a second guard against UI-thread mining.
 
 ## Install
 
@@ -15,22 +18,24 @@ npm install nano-rspow-web
 ## Usage
 
 ```javascript
-import init, { generate_work, validate_work } from 'nano-rspow-web';
+import { probeLocalPow, generateWork } from 'nano-rspow-web';
 
-// Initialize the WebAssembly module
-await init();
-
-// Generate work
 const hash = "718CC2121C3E641059BC1C2CFC45666C99E8AE922F7A807B7D07B62C995D79E2";
 const threshold = "fffffff800000000";
-
-const result = await generate_work(hash, threshold);
-console.log("Nonce:", result.nonce);   // e.g., "8587f13863c049fd"
-console.log("Is GPU:", result.is_gpu); // true/false
-
-// Validate work
-const isValid = validate_work(hash, result.nonce, threshold); // true
+const assessment = await probeLocalPow();
+if (assessment.recommended) {
+  const result = await generateWork(hash, threshold, { timeoutMs: 10_000 });
+  console.log("Nonce:", result.nonce); // e.g., "8587f13863c049fd"
+  console.log("Backend:", result.backend);
+} else {
+  // Ask the application server for work instead of mining on the page thread.
+  console.log("Local work unavailable:", assessment.reason);
+}
 ```
+
+`createPowEngine()` uses the same Worker-backed implementation for `ready()` and `generate()`. The
+synchronous `validate()` operation is suitable for the page thread because it checks one nonce and does
+not search. Applications should use `nanocurrency.validateWork` when they already depend on that API.
 
 The threshold argument is always caller supplied. For current Nano mainnet,
 use `fffffff800000000` for send/change blocks or `fffffe0000000000` for
@@ -134,6 +139,9 @@ local tool, and `make web-compare-run` is the supported way to run it.
 
 ## API reference
 
+Raw `generate_work*` exports are for use inside Workers and reject calls from a browser Window.
+Use `probeLocalPow` and `generateWork` from page code.
+
 ### `init(moduleOrPath?)`
 
 Initializes the asynchronous WASM loader. Await this default export before calling the work functions. It accepts an optional WebAssembly module, bytes, `Response`, URL, request, or promise for one of those inputs.
@@ -150,12 +158,12 @@ Forces WebGPU PoW generation at any hexadecimal threshold. Rejects if WebGPU is 
 
 ### GPU resource lifetime and concurrency
 
-One WebGPU generator is built per page and reused by every call. Building one
+One WebGPU generator is built per Worker and reused by its calls. Building one
 requests an instance, adapter, device and queue, compiles the WGSL shader,
 creates the compute pipeline and allocates the double-buffered slots, so
 rebuilding it per call charged that whole cost to the caller once per block.
 `recommendLocalPow` builds the same generator, which also warms the cache for
-the first `generate_work` call.
+the first high-level `generateWork` call.
 
 Two consequences for callers:
 
@@ -202,9 +210,25 @@ Returned by all generation functions.
 
 ## Browser compatibility
 
-Use a browser with WebGPU support to use the GPU path. Browsers without WebGPU use the synchronous single-threaded WebAssembly CPU fallback.
+Use a browser with WebGPU support to use the GPU path. Without WebGPU, the high-level API permits CPU work only when its throughput probe passes. All searching runs inside a dedicated Worker.
 
 
 
 - **[nano-rspow-node](https://www.npmjs.com/package/nano-rspow-node)**: High-performance pre-compiled Node.js bindings for backend servers.
 - **[nano-rspow Workspace](https://github.com/CasualSecurityInc/nano-rspow)**: The monorepo source code containing both packages.
+
+## Cancellable local work
+
+`probeLocalPow({ signal, timeoutMs, reprobe })` returns `{ recommended, backend, reason }`.
+The default probe deadline is three seconds. Assessments last for the current page only.
+WebGPU is recommended only after a real search passes CPU validation; CPU recommendation
+retains the 15 MH/s threshold. Probe failure reports an unrecommended assessment.
+
+`generateWork(root, threshold, { signal, timeoutMs })` returns `{ nonce, backend }`.
+It rejects on local failure; applications own remote routing. Both APIs use a reusable
+module Worker, preserving the warm GPU pipeline and serializing shared buffer access.
+Cancelling or timing out a Worker request terminates that realm and rejects all queued
+requests; callers may retry, which creates a fresh Worker. If Workers cannot be constructed, local work is disabled. Inside the Worker,
+CPU work uses adaptive batches targeting eight milliseconds between event-loop yields.
+No shared memory or isolation headers are required. Deadlines include initialization
+and queue time. `createPowEngine` and low-level WASM exports remain available.

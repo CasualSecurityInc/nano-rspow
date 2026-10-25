@@ -63,6 +63,7 @@ console.log('Bundling the page…');
 await build({
   entryPoints: [
     join(benchmarkDirectory, 'app.js'),
+    join(benchmarkDirectory, 'rspow-worker.js'),
   ],
   bundle: true,
   format: 'esm',
