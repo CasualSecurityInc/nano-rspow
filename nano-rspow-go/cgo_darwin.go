@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && !nano_rspow_external
 
 package nanorspow
 

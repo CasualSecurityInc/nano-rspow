@@ -28,6 +28,11 @@ for the network requirements.
 ## ⚡ Quick Start
 
 ### 1. Standalone CLI
+The native release workflow produces CLI archives for macOS and Linux
+(arm64/amd64), and Windows (amd64), with SHA-256 checksums. See the
+[native release guide](scripts/release/README.md) for artifact names and the
+Go module distribution process. The first release using this workflow is pending.
+
 Install from crates.io (requires a Rust toolchain):
 ```bash
 cargo install nano-rspow-cli
@@ -91,7 +96,7 @@ Below is the directory mapping for each target, along with their primary release
 | **Rust (Core)** | [crate API documentation](nano-rspow/src/lib.rs) | [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 | **Node.js & TS** | [nano-rspow-node README](https://github.com/CasualSecurityInc/nano-rspow/blob/HEAD/nano-rspow-node/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-node) |
 | **Python** | [nano-rspow-python README](nano-rspow-python/README.md) | [PyPI (pip)](https://pypi.org/project/nano-rspow-python/) |
-| **Go** | [nano-rspow-go README](nano-rspow-go/README.md) | Go module source checkout |
+| **Go** | [nano-rspow-go README](nano-rspow-go/README.md) | Go module with native libraries; first generated release pending |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
 | **CLI Tool** | [nano-rspow-cli README](nano-rspow-cli/README.md) | The only full-featured `nano-rspow` executable: [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
 

@@ -1,0 +1,222 @@
+name: Native release artifacts
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/native-release.yml'
+      - 'scripts/release/**'
+      - 'nano-rspow-go/**'
+      - 'nano-rspow-ffi/**'
+      - 'nano-rspow-cli/**'
+      - 'nano-rspow/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: '11.0'
+
+concurrency:
+  group: native-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check release integrity helpers
+        run: python -m unittest discover -s scripts/release -p 'test_*.py' -v
+      - id: matrix
+        run: |
+          echo "matrix=$(python scripts/release/native.py matrix)" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import os, tomllib
+          from pathlib import Path
+          version = tomllib.loads(Path('Cargo.toml').read_text())['workspace']['package']['version']
+          if os.environ['GITHUB_REF_TYPE'] == 'tag':
+              assert os.environ['GITHUB_REF_NAME'] == f'v{version}', 'Tag must match Cargo.toml'
+          PY
+
+  build:
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          install: mingw-w64-x86_64-gcc
+      - name: Add MinGW to PATH
+        if: runner.os == 'Windows'
+        run: echo 'C:/msys64/mingw64/bin' >> "$GITHUB_PATH"
+      - uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: native-${{ matrix.target }}
+      - name: Build release CLI and C ABI
+        run: cargo build --locked --release --target '${{ matrix.target }}' -p nano-rspow-cli -p nano-rspow-ffi
+      - name: Smoke test CLI
+        run: |
+          target='${{ matrix.target }}'
+          binary="target/$target/release/nano-rspow"
+          if [ '${{ runner.os }}' = Windows ]; then binary="$binary.exe"; fi
+          "$binary" --version
+          "$binary" generate 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2 --threshold fe00000000000000 --backend cpu
+          "$binary" validate 718cc2121c3e641059bc1c2cfc45666c99e8ae922f7a807b7d07b62c995d79e2 2bf29ef00786a6bc --threshold ffffffc000000000
+      - name: Package and record runtime ABI
+        run: python scripts/release/native.py package --target '${{ matrix.target }}'
+      - uses: actions/upload-artifact@v6
+        with:
+          name: native-${{ matrix.target }}
+          path: dist/native/*
+          if-no-files-found: error
+          overwrite: true
+
+  assemble:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: native-*-*
+          merge-multiple: true
+          path: dist/native
+      - run: python scripts/release/native.py aggregate
+      - name: Assemble the five-target Go module
+        run: python scripts/release/go_module.py --output dist/go-release
+      - uses: actions/upload-artifact@v6
+        with:
+          name: go-release
+          path: dist/go-release/proxy
+          if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@v6
+        with:
+          name: native-release
+          path: dist/native/*
+          if-no-files-found: error
+          overwrite: true
+
+  verify-go:
+    needs: [plan, assemble]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: nano-rspow-go/go.mod
+          cache: false
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          install: mingw-w64-x86_64-gcc
+      - name: Add MinGW to PATH
+        if: runner.os == 'Windows'
+        run: echo 'C:/msys64/mingw64/bin' >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v6
+        with:
+          name: go-release
+          path: dist/go-proxy
+      - name: Verify go get and native execution without Rust
+        run: python scripts/release/verify_go.py --proxy dist/go-proxy
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [assemble, verify-go]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v6
+        with:
+          name: go-release
+          path: dist/go-proxy
+      - name: Unpack the verified generated Go module
+        run: |
+          python - <<'PYCODE'
+          import zipfile
+          from pathlib import Path
+          archive, = Path('dist/go-proxy').rglob('*.zip')
+          with zipfile.ZipFile(archive) as source:
+              prefix = source.namelist()[0].split('@')[0] + '@' + archive.stem + '/'
+              for entry in source.infolist():
+                  assert entry.filename.startswith(prefix)
+                  relative = Path(entry.filename[len(prefix):])
+                  assert not relative.is_absolute() and '..' not in relative.parts
+                  output = Path('dist/go-candidate/nano-rspow-go') / relative
+                  output.parent.mkdir(parents=True, exist_ok=True)
+                  output.write_bytes(source.read(entry))
+          PYCODE
+      - name: Publish immutable Go module tag
+        run: python scripts/release/publish_go.py --candidate dist/go-candidate
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-release
+          path: dist/native
+      - name: Attach verified archives to the tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --notes-file dist/native/release-notes.md
+          fi
+          gh release view "$RELEASE_TAG" --json body --jq .body > "$RUNNER_TEMP/previous-notes.md"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          previous = Path(os.environ['RUNNER_TEMP']) / 'previous-notes.md'
+          notes = Path('dist/native/release-notes.md').read_text()
+          body = previous.read_text()
+          start, end = '<!-- native-release:start -->', '<!-- native-release:end -->'
+          if start in body and end in body:
+              body = body[:body.index(start)] + body[body.index(end) + len(end):]
+          elif body.strip() == notes.strip():
+              body = ''
+          previous.write_text(body.rstrip() + '\n\n' + start + '\n' + notes + end + '\n')
+          PY
+          gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/previous-notes.md"
+          gh release upload "$RELEASE_TAG" dist/native/* --clobber

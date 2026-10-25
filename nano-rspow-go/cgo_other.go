@@ -1,4 +1,4 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !nano_rspow_external
 
 package nanorspow
 

@@ -25,6 +25,10 @@ import (
 
 const nativeABIVersion = 1
 
+func nativeABI() uint32 {
+	return uint32(C.nano_rspow_abi_version())
+}
+
 // Backend controls native generator selection. Auto always retains CPU
 // fallback; GPU is an opportunistic runtime accelerator.
 type Backend uint32
@@ -151,7 +155,7 @@ type Generator struct {
 
 // NewGenerator creates an engine with the requested backend policy.
 func NewGenerator(backend Backend) (*Generator, error) {
-	if C.nano_rspow_abi_version() != nativeABIVersion {
+	if nativeABI() != nativeABIVersion {
 		return nil, fmt.Errorf("nano-rspow: unsupported native ABI version %d", C.nano_rspow_abi_version())
 	}
 	var ptr *C.nano_rspow_generator
