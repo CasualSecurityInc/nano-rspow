@@ -165,7 +165,7 @@ pub async fn generate_work(hash_hex: &str, threshold_hex: &str) -> Result<Genera
         }
         Err(e) => {
             console_log!(
-                "[WASM] WebGPU initialization failed (falling back to CPU): {}",
+                "[WASM] WebGPU generation failed (falling back to CPU): {}",
                 e
             );
         }
@@ -211,8 +211,8 @@ pub async fn generate_work_gpu(
     let nonce = webgpu::generate_shared(&hash, threshold, &cancel_token.0)
         .await
         .map_err(|e| {
-            console_log!("[WASM] Force WebGPU: Initialization failed: {}", e);
-            JsValue::from_str(&format!("WebGPU initialization failed: {}", e))
+            console_log!("[WASM] Force WebGPU: Generation failed: {}", e);
+            JsValue::from_str(&format!("WebGPU generation failed: {}", e))
         })?;
 
     if let Some(nonce) = nonce {

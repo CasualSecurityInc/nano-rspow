@@ -199,3 +199,99 @@ it('high-level Worker API validates concurrent work and recovers after cancellat
   assert.equal(result.cancelled, true);
   assert.equal(result.recovered, true);
 });
+
+// Runs in a disposable Worker so browser API instrumentation cannot affect
+// other tests. No fault-injection exports are added to the production package.
+async function readbackFailureWorker({ data: { mode, moduleUrl } }) {
+  try {
+    const module = await import(moduleUrl);
+    await module.default();
+    const devices = [];
+    const requestDevice = GPUAdapter.prototype.requestDevice;
+    GPUAdapter.prototype.requestDevice = async function (...args) {
+      const device = await requestDevice.apply(this, args);
+      devices.push(device);
+      return device;
+    };
+    const mapAsync = GPUBuffer.prototype.mapAsync;
+    const getMappedRange = GPUBuffer.prototype.getMappedRange;
+    const failedBuffers = new WeakSet();
+    let injected = false;
+    let invalidReads = 0;
+    GPUBuffer.prototype.getMappedRange = function (...args) {
+      if (failedBuffers.has(this)) invalidReads++;
+      return getMappedRange.apply(this, args);
+    };
+    GPUBuffer.prototype.mapAsync = function (...args) {
+      if (injected) return mapAsync.apply(this, args);
+      injected = true;
+      failedBuffers.add(this);
+      if (mode === 'reject') {
+        return new Promise((_, reject) => setTimeout(() => {
+          reject(new DOMException('Injected mapping failure', 'OperationError'));
+        }, 25));
+      }
+      const mapping = mapAsync.apply(this, args);
+      devices.at(-1).destroy();
+      return mapping;
+    };
+    const root = '6'.repeat(64);
+    const threshold = 'ff00000000000000';
+    const generate = async () => {
+      const token = new module.WasmCancelToken();
+      try {
+        const result = await module.generate_work_gpu(root, threshold, token);
+        try {
+          return { valid: module.validate_work(root, result.nonce, threshold), gpu: result.is_gpu };
+        } finally { result.free(); }
+      } finally { token.free(); }
+    };
+    // The second call must recover after the first fails while holding the gate.
+    const results = await Promise.allSettled([generate(), generate()]);
+    self.postMessage({
+      injected,
+      invalidReads,
+      devices: devices.length,
+      first: results[0].status,
+      error: String(results[0].reason),
+      second: results[1].status,
+      recovered: results[1].value,
+    });
+  } catch (error) {
+    self.postMessage({ setupError: String(error?.stack ?? error) });
+  }
+}
+
+for (const mode of ['reject', 'device-loss']) {
+  it(`recovers queued GPU work after ${mode} during mapping`, { timeout: 60000 }, async () => {
+    const result = await page.evaluate(`
+      const source = 'self.onmessage = ' + ${JSON.stringify(readbackFailureWorker.toString())};
+      const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+      const worker = new Worker(url, { type: 'module' });
+      let ticks = 0;
+      const heartbeat = setInterval(() => ticks++, 5);
+      try {
+        const result = await new Promise((resolve, reject) => {
+          worker.onmessage = ({ data }) => resolve(data);
+          worker.onerror = event => reject(new Error(event.message));
+          worker.postMessage({ mode: ${JSON.stringify(mode)}, moduleUrl: location.origin + '/nano_rspow_web.js' });
+        });
+        return { ...result, ticks };
+      } finally {
+        clearInterval(heartbeat);
+        worker.terminate();
+        URL.revokeObjectURL(url);
+      }
+    `, { timeoutMs: 45000 });
+    assert.equal(result.setupError, undefined, result.setupError);
+    assert.equal(result.injected, true);
+    assert.equal(result.first, 'rejected');
+    assert.match(result.error, /readback (mapping failed|device lost)|device lost during readback/i);
+    assert.doesNotMatch(result.error, /RuntimeError|unreachable/i);
+    assert.equal(result.invalidReads, 0, 'must not read a buffer whose mapping failed');
+    assert.equal(result.devices, 2, 'queued work must create a replacement device');
+    assert.equal(result.second, 'fulfilled');
+    assert.deepEqual(result.recovered, { valid: true, gpu: true });
+    assert.ok(result.ticks > 0, 'the Window heartbeat must continue during failure and recovery');
+  });
+}

@@ -289,9 +289,9 @@ fn watch_device_lost(generator: &WgpuWebGenerator, epoch: u64) {
 /// Generate proof of work through the process-wide generator, building it on
 /// first use.
 ///
-/// `Ok(None)` means the search was exhausted or cancelled; `Err` means the GPU
-/// stack was unavailable, which is the same condition a caller saw when
-/// `WgpuWebGenerator::new` failed.
+/// `Ok(None)` means the search was cancelled; `Err` means initialization or
+/// readback failed. A readback failure discards the generator before the next
+/// queued caller can use it.
 pub async fn generate_shared(
     hash: &[u8; 32],
     threshold: u64,
@@ -300,7 +300,14 @@ pub async fn generate_shared(
     let _guard = GATE.lock().await;
     let generator = ensure_generator().await?;
     console_log!("[WebGPU] Generating with cached device and pipeline.");
-    Ok(generator.generate(hash, threshold, cancel).await)
+    generator
+        .generate(hash, threshold, cancel)
+        .await
+        .map_err(|error| {
+            CACHE.with(|cache| *cache.borrow_mut() = None);
+            DEVICE_LOST.with(|lost| lost.set(true));
+            error.to_string()
+        })
 }
 
 /// Build the shared generator ahead of time so the first `generate_shared`
@@ -331,30 +338,61 @@ struct WgpuWebGenerator {
     bind_groups: [wgpu::BindGroup; 2],
 }
 
-/// Map a GPU readback buffer asynchronously.
+#[derive(Debug)]
+enum ReadbackError {
+    Mapping(String),
+    DeviceLost,
+}
+
+impl std::fmt::Display for ReadbackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Mapping(message) => write!(f, "WebGPU readback mapping failed: {message}"),
+            Self::DeviceLost => write!(f, "WebGPU device lost during readback"),
+        }
+    }
+}
+
+/// Map a GPU readback buffer asynchronously. `Ok(false)` means cancellation.
 /// The double-buffer ping-pong guarantees the buffer being mapped was submitted
 /// one full batch ago, so it is already retired — no explicit sync needed.
-async fn map_readback_async(buf: &wgpu::Buffer, cancel: &CancelToken) -> bool {
+async fn map_readback_async(
+    buf: &wgpu::Buffer,
+    cancel: &CancelToken,
+) -> Result<bool, ReadbackError> {
     use js_sys::Function;
     use wasm_bindgen::JsValue;
 
     if cancel.is_cancelled() {
-        return false;
+        return Ok(false);
     }
 
-    // Build a JS Promise whose resolve we hand to map_async.
-    let mut resolve_holder: Option<Function> = None;
-    let promise = js_sys::Promise::new(&mut |resolve, _reject| {
-        resolve_holder = Some(resolve);
+    let mut callbacks: Option<(Function, Function)> = None;
+    let promise = js_sys::Promise::new(&mut |resolve, reject| {
+        callbacks = Some((resolve, reject));
     });
-    let resolve_fn = resolve_holder.expect("Promise constructor called synchronously");
+    let (resolve, reject) = callbacks.expect("Promise constructor called synchronously");
 
-    buf.slice(..).map_async(wgpu::MapMode::Read, move |_res| {
-        let _ = resolve_fn.call0(&JsValue::UNDEFINED);
-    });
+    buf.slice(..)
+        .map_async(wgpu::MapMode::Read, move |result| match result {
+            Ok(()) => {
+                let _ = resolve.call0(&JsValue::UNDEFINED);
+            }
+            Err(error) => {
+                let _ = reject.call1(&JsValue::UNDEFINED, &JsValue::from_str(&error.to_string()));
+            }
+        });
 
-    // Await the map completion promise.
-    wasm_bindgen_futures::JsFuture::from(promise).await.is_ok()
+    wasm_bindgen_futures::JsFuture::from(promise)
+        .await
+        .map_err(|error| {
+            ReadbackError::Mapping(error.as_string().unwrap_or_else(|| format!("{error:?}")))
+        })?;
+    if cancel.is_cancelled() {
+        buf.unmap();
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 impl WgpuWebGenerator {
@@ -499,7 +537,7 @@ impl WgpuWebGenerator {
         hash: &[u8; 32],
         threshold: u64,
         cancel: &CancelToken,
-    ) -> Option<u64> {
+    ) -> Result<Option<u64>, ReadbackError> {
         console_log!(
             "[WebGPU] Starting generation (double-buffered). threshold: {:016x}",
             threshold
@@ -563,7 +601,7 @@ impl WgpuWebGenerator {
 
             if cancel.is_cancelled() {
                 console_log!("[WebGPU] Cancelled after {} batch(es).", batch_count - 1);
-                return None;
+                return Ok(None);
             }
 
             // Submit current slot.
@@ -572,12 +610,17 @@ impl WgpuWebGenerator {
 
             // Read back the PREVIOUS slot — guaranteed retired by GPU ordering.
             let prev = slot ^ 1;
-            let ok = map_readback_async(&self.readback_bufs[prev], cancel).await;
+            let ok = map_readback_async(&self.readback_bufs[prev], cancel).await?;
             if !ok {
                 if cancel.is_cancelled() {
                     console_log!("[WebGPU] Cancelled after {} batch(es).", batch_count);
                 }
-                return None;
+                return Ok(None);
+            }
+
+            if DEVICE_LOST.with(Cell::get) {
+                self.readback_bufs[prev].unmap();
+                return Err(ReadbackError::DeviceLost);
             }
 
             let data: Vec<u32> = {
@@ -605,7 +648,7 @@ impl WgpuWebGenerator {
                     batch_count,
                     found_nonce
                 );
-                return Some(found_nonce);
+                return Ok(Some(found_nonce));
             }
 
             slot ^= 1;
