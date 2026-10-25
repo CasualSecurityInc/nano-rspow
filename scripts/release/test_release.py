@@ -9,10 +9,20 @@ import unittest
 from unittest.mock import patch
 
 import native
+import go_module
 import publish_go
 
 
 class ReleaseIntegrityTests(unittest.TestCase):
+    def test_header_comparison_ignores_checkout_line_endings(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            unix = directory / "unix.h"
+            windows = directory / "windows.h"
+            unix.write_bytes(b"#include <stdint.h>\nuint32_t version(void);\n")
+            windows.write_bytes(b"#include <stdint.h>\r\nuint32_t version(void);\r\n")
+            self.assertEqual(go_module.header_bytes(unix), go_module.header_bytes(windows))
+
     def test_ci_color_sequences_never_reach_cgo_linker_flags(self):
         diagnostics = "\x1b[1mnote\x1b[0m: native-static-libs: -ldl -lpthread -lc\x1b[0m\n"
         with patch.object(native.subprocess, "run", return_value=subprocess.CompletedProcess(

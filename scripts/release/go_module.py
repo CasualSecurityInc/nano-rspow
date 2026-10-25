@@ -20,6 +20,11 @@ def escape(path):
     return "".join("!" + char.lower() if char.isupper() else char for char in path)
 
 
+def header_bytes(path):
+    # Windows checkout may use CRLF; the generated module uses one LF header.
+    return path.read_text(encoding="utf-8").encode("utf-8")
+
+
 def prepare(artifacts, output, target=None):
     if output.exists():
         raise SystemExit(f"Refusing to overwrite {output}")
@@ -66,7 +71,7 @@ def prepare(artifacts, output, target=None):
             shutil.copy2(directory / "libnano_rspow_ffi.a", native)
             include = module / "native/include"
             include.mkdir(exist_ok=True)
-            header = (directory / "nano_rspow_ffi.h").read_bytes()
+            header = header_bytes(directory / "nano_rspow_ffi.h")
             if (include / "nano_rspow_ffi.h").exists() and (include / "nano_rspow_ffi.h").read_bytes() != header:
                 raise SystemExit("Header mismatch between targets")
             (include / "nano_rspow_ffi.h").write_bytes(header)
