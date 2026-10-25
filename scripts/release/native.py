@@ -4,6 +4,7 @@ import argparse
 import ctypes
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -49,19 +50,28 @@ def archive(directory, destination):
     )
 
 
+def static_link_flags(target):
+    flags = subprocess.run(
+        ["cargo", "rustc", "--locked", "--release", "--target", target,
+         "-p", "nano-rspow-ffi", "--", "--print", "native-static-libs"],
+        cwd=ROOT, text=True, capture_output=True, check=True,
+        env={**os.environ, "CARGO_TERM_COLOR": "never"},
+    )
+    # CI may force colored compiler diagnostics. Never put ANSI escapes into
+    # generated #cgo directives, even if a tool ignores CARGO_TERM_COLOR.
+    diagnostics = re.sub(r"\x1b\[[0-9;]*m", "", flags.stderr)
+    match = re.search(r"native-static-libs: (.+)", diagnostics)
+    if not match:
+        raise SystemExit("Rust did not report the static library's system dependencies")
+    return match.group(1).strip()
+
+
 def package(target, output):
     settings = next(item for item in TARGETS if item["target"] == target)
     windows = settings["goos"] == "windows"
     release = ROOT / "target" / target / "release"
     dynamic = "nano_rspow_ffi.dll" if windows else ("libnano_rspow_ffi.dylib" if settings["goos"] == "darwin" else "libnano_rspow_ffi.so")
-    flags = subprocess.run(
-        ["cargo", "rustc", "--locked", "--release", "--target", target,
-         "-p", "nano-rspow-ffi", "--", "--print", "native-static-libs"],
-        cwd=ROOT, text=True, capture_output=True, check=True,
-    )
-    link_flags = re.search(r"native-static-libs: (.+)", flags.stderr)
-    if not link_flags:
-        raise SystemExit("Rust did not report the static library's system dependencies")
+    link_flags = static_link_flags(target)
     # Load only after rustc finishes: Windows cannot replace a loaded DLL.
     library = ctypes.CDLL(str(release / dynamic))
     library.nano_rspow_abi_version.restype = ctypes.c_uint32
@@ -69,7 +79,7 @@ def package(target, output):
         **settings, "version": version(), "ffi_abi": library.nano_rspow_abi_version(),
         "work_protocol": "work_1", "rustc": run("rustc", "--version"),
         "source_commit": run("git", "rev-parse", "HEAD", cwd=ROOT),
-        "static_link_flags": link_flags.group(1),
+        "static_link_flags": link_flags,
     }
     if metadata["ffi_abi"] != 1:
         raise SystemExit("Unexpected native ABI: update the release verifier before publishing")

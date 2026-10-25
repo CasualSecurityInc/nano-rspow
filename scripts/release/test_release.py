@@ -13,6 +13,12 @@ import publish_go
 
 
 class ReleaseIntegrityTests(unittest.TestCase):
+    def test_ci_color_sequences_never_reach_cgo_linker_flags(self):
+        diagnostics = "\x1b[1mnote\x1b[0m: native-static-libs: -ldl -lpthread -lc\x1b[0m\n"
+        with patch.object(native.subprocess, "run", return_value=subprocess.CompletedProcess(
+                [], 0, stdout="", stderr=diagnostics)):
+            self.assertEqual(native.static_link_flags("test-target"), "-ldl -lpthread -lc")
+
     def test_incomplete_matrix_cannot_be_released(self):
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaises(FileNotFoundError):
