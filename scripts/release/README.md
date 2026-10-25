@@ -6,8 +6,8 @@ uses `x86_64-pc-windows-gnu` so the static library links with cgo's MinGW-w64
 GCC compiler. Linux artifacts require glibc compatible with Ubuntu 24.04;
 they are not musl builds. macOS artifacts target macOS 11 or later.
 
-Pull requests changing this workflow, its scripts, Go bindings, or the C ABI
-run the full build and consumer matrix. Manual workflow dispatch also runs a
+Pushes to `main` and pull requests changing this workflow, its scripts, or
+native code run the full build and consumer matrix. Manual dispatch also runs a
 dry run. Neither publishes anything. Only a root version-tag push publishes.
 
 ## Release contents

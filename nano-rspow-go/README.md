@@ -27,13 +27,17 @@ published version until the first generated Go release exists.
 
 ## Source checkout
 
-The current source-checkout workflow builds the native library and then runs
-the Go tests:
+On macOS and Linux, the source-checkout workflow builds the native library and
+then runs the Go tests:
 
 ```sh
 cargo build -p nano-rspow-ffi
 CGO_ENABLED=1 go test ./...
 ```
+
+For Windows source builds, use the GNU target and the staged-module commands
+in [the release guide](../scripts/release/README.md), substituting
+`x86_64-pc-windows-gnu` for the target.
 
 On macOS and Linux, the default cgo directives look for the header in
 `../nano-rspow-ffi/include` and link the static native library at
