@@ -10,7 +10,7 @@ proof-of-work, GPU state, worker threads, and allocation. It does not bind
 Tagged native releases publish a matching `nano-rspow-go/v<version>` tag:
 
 ```sh
-go get github.com/CasualSecurityInc/nano-rspow/nano-rspow-go@v<version>
+go get github.com/CasualSecurityInc/nano-rspow/nano-rspow-go@v0.18.0
 ```
 
 The generated module includes the C header and static libraries for all five
@@ -22,8 +22,8 @@ a C cross-compiler for the destination platform.
 
 The root `v<version>` tag identifies the source release. The separate
 `nano-rspow-go/v<version>` tag points to a generated commit containing the
-native libraries; these binaries are not committed to `main`. Use an explicit
-published version until the first generated Go release exists.
+native libraries; these binaries are not committed to `main`. Generated module
+releases start at v0.18.0; earlier source-only tags do not bundle native libraries.
 
 ## Source checkout
 
