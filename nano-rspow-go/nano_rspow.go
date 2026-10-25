@@ -7,7 +7,7 @@
 package nanorspow
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../nano-rspow-ffi/include
+#cgo CFLAGS: -I${SRCDIR}/native/include
 #include "nano_rspow_ffi.h"
 */
 import "C"

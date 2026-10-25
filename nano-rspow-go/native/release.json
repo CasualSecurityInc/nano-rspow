@@ -1,0 +1,62 @@
+[
+  {
+    "os": "macos-15-intel",
+    "target": "x86_64-apple-darwin",
+    "goos": "darwin",
+    "goarch": "amd64",
+    "version": "0.18.0",
+    "ffi_abi": 1,
+    "work_protocol": "work_1",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "source_commit": "64570062281fb0175ae603824a8c0446d315aa29",
+    "static_link_flags": "-lSystem -framework QuartzCore -framework Metal -framework Foundation -framework CoreFoundation -lobjc -framework Foundation -liconv -lSystem -lc -lm"
+  },
+  {
+    "os": "macos-15",
+    "target": "aarch64-apple-darwin",
+    "goos": "darwin",
+    "goarch": "arm64",
+    "version": "0.18.0",
+    "ffi_abi": 1,
+    "work_protocol": "work_1",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "source_commit": "64570062281fb0175ae603824a8c0446d315aa29",
+    "static_link_flags": "-lSystem -framework QuartzCore -framework Metal -framework Foundation -framework CoreFoundation -lobjc -framework Foundation -liconv -lSystem -lc -lm"
+  },
+  {
+    "os": "ubuntu-24.04",
+    "target": "x86_64-unknown-linux-gnu",
+    "goos": "linux",
+    "goarch": "amd64",
+    "version": "0.18.0",
+    "ffi_abi": 1,
+    "work_protocol": "work_1",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "source_commit": "64570062281fb0175ae603824a8c0446d315aa29",
+    "static_link_flags": "-ldl -lgcc_s -lutil -lrt -lpthread -lm -ldl -lc"
+  },
+  {
+    "os": "ubuntu-24.04-arm",
+    "target": "aarch64-unknown-linux-gnu",
+    "goos": "linux",
+    "goarch": "arm64",
+    "version": "0.18.0",
+    "ffi_abi": 1,
+    "work_protocol": "work_1",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "source_commit": "64570062281fb0175ae603824a8c0446d315aa29",
+    "static_link_flags": "-ldl -lgcc_s -lutil -lrt -lpthread -lm -ldl -lc"
+  },
+  {
+    "os": "windows-2025",
+    "target": "x86_64-pc-windows-gnu",
+    "goos": "windows",
+    "goarch": "amd64",
+    "version": "0.18.0",
+    "ffi_abi": 1,
+    "work_protocol": "work_1",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "source_commit": "64570062281fb0175ae603824a8c0446d315aa29",
+    "static_link_flags": "-lkernel32 -lntdll -luserenv -lws2_32 -ldbghelp"
+  }
+]
