@@ -99,6 +99,7 @@ Below is the directory mapping for each target, along with their primary release
 | **Go** | [nano-rspow-go README](nano-rspow-go/README.md) | Versioned Go module with native libraries |
 | **Web (WASM / WebGPU)** | [nano-rspow-web/README.md](nano-rspow-web/README.md) | [Public NPM package](https://www.npmjs.com/package/nano-rspow-web) + [🎛️ Demo](https://csi.ninzin.net/nano-rspow/) |
 | **CLI Tool** | [nano-rspow-cli README](nano-rspow-cli/README.md) | The only full-featured `nano-rspow` executable: [crates.io](https://crates.io/crates/nano-rspow-cli) · [GitHub Releases](https://github.com/CasualSecurityInc/nano-rspow/releases) |
+| **Linux binary compatibility** | [GLIBC_COMPAT.md](GLIBC_COMPAT.md) | glibc floor for the prebuilt `-linux-*-gnu` packages, musl support, and how the floor is enforced in CI |
 
 ---
 

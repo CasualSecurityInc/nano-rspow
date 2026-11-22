@@ -1,6 +1,11 @@
 # nano-rspow-node
 
-Native Nano (XNO) proof of work for Node.js. Pre-compiled binaries are available for macOS (x64 and ARM64), Linux (x64 and ARM64), and Windows (x64). A Rust toolchain is not required for those targets.
+Native Nano (XNO) proof of work for Node.js. Pre-compiled binaries are available for macOS (x64 and ARM64), Linux (x64 and ARM64, both glibc and musl), and Windows (x64). A Rust toolchain is not required for those targets.
+
+> **Linux compatibility:** the `-linux-*-gnu` packages require glibc 2.34 or
+> newer (Ubuntu 22.04, Debian 12, RHEL 9). The `-linux-*-musl` packages have no
+> glibc dependency and work on Alpine and any other musl-based distro. See
+> [GLIBC_COMPAT.md](../GLIBC_COMPAT.md) for the full support matrix.
 
 ## Install
 
