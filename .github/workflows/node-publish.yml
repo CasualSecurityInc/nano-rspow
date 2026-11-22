@@ -175,8 +175,13 @@ jobs:
             if npm view "$name@$version" version >/dev/null 2>&1; then
               echo "✅ $name@$version is already published! Skipping."
             else
-              echo "🚀 Publishing $dir ($name@$version)..."
-              npm publish "$dir" --provenance --access public
+              if npm view "$name" version >/dev/null 2>&1; then
+                echo "🚀 Publishing $dir ($name@$version) with provenance..."
+                npm publish "$dir" --provenance --access public
+              else
+                echo "🚀 Publishing new package $dir ($name@$version) (no provenance)..."
+                npm publish "$dir" --access public
+              fi
             fi
           done
 
