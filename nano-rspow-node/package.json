@@ -1,6 +1,6 @@
 {
   "name": "nano-rspow-node",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Hybrid CPU/GPU Nano Proof of Work for Node.js",
   "keywords": [
     "nano",
@@ -35,6 +35,8 @@
       "x86_64-apple-darwin",
       "aarch64-unknown-linux-gnu",
       "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "x86_64-unknown-linux-musl",
       "x86_64-pc-windows-msvc"
     ]
   },
