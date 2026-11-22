@@ -116,9 +116,10 @@ jobs:
 
       - name: Build
         working-directory: nano-rspow-node
+        shell: bash
         run: |
           if [[ "${{ matrix.settings.target }}" == *-musl ]]; then
-            npm run build -- --target ${{ matrix.settings.target }} --zig
+            npm run build -- --target ${{ matrix.settings.target }} --cross-compile
           else
             npm run build -- --target ${{ matrix.settings.target }}
           fi
