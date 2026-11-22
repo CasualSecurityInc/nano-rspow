@@ -61,11 +61,11 @@ jobs:
             target: aarch64-apple-darwin
           - host: windows-2025
             target: x86_64-pc-windows-msvc
-          - host: ubuntu-latest
+          - host: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
-          - host: ubuntu-latest
+          - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-          - host: ubuntu-latest
+          - host: ubuntu-24.04
             target: x86_64-unknown-linux-musl
           - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
@@ -123,6 +123,22 @@ jobs:
           else
             npm run build -- --target ${{ matrix.settings.target }}
           fi
+
+      - name: Verify glibc floor (linux-gnu)
+        if: matrix.settings.target == 'x86_64-unknown-linux-gnu' || matrix.settings.target == 'aarch64-unknown-linux-gnu'
+        shell: bash
+        run: |
+          # Oldest glibc we support (Ubuntu 22.04 = 2.35). A binary built on a newer
+          # glibc will not load on older distros, so fail the release instead.
+          required="2.35"
+          for so in nano-rspow-node/*.node; do
+            need=$(objdump -T "$so" | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sed 's/GLIBC_//' | sort -uV | tail -n 1)
+            echo "$so needs glibc ${need:-none}"
+            if [ -n "$need" ] && [ "$(printf '%s\n%s\n' "$need" "$required" | sort -V | tail -n 1)" != "$required" ]; then
+              echo "::error::$so requires glibc $need, but the supported floor is $required"
+              exit 1
+            fi
+          done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
